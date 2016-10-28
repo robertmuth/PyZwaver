@@ -1,0 +1,547 @@
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:03 Association_GroupingsReport:85 X:06 01 chk:7a
+hex:  [1, 9, 0, 4, 0, 9, 3, 133, 6, 1, 122]
+application data:  ['85', '06', '01']
+StoreValue 1[Association_Groupings]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:03 Basic_Report:20 X:03 ff chk:24
+hex:  [1, 9, 0, 4, 0, 9, 3, 32, 3, 255, 36]
+application data:  ['20', '03', 'ff']
+StoreSensor 255[Basic, level]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:03 SwitchAll_Report:27 X:03 ff chk:23
+hex:  [1, 9, 0, 4, 0, 9, 3, 39, 3, 255, 35]
+application data:  ['27', '03', 'ff']
+StoreValue 255[SwitchAll]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:03 SwitchBinary_Report:25 X:03 ff chk:21
+hex:  [1, 9, 0, 4, 0, 9, 3, 37, 3, 255, 33]
+application data:  ['25', '03', 'ff']
+StoreSensor 255[SwitchBinary, level]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0c len:03 Basic_Report:20 X:03 00 chk:de
+hex:  [1, 9, 0, 4, 0, 12, 3, 32, 3, 0, 222]
+application data:  ['20', '03', '00']
+StoreSensor 0[Basic, level]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0c len:03 SwitchAll_Report:27 X:03 ff chk:26
+hex:  [1, 9, 0, 4, 0, 12, 3, 39, 3, 255, 38]
+application data:  ['27', '03', 'ff']
+StoreValue 255[SwitchAll]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0c len:03 SwitchMultilevel_Report:26 X:03 00 chk:d8
+hex:  [1, 9, 0, 4, 0, 12, 3, 38, 3, 0, 216]
+application data:  ['26', '03', '00']
+StoreSensor 0[SwitchMultilevel, level]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0e len:03 Association_GroupingsReport:85 X:06 01 chk:7d
+hex:  [1, 9, 0, 4, 0, 14, 3, 133, 6, 1, 125]
+application data:  ['85', '06', '01']
+StoreValue 1[Association_Groupings]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0e len:03 Basic_Report:20 X:03 ff chk:23
+hex:  [1, 9, 0, 4, 0, 14, 3, 32, 3, 255, 35]
+application data:  ['20', '03', 'ff']
+StoreSensor 255[Basic, level]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0e len:03 SwitchBinary_Report:25 X:03 ff chk:26
+hex:  [1, 9, 0, 4, 0, 14, 3, 37, 3, 255, 38]
+application data:  ['25', '03', 'ff']
+StoreSensor 255[SwitchBinary, level]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0f len:03 Association_GroupingsReport:85 X:06 02 chk:7f
+hex:  [1, 9, 0, 4, 0, 15, 3, 133, 6, 2, 127]
+application data:  ['85', '06', '02']
+StoreValue 2[Association_Groupings]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0f len:03 Basic_Report:20 X:03 ff chk:22
+hex:  [1, 9, 0, 4, 0, 15, 3, 32, 3, 255, 34]
+application data:  ['20', '03', 'ff']
+StoreSensor 255[Basic, level]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0f len:03 SwitchAll_Report:27 X:03 ff chk:25
+hex:  [1, 9, 0, 4, 0, 15, 3, 39, 3, 255, 37]
+application data:  ['27', '03', 'ff']
+StoreValue 255[SwitchAll]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0f len:03 SwitchBinary_Report:25 X:03 ff chk:27
+hex:  [1, 9, 0, 4, 0, 15, 3, 37, 3, 255, 39]
+application data:  ['25', '03', 'ff']
+StoreSensor 255[SwitchBinary, level]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:10 len:03 Association_GroupingsReport:85 X:06 01 chk:63
+hex:  [1, 9, 0, 4, 0, 16, 3, 133, 6, 1, 99]
+application data:  ['85', '06', '01']
+StoreValue 1[Association_Groupings]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:10 len:03 Battery_Report:80 X:03 64 chk:06
+hex:  [1, 9, 0, 4, 0, 16, 3, 128, 3, 100, 6]
+application data:  ['80', '03', '64']
+StoreSensor 100[Battery, level]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:10 len:03 SensorBinary_Report:30 X:03 ff chk:2d
+hex:  [1, 9, 0, 4, 0, 16, 3, 48, 3, 255, 45]
+application data:  ['30', '03', 'ff']
+StoreSensor 255[SwitchBinary, level]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:03 Association_GroupingsReport:85 X:06 01 chk:62
+hex:  [1, 9, 0, 4, 0, 17, 3, 133, 6, 1, 98]
+application data:  ['85', '06', '01']
+StoreValue 1[Association_Groupings]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:03 Basic_Report:20 X:03 00 chk:c3
+hex:  [1, 9, 0, 4, 0, 17, 3, 32, 3, 0, 195]
+application data:  ['20', '03', '00']
+StoreSensor 0[Basic, level]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:03 SwitchAll_Report:27 X:03 ff chk:3b
+hex:  [1, 9, 0, 4, 0, 17, 3, 39, 3, 255, 59]
+application data:  ['27', '03', 'ff']
+StoreValue 255[SwitchAll]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:03 SwitchMultilevel_Report:26 X:03 00 chk:c5
+hex:  [1, 9, 0, 4, 0, 17, 3, 38, 3, 0, 197]
+application data:  ['26', '03', '00']
+StoreSensor 0[SwitchMultilevel, level]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:03 Basic_Report:20 X:03 ff chk:3f
+hex:  [1, 9, 0, 4, 0, 18, 3, 32, 3, 255, 63]
+application data:  ['20', '03', 'ff']
+StoreSensor 255[Basic, level]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:03 SwitchAll_Report:27 X:03 ff chk:38
+hex:  [1, 9, 0, 4, 0, 18, 3, 39, 3, 255, 56]
+application data:  ['27', '03', 'ff']
+StoreValue 255[SwitchAll]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:03 SwitchBinary_Report:25 X:03 ff chk:3a
+hex:  [1, 9, 0, 4, 0, 18, 3, 37, 3, 255, 58]
+application data:  ['25', '03', 'ff']
+StoreSensor 255[SwitchBinary, level]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:03 SwitchMultilevel_Report:26 X:03 63 chk:a5
+hex:  [1, 9, 0, 4, 0, 18, 3, 38, 3, 99, 165]
+application data:  ['26', '03', '63']
+StoreSensor 99[SwitchMultilevel, level]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0c len:04 Powerlevel_Report:73 X:03 00 00 chk:89
+hex:  [1, 10, 0, 4, 0, 12, 4, 115, 3, 0, 0, 137]
+application data:  ['73', '03', '00', '00']
+StoreValue [0, 0][Powerlevel]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0f len:04 Powerlevel_Report:73 X:03 00 00 chk:8a
+hex:  [1, 10, 0, 4, 0, 15, 4, 115, 3, 0, 0, 138]
+application data:  ['73', '03', '00', '00']
+StoreValue [0, 0][Powerlevel]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:04 Powerlevel_Report:73 X:03 00 00 chk:94
+hex:  [1, 10, 0, 4, 0, 17, 4, 115, 3, 0, 0, 148]
+application data:  ['73', '03', '00', '00']
+StoreValue [0, 0][Powerlevel]
+
+incoming:  SOF len:0b REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:02 len:05 SensorMultilevel_Report:31 X:05 05 01 27 chk:e0
+hex:  [1, 11, 0, 4, 0, 2, 5, 49, 5, 5, 1, 39, 224]
+application data:  ['31', '05', '05', '01', '27']
+StoreSensor 39.0[Relative Humidity, %]
+
+incoming:  SOF len:0b REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0c len:05 SceneActuatorConf_Report:2c X:03 00 00 ff chk:29
+hex:  [1, 11, 0, 4, 0, 12, 5, 44, 3, 0, 0, 255, 41]
+application data:  ['2c', '03', '00', '00', 'ff']
+StoreScene [] [0, 0, 255]
+
+incoming:  SOF len:0c REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:02 len:06 SensorMultilevel_Report:31 X:05 01 2a 03 63 chk:8c
+hex:  [1, 12, 0, 4, 0, 2, 6, 49, 5, 1, 42, 3, 99, 140]
+application data:  ['31', '05', '01', '2a', '03', '63']
+StoreSensor 86.7[Temperature, F]
+
+incoming:  SOF len:0c REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:10 len:06 SensorMultilevel_Report:31 X:05 01 3e 01 08 chk:e3
+hex:  [1, 12, 0, 4, 0, 16, 6, 49, 5, 1, 62, 1, 8, 227]
+application data:  ['31', '05', '01', '3e', '01', '08']
+StoreSensor 26.4[Temperature, C]
+
+incoming:  SOF len:0c REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:10 len:06 SensorMultilevel_Report:31 X:05 03 0a 00 00 chk:dc
+hex:  [1, 12, 0, 4, 0, 16, 6, 49, 5, 3, 10, 0, 0, 220]
+application data:  ['31', '05', '03', '0a', '00', '00']
+StoreSensor 0.0[Luminance, lux]
+
+incoming:  SOF len:0c REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:10 len:06 SensorMultilevel_Report:31 X:05 05 01 2a 00 chk:fb
+hex:  [1, 12, 0, 4, 0, 16, 6, 49, 5, 5, 1, 42, 0, 251]
+application data:  ['31', '05', '05', '01', '2a', '00']
+StoreSensor 42.0[Relative Humidity, %]
+
+incoming:  SOF len:0d REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:07 Version_Report:86 X:12 03 02 4e 01 2b chk:09
+hex:  [1, 13, 0, 4, 0, 9, 7, 134, 18, 3, 2, 78, 1, 43, 9]
+application data:  ['86', '12', '03', '02', '4e', '01', '2b']
+StoreValue [3, 2, 78, 1, 43][Version]
+
+incoming:  SOF len:0d REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0c len:07 Version_Report:86 X:12 06 03 2a 05 29 chk:6a
+hex:  [1, 13, 0, 4, 0, 12, 7, 134, 18, 6, 3, 42, 5, 41, 106]
+application data:  ['86', '12', '06', '03', '2a', '05', '29']
+StoreValue [6, 3, 42, 5, 41][Version]
+
+incoming:  SOF len:0d REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:10 len:07 Version_Report:86 X:12 06 03 1c 01 12 chk:7f
+hex:  [1, 13, 0, 4, 0, 16, 7, 134, 18, 6, 3, 28, 1, 18, 127]
+application data:  ['86', '12', '06', '03', '1c', '01', '12']
+StoreValue [6, 3, 28, 1, 18][Version]
+
+incoming:  SOF len:0e REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:08 ManufacturerSpecific_Report:72 X:05 00 86 00 03 00 06 chk:00
+hex:  [1, 14, 0, 4, 0, 9, 8, 114, 5, 0, 134, 0, 3, 0, 6, 0]
+application data:  ['72', '05', '00', '86', '00', '03', '00', '06']
+StoreValue [134, 3, 6][ManufacturerSpecific]
+CHANGE_STATE ['3_Interviewed'] [134, 3, 6]
+
+incoming:  SOF len:0e REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:08 SensorMultilevel_Report:31 X:05 04 64 00 00 a2 7e chk:7c
+hex:  [1, 14, 0, 4, 0, 9, 8, 49, 5, 4, 100, 0, 0, 162, 126, 124]
+application data:  ['31', '05', '04', '64', '00', '00', 'a2', '7e']
+StoreSensor 41.598[Power, W]
+
+incoming:  SOF len:0e REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0c len:08 ManufacturerSpecific_Report:72 X:05 01 4f 44 57 30 34 chk:df
+hex:  [1, 14, 0, 4, 0, 12, 8, 114, 5, 1, 79, 68, 87, 48, 52, 223]
+application data:  ['72', '05', '01', '4f', '44', '57', '30', '34']
+StoreValue [335, 17495, 12340][ManufacturerSpecific]
+CHANGE_STATE ['3_Interviewed'] [335, 17495, 12340]
+
+incoming:  SOF len:0e REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0e len:08 ManufacturerSpecific_Report:72 X:05 01 1a 01 11 01 01 chk:8f
+hex:  [1, 14, 0, 4, 0, 14, 8, 114, 5, 1, 26, 1, 17, 1, 1, 143]
+application data:  ['72', '05', '01', '1a', '01', '11', '01', '01']
+StoreValue [282, 273, 257][ManufacturerSpecific]
+CHANGE_STATE ['3_Interviewed'] [282, 273, 257]
+
+incoming:  SOF len:0e REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0e len:08 SensorMultilevel_Report:31 X:05 04 64 00 01 3e e6 chk:7e
+hex:  [1, 14, 0, 4, 0, 14, 8, 49, 5, 4, 100, 0, 1, 62, 230, 126]
+application data:  ['31', '05', '04', '64', '00', '01', '3e', 'e6']
+StoreSensor 81.638[Power, W]
+
+incoming:  SOF len:0e REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0e len:08 SensorMultilevel_Report:31 X:05 04 64 00 01 3e f8 chk:60
+hex:  [1, 14, 0, 4, 0, 14, 8, 49, 5, 4, 100, 0, 1, 62, 248, 96]
+application data:  ['31', '05', '04', '64', '00', '01', '3e', 'f8']
+StoreSensor 81.656[Power, W]
+
+incoming:  SOF len:0e REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0f len:08 ManufacturerSpecific_Report:72 X:05 00 86 01 03 00 60 chk:61
+hex:  [1, 14, 0, 4, 0, 15, 8, 114, 5, 0, 134, 1, 3, 0, 96, 97]
+application data:  ['72', '05', '00', '86', '01', '03', '00', '60']
+StoreValue [134, 259, 96][ManufacturerSpecific]
+CHANGE_STATE ['3_Interviewed'] [134, 259, 96]
+
+incoming:  SOF len:0e REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:10 len:08 ManufacturerSpecific_Report:72 X:05 00 86 00 02 00 05 chk:1b
+hex:  [1, 14, 0, 4, 0, 16, 8, 114, 5, 0, 134, 0, 2, 0, 5, 27]
+application data:  ['72', '05', '00', '86', '00', '02', '00', '05']
+StoreValue [134, 2, 5][ManufacturerSpecific]
+CHANGE_STATE ['3_Interviewed'] [134, 2, 5]
+
+incoming:  SOF len:0e REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:08 ManufacturerSpecific_Report:72 X:05 01 84 44 47 30 34 chk:19
+hex:  [1, 14, 0, 4, 0, 17, 8, 114, 5, 1, 132, 68, 71, 48, 52, 25]
+application data:  ['72', '05', '01', '84', '44', '47', '30', '34']
+StoreValue [388, 17479, 12340][ManufacturerSpecific]
+CHANGE_STATE ['3_Interviewed'] [388, 17479, 12340]
+
+incoming:  SOF len:0e REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:08 ManufacturerSpecific_Report:72 X:05 00 86 01 03 00 60 chk:7c
+hex:  [1, 14, 0, 4, 0, 18, 8, 114, 5, 0, 134, 1, 3, 0, 96, 124]
+application data:  ['72', '05', '00', '86', '01', '03', '00', '60']
+StoreValue [134, 259, 96][ManufacturerSpecific]
+CHANGE_STATE ['3_Interviewed'] [134, 259, 96]
+
+incoming:  SOF len:0f REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0f len:09 Version_Report:86 X:12 03 03 63 01 01 60 00 chk:65
+hex:  [1, 15, 0, 4, 0, 15, 9, 134, 18, 3, 3, 99, 1, 1, 96, 0, 101]
+application data:  ['86', '12', '03', '03', '63', '01', '01', '60', '00']
+StoreValue [3, 3, 99, 1, 1][Version]
+
+incoming:  SOF len:0f REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0f len:09 ZwavePlusInfo_Report:5e X:02 01 05 00 07 00 07 00 chk:aa
+hex:  [1, 15, 0, 4, 0, 15, 9, 94, 2, 1, 5, 0, 7, 0, 7, 0, 170]
+application data:  ['5e', '02', '01', '05', '00', '07', '00', '07', '00']
+StoreValue [1, 5, 7, 7][ZwavePlusInfo]
+
+incoming:  SOF len:0f REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:09 Version_Report:86 X:12 03 03 5f 05 07 ff 00 chk:da
+hex:  [1, 15, 0, 4, 0, 17, 9, 134, 18, 3, 3, 95, 5, 7, 255, 0, 218]
+application data:  ['86', '12', '03', '03', '5f', '05', '07', 'ff', '00']
+StoreValue [3, 3, 95, 5, 7][Version]
+
+incoming:  SOF len:0f REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:09 ZwavePlusInfo_Report:5e X:02 01 05 00 06 00 06 00 chk:b4
+hex:  [1, 15, 0, 4, 0, 17, 9, 94, 2, 1, 5, 0, 6, 0, 6, 0, 180]
+application data:  ['5e', '02', '01', '05', '00', '06', '00', '06', '00']
+StoreValue [1, 5, 6, 6][ZwavePlusInfo]
+
+incoming:  SOF len:0f REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:09 Version_Report:86 X:12 03 04 05 01 03 60 00 chk:1b
+hex:  [1, 15, 0, 4, 0, 18, 9, 134, 18, 3, 4, 5, 1, 3, 96, 0, 27]
+application data:  ['86', '12', '03', '04', '05', '01', '03', '60', '00']
+StoreValue [3, 4, 5, 1, 3][Version]
+
+incoming:  SOF len:12 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:0c ManufacturerSpecific_DeviceSpecificReport:72 X:07 02 28 fb 03 b4 3f 48 81 0b 6e chk:74
+hex:  [1, 18, 0, 4, 0, 17, 12, 114, 7, 2, 40, 251, 3, 180, 63, 72, 129, 11, 110, 116]
+application data:  ['72', '07', '02', '28', 'fb', '03', 'b4', '3f', '48', '81', '0b', '6e']
+StoreValue [2, [1, b'\xfb\x03\xb4?H\x81\x0b']][ManufacturerSpecific_DeviceSpecific]
+
+incoming:  SOF len:14 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:0e Meter_Report:32 X:02 21 64 00 01 00 84 00 0b 00 01 00 83 chk:91
+hex:  [1, 20, 0, 4, 0, 9, 14, 50, 2, 33, 100, 0, 1, 0, 132, 0, 11, 0, 1, 0, 131, 145]
+application data:  ['32', '02', '21', '64', '00', '01', '00', '84', '00', '0b', '00', '01', '00', '83']
+StoreMeter 65.668[Electric, kWh]
+
+incoming:  SOF len:14 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:0e Meter_Report:32 X:02 21 74 00 00 a3 d2 00 0b 00 01 00 83 chk:75
+hex:  [1, 20, 0, 4, 0, 9, 14, 50, 2, 33, 116, 0, 0, 163, 210, 0, 11, 0, 1, 0, 131, 117]
+application data:  ['32', '02', '21', '74', '00', '00', 'a3', 'd2', '00', '0b', '00', '01', '00', '83']
+StoreMeter 41.938[Electric, W]
+
+incoming:  SOF len:14 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0e len:0e Meter_Report:32 X:02 21 64 00 01 b8 ef 00 29 00 01 b8 ee chk:b2
+hex:  [1, 20, 0, 4, 0, 14, 14, 50, 2, 33, 100, 0, 1, 184, 239, 0, 41, 0, 1, 184, 238, 178]
+application data:  ['32', '02', '21', '64', '00', '01', 'b8', 'ef', '00', '29', '00', '01', 'b8', 'ee']
+StoreMeter 112.879[Electric, kWh]
+
+incoming:  SOF len:14 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0e len:0e Meter_Report:32 X:02 21 74 00 01 3e f8 00 00 00 01 3e f8 chk:8a
+hex:  [1, 20, 0, 4, 0, 14, 14, 50, 2, 33, 116, 0, 1, 62, 248, 0, 0, 0, 1, 62, 248, 138]
+application data:  ['32', '02', '21', '74', '00', '01', '3e', 'f8', '00', '00', '00', '01', '3e', 'f8']
+StoreMeter 81.656[Electric, W]
+
+incoming:  SOF len:14 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0e len:0e Meter_Report:32 X:02 21 74 00 01 43 f8 00 20 00 01 43 f8 chk:aa
+hex:  [1, 20, 0, 4, 0, 14, 14, 50, 2, 33, 116, 0, 1, 67, 248, 0, 32, 0, 1, 67, 248, 170]
+application data:  ['32', '02', '21', '74', '00', '01', '43', 'f8', '00', '20', '00', '01', '43', 'f8']
+StoreMeter 82.936[Electric, W]
+
+incoming:  SOF len:14 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0e len:0e Version_Report:86 X:12 06 03 2a 01 01 f1 00 22 00 01 3e f1 chk:49
+hex:  [1, 20, 0, 4, 0, 14, 14, 134, 18, 6, 3, 42, 1, 1, 241, 0, 34, 0, 1, 62, 241, 73]
+application data:  ['86', '12', '06', '03', '2a', '01', '01', 'f1', '00', '22', '00', '01', '3e', 'f1']
+StoreValue [6, 3, 42, 1, 1][Version]
+
+incoming:  SOF len:18 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0f len:12 Meter_Report:32 X:02 21 64 00 03 c2 50 00 00 00 03 c2 50 00 00 08 09 chk:8a
+hex:  [1, 24, 0, 4, 0, 15, 18, 50, 2, 33, 100, 0, 3, 194, 80, 0, 0, 0, 3, 194, 80, 0, 0, 8, 9, 138]
+application data:  ['32', '02', '21', '64', '00', '03', 'c2', '50', '00', '00', '00', '03', 'c2', '50', '00', '00', '08', '09']
+StoreMeter 246.352[Electric, kWh]
+
+incoming:  SOF len:18 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0f len:12 Meter_Report:32 X:02 21 64 00 03 c2 50 00 16 00 03 c2 50 00 00 08 09 chk:9c
+hex:  [1, 24, 0, 4, 0, 15, 18, 50, 2, 33, 100, 0, 3, 194, 80, 0, 22, 0, 3, 194, 80, 0, 0, 8, 9, 156]
+application data:  ['32', '02', '21', '64', '00', '03', 'c2', '50', '00', '16', '00', '03', 'c2', '50', '00', '00', '08', '09']
+StoreMeter 246.352[Electric, kWh]
+
+incoming:  SOF len:18 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0f len:12 Meter_Report:32 X:02 21 74 00 00 00 00 00 00 00 00 00 00 00 00 08 09 chk:9a
+hex:  [1, 24, 0, 4, 0, 15, 18, 50, 2, 33, 116, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 9, 154]
+application data:  ['32', '02', '21', '74', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '08', '09']
+StoreMeter 0.0[Electric, W]
+
+incoming:  SOF len:18 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0f len:12 Meter_Report:32 X:02 a1 64 00 01 d2 d8 00 00 00 00 00 00 00 00 08 09 chk:01
+hex:  [1, 24, 0, 4, 0, 15, 18, 50, 2, 161, 100, 0, 1, 210, 216, 0, 0, 0, 0, 0, 0, 0, 0, 8, 9, 1]
+application data:  ['32', '02', 'a1', '64', '00', '01', 'd2', 'd8', '00', '00', '00', '00', '00', '00', '00', '00', '08', '09']
+StoreMeter 119.512[Electric, V]
+
+incoming:  SOF len:18 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0f len:12 Meter_Report:32 X:02 a1 6c 00 00 00 00 00 00 00 00 00 00 00 00 08 09 chk:02
+hex:  [1, 24, 0, 4, 0, 15, 18, 50, 2, 161, 108, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 9, 2]
+application data:  ['32', '02', 'a1', '6c', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '00', '08', '09']
+StoreMeter 0.0[Electric, A]
+
+incoming:  SOF len:18 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:12 Meter_Report:32 X:02 21 64 00 02 cb 79 00 01 00 02 cb 79 00 02 02 08 chk:9f
+hex:  [1, 24, 0, 4, 0, 18, 18, 50, 2, 33, 100, 0, 2, 203, 121, 0, 1, 0, 2, 203, 121, 0, 2, 2, 8, 159]
+application data:  ['32', '02', '21', '64', '00', '02', 'cb', '79', '00', '01', '00', '02', 'cb', '79', '00', '02', '02', '08']
+StoreMeter 183.161[Electric, kWh]
+
+incoming:  SOF len:18 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:12 Meter_Report:32 X:02 21 64 00 02 cb 79 00 3e 00 02 cb 65 00 02 02 08 chk:bc
+hex:  [1, 24, 0, 4, 0, 18, 18, 50, 2, 33, 100, 0, 2, 203, 121, 0, 62, 0, 2, 203, 101, 0, 2, 2, 8, 188]
+application data:  ['32', '02', '21', '64', '00', '02', 'cb', '79', '00', '3e', '00', '02', 'cb', '65', '00', '02', '02', '08']
+StoreMeter 183.161[Electric, kWh]
+
+incoming:  SOF len:18 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:12 Meter_Report:32 X:02 21 74 00 12 52 61 00 00 00 00 00 00 00 02 02 08 chk:af
+hex:  [1, 24, 0, 4, 0, 18, 18, 50, 2, 33, 116, 0, 18, 82, 97, 0, 0, 0, 0, 0, 0, 0, 2, 2, 8, 175]
+application data:  ['32', '02', '21', '74', '00', '12', '52', '61', '00', '00', '00', '00', '00', '00', '00', '02', '02', '08']
+StoreMeter 1200.737[Electric, W]
+
+incoming:  SOF len:18 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:12 Meter_Report:32 X:02 a1 64 00 01 ce 69 00 00 00 00 00 00 00 02 02 08 chk:b8
+hex:  [1, 24, 0, 4, 0, 18, 18, 50, 2, 161, 100, 0, 1, 206, 105, 0, 0, 0, 0, 0, 0, 0, 2, 2, 8, 184]
+application data:  ['32', '02', 'a1', '64', '00', '01', 'ce', '69', '00', '00', '00', '00', '00', '00', '00', '02', '02', '08']
+StoreMeter 118.377[Electric, V]
+
+incoming:  SOF len:18 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:12 Meter_Report:32 X:02 a1 6c 00 00 29 50 00 00 00 00 00 00 00 02 02 08 chk:6f
+hex:  [1, 24, 0, 4, 0, 18, 18, 50, 2, 161, 108, 0, 0, 41, 80, 0, 0, 0, 0, 0, 0, 0, 2, 2, 8, 111]
+application data:  ['32', '02', 'a1', '6c', '00', '00', '29', '50', '00', '00', '00', '00', '00', '00', '00', '02', '02', '08']
+StoreMeter 10.576[Electric, A]
+
+incoming:  SOF len:1d REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0f len:17 ManufacturerSpecific_DeviceSpecificReport:72 X:07 01 33 0a 00 01 00 01 01 05 02 01 00 00 00 08 09 09 00 00 00 00 chk:bc
+hex:  [1, 29, 0, 4, 0, 15, 23, 114, 7, 1, 51, 10, 0, 1, 0, 1, 1, 5, 2, 1, 0, 0, 0, 8, 9, 9, 0, 0, 0, 0, 188]
+application data:  ['72', '07', '01', '33', '0a', '00', '01', '00', '01', '01', '05', '02', '01', '00', '00', '00', '08', '09', '09', '00', '00', '00', '00']
+StoreValue [1, [1, b'\n\x00\x01\x00\x01\x01\x05\x02\x01\x00\x00\x00\x08\t\t\x00\x00\x00']][ManufacturerSpecific_DeviceSpecific]
+
+incoming:  SOF len:1d REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:17 ManufacturerSpecific_DeviceSpecificReport:72 X:07 01 33 0a 00 01 00 01 01 06 02 04 00 00 02 02 08 06 00 00 00 00 chk:a1
+hex:  [1, 29, 0, 4, 0, 18, 23, 114, 7, 1, 51, 10, 0, 1, 0, 1, 1, 6, 2, 4, 0, 0, 2, 2, 8, 6, 0, 0, 0, 0, 161]
+application data:  ['72', '07', '01', '33', '0a', '00', '01', '00', '01', '01', '06', '02', '04', '00', '00', '02', '02', '08', '06', '00', '00', '00', '00']
+StoreValue [1, [1, b'\n\x00\x01\x00\x01\x01\x06\x02\x04\x00\x00\x02\x02\x08\x06\x00\x00\x00']][ManufacturerSpecific_DeviceSpecific]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:04 Version_CommandClassReport:86 X:14 20 01 chk:57
+hex:  [1, 10, 0, 4, 0, 17, 4, 134, 20, 32, 1, 87]
+application data:  ['86', '14', '20', '01']
+StoreCommandVersion [] [32, 1]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:04 Version_CommandClassReport:86 X:14 26 01 chk:51
+hex:  [1, 10, 0, 4, 0, 17, 4, 134, 20, 38, 1, 81]
+application data:  ['86', '14', '26', '01']
+StoreCommandVersion [] [38, 1]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:04 Version_CommandClassReport:86 X:14 27 01 chk:50
+hex:  [1, 10, 0, 4, 0, 17, 4, 134, 20, 39, 1, 80]
+application data:  ['86', '14', '27', '01']
+StoreCommandVersion [] [39, 1]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:04 Version_CommandClassReport:86 X:14 59 01 chk:2e
+hex:  [1, 10, 0, 4, 0, 17, 4, 134, 20, 89, 1, 46]
+application data:  ['86', '14', '59', '01']
+StoreCommandVersion [] [89, 1]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:04 Version_CommandClassReport:86 X:14 5a 01 chk:2d
+hex:  [1, 10, 0, 4, 0, 17, 4, 134, 20, 90, 1, 45]
+application data:  ['86', '14', '5a', '01']
+StoreCommandVersion [] [90, 1]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:04 Version_CommandClassReport:86 X:14 5e 02 chk:2a
+hex:  [1, 10, 0, 4, 0, 17, 4, 134, 20, 94, 2, 42]
+application data:  ['86', '14', '5e', '02']
+StoreCommandVersion [] [94, 2]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:04 Version_CommandClassReport:86 X:14 70 01 chk:07
+hex:  [1, 10, 0, 4, 0, 17, 4, 134, 20, 112, 1, 7]
+application data:  ['86', '14', '70', '01']
+StoreCommandVersion [] [112, 1]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:04 Version_CommandClassReport:86 X:14 72 02 chk:06
+hex:  [1, 10, 0, 4, 0, 17, 4, 134, 20, 114, 2, 6]
+application data:  ['86', '14', '72', '02']
+StoreCommandVersion [] [114, 2]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:04 Version_CommandClassReport:86 X:14 73 01 chk:04
+hex:  [1, 10, 0, 4, 0, 17, 4, 134, 20, 115, 1, 4]
+application data:  ['86', '14', '73', '01']
+StoreCommandVersion [] [115, 1]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:04 Version_CommandClassReport:86 X:14 7a 02 chk:0e
+hex:  [1, 10, 0, 4, 0, 17, 4, 134, 20, 122, 2, 14]
+application data:  ['86', '14', '7a', '02']
+StoreCommandVersion [] [122, 2]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:04 Version_CommandClassReport:86 X:14 85 02 chk:f1
+hex:  [1, 10, 0, 4, 0, 17, 4, 134, 20, 133, 2, 241]
+application data:  ['86', '14', '85', '02']
+StoreCommandVersion [] [133, 2]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:11 len:04 Version_CommandClassReport:86 X:14 86 02 chk:f2
+hex:  [1, 10, 0, 4, 0, 17, 4, 134, 20, 134, 2, 242]
+application data:  ['86', '14', '86', '02']
+StoreCommandVersion [] [134, 2]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:04 Version_CommandClassReport:86 X:14 20 01 chk:54
+hex:  [1, 10, 0, 4, 0, 18, 4, 134, 20, 32, 1, 84]
+application data:  ['86', '14', '20', '01']
+StoreCommandVersion [] [32, 1]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:04 Version_CommandClassReport:86 X:14 25 01 chk:51
+hex:  [1, 10, 0, 4, 0, 18, 4, 134, 20, 37, 1, 81]
+application data:  ['86', '14', '25', '01']
+StoreCommandVersion [] [37, 1]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:04 Version_CommandClassReport:86 X:14 26 02 chk:51
+hex:  [1, 10, 0, 4, 0, 18, 4, 134, 20, 38, 2, 81]
+application data:  ['86', '14', '26', '02']
+StoreCommandVersion [] [38, 2]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:04 Version_CommandClassReport:86 X:14 27 01 chk:53
+hex:  [1, 10, 0, 4, 0, 18, 4, 134, 20, 39, 1, 83]
+application data:  ['86', '14', '27', '01']
+StoreCommandVersion [] [39, 1]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:04 Version_CommandClassReport:86 X:14 32 03 chk:44
+hex:  [1, 10, 0, 4, 0, 18, 4, 134, 20, 50, 3, 68]
+application data:  ['86', '14', '32', '03']
+StoreCommandVersion [] [50, 3]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:04 Version_CommandClassReport:86 X:14 33 01 chk:47
+hex:  [1, 10, 0, 4, 0, 18, 4, 134, 20, 51, 1, 71]
+application data:  ['86', '14', '33', '01']
+StoreCommandVersion [] [51, 1]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:04 Version_CommandClassReport:86 X:14 59 01 chk:2d
+hex:  [1, 10, 0, 4, 0, 18, 4, 134, 20, 89, 1, 45]
+application data:  ['86', '14', '59', '01']
+StoreCommandVersion [] [89, 1]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:04 Version_CommandClassReport:86 X:14 5e 02 chk:29
+hex:  [1, 10, 0, 4, 0, 18, 4, 134, 20, 94, 2, 41]
+application data:  ['86', '14', '5e', '02']
+StoreCommandVersion [] [94, 2]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:04 Version_CommandClassReport:86 X:14 70 01 chk:04
+hex:  [1, 10, 0, 4, 0, 18, 4, 134, 20, 112, 1, 4]
+application data:  ['86', '14', '70', '01']
+StoreCommandVersion [] [112, 1]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:04 Version_CommandClassReport:86 X:14 72 02 chk:05
+hex:  [1, 10, 0, 4, 0, 18, 4, 134, 20, 114, 2, 5]
+application data:  ['86', '14', '72', '02']
+StoreCommandVersion [] [114, 2]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:04 Version_CommandClassReport:86 X:14 73 01 chk:07
+hex:  [1, 10, 0, 4, 0, 18, 4, 134, 20, 115, 1, 7]
+application data:  ['86', '14', '73', '01']
+StoreCommandVersion [] [115, 1]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:04 Version_CommandClassReport:86 X:14 7a 02 chk:0d
+hex:  [1, 10, 0, 4, 0, 18, 4, 134, 20, 122, 2, 13]
+application data:  ['86', '14', '7a', '02']
+StoreCommandVersion [] [122, 2]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:04 Version_CommandClassReport:86 X:14 81 01 chk:f5
+hex:  [1, 10, 0, 4, 0, 18, 4, 134, 20, 129, 1, 245]
+application data:  ['86', '14', '81', '01']
+StoreCommandVersion [] [129, 1]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:04 Version_CommandClassReport:86 X:14 85 02 chk:f2
+hex:  [1, 10, 0, 4, 0, 18, 4, 134, 20, 133, 2, 242]
+application data:  ['86', '14', '85', '02']
+StoreCommandVersion [] [133, 2]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:04 Version_CommandClassReport:86 X:14 86 02 chk:f1
+hex:  [1, 10, 0, 4, 0, 18, 4, 134, 20, 134, 2, 241]
+application data:  ['86', '14', '86', '02']
+StoreCommandVersion [] [134, 2]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:04 Meter_SupportedReport:32 X:04 81 05 chk:4e
+hex:  [1, 10, 0, 4, 0, 9, 4, 50, 4, 129, 5, 78]
+application data:  ['32', '04', '81', '05']
+StoreValue [129, 5][Meter_Supported]
+
+incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0e len:04 Meter_SupportedReport:32 X:04 81 05 chk:49
+hex:  [1, 10, 0, 4, 0, 14, 4, 50, 4, 129, 5, 73]
+application data:  ['32', '04', '81', '05']
+StoreValue [129, 5][Meter_Supported]
+
+incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:10 len:03 SensorMultilevel_SupportedReport:31 X:02 15 chk:c7
+hex:  [1, 9, 0, 4, 0, 16, 3, 49, 2, 21, 199]
+application data:  ['31', '02', '15']
+StoreValue 21[SensorMultilevel_Supported]
+
+incoming:  SOF len:0e REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0f len:08 Meter_SupportedReport:32 X:04 81 35 00 00 00 00 chk:70
+hex:  [1, 14, 0, 4, 0, 15, 8, 50, 4, 129, 53, 0, 0, 0, 0, 112]
+application data:  ['32', '04', '81', '35', '00', '00', '00', '00']
+StoreValue [129, 53][Meter_Supported]
+
+incoming:  SOF len:0e REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:08 Meter_SupportedReport:32 X:04 81 35 00 00 29 5d chk:19
+hex:  [1, 14, 0, 4, 0, 18, 8, 50, 4, 129, 53, 0, 0, 41, 93, 25]
+application data:  ['32', '04', '81', '35', '00', '00', '29', '5d']
+StoreValue [129, 53][Meter_Supported]
+
+incoming:  SOF len:0b REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:02 len:05 Configuration_Report:70 X:06 2c 01 0a chk:a6
+hex:  [1, 11, 0, 4, 0, 2, 5, 112, 6, 44, 1, 10, 166]
+application data:  ['70', '06', '2c', '01', '0a']
+StoreParameter [] [44, [1, 10]]
+
+incoming:  SOF len:14 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:0e Meter_Report:32 X:02 21 74 00 00 bb 01 00 41 00 02 5c 75 chk:5d
+hex:  [1, 20, 0, 4, 0, 9, 14, 50, 2, 33, 116, 0, 0, 187, 1, 0, 65, 0, 2, 92, 117, 93]
+application data:  ['32', '02', '21', '74', '00', '00', 'bb', '01', '00', '41', '00', '02', '5c', '75']
+StoreMeter 47.873[Electric, W]
+
+incoming:  SOF len:0c REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0e len:06 Association_Report:85 X:03 01 05 00 01 chk:7c
+hex:  [1, 12, 0, 4, 0, 14, 6, 133, 3, 1, 5, 0, 1, 124]
+application data:  ['85', '03', '01', '05', '00', '01']
+StoreAssociation [] [1, 5, 0, [1]]
+
+incoming:  SOF len:0c REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0e len:06 Association_Report:85 X:03 01 05 00 01 chk:7c
+hex:  [1, 12, 0, 4, 0, 14, 6, 133, 3, 1, 5, 0, 1, 124]
+application data:  ['85', '03', '01', '05', '00', '01']
+StoreAssociation [] [1, 5, 0, [1]]
+
+incoming:  SOF len:0c REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:02 len:06 SensorMultilevel_SupportedReport:31 X:02 15 00 00 04 chk:d1
+hex:  [1, 12, 0, 4, 0, 2, 6, 49, 2, 21, 0, 0, 4, 209]
+application data:  ['31', '02', '15', '00', '00', '04']
+StoreValue 67108885[SensorMultilevel_Supported]

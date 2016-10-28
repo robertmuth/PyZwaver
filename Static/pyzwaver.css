@@ -1,0 +1,77 @@
+body {
+	font-family: sans-serif;
+	background-color: black;
+	color: #ccc;
+}
+
+a { text-decoration: none; 
+}
+
+table.nodes td.no {
+	//font-size: 250%;
+	font-size: 70%;
+}
+
+table.nodes td.name {
+    font-size: 250%;
+    font-weight: bold;
+}
+
+table.nodes td.readings {
+    font-size: 180%;
+    font-weight: bold;
+}
+
+table.nodes td.product {
+    font-size: 70%;
+}
+
+table.nodes td.state {
+    font-size: 70%;
+    font-weight: bold;
+}
+
+table.nodes td { 
+    padding: .5em;
+}
+
+span.reading {
+	//border-radius: 25px;
+	//border: 2px solid #73AD21;
+	padding: .3em; 
+	margin-left: .3em
+}
+
+
+pre.stats {
+    font-size: 70%;
+}
+
+button {
+    border-color: #666; 
+    background-color: #444;
+}
+
+button.menu {
+    font-size: 100%;
+    font-weight: bold;
+}
+
+button.details {
+    border-color: #666; 
+    background-color: #222;
+    color: #228;
+    width: 8em;
+    font-size: 110%;
+    font-weight: bold;
+}
+
+button.remove {
+    font-weight: bold;
+    font-size: 25%;
+}
+
+td.section {
+    vertical-align: top; 
+    width: 24%;
+}
