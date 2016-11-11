@@ -853,6 +853,7 @@ class ControllerActionHandler(BaseHandler):
     """Controller Actions"""
 
     def get(self, *path):
+        global CONTROLLER
         token = path[0].split("/")
         logging.warning("CONTROLLER ACTION> %s", token)
         cmd = token.pop(0)
@@ -878,9 +879,11 @@ class ControllerActionHandler(BaseHandler):
             elif cmd == "stop_set_learn_mode":
                 CONTROLLER.StopSetLearnMode()
             elif cmd == "soft_reset":
-                CONTROLLER.SoftReset()()
+                CONTROLLER.SoftReset()
             elif cmd == "hard_reset":
                 CONTROLLER.SetDefault()
+                logging.error("Controller hard reset requires program restart")
+                sys.exit(1)
             elif cmd == "refresh":
                 CONTROLLER.Update()
             else:

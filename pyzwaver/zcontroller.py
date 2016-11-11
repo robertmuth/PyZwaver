@@ -390,12 +390,12 @@ class Controller:
 
     def SetDefault(self):
         def handler(message):
-            logging.warning("set default response %s", message[4:-1])
+            logging.warning("set default response %s", message)
         self.SendCommandWithId(zwave.API_ZW_SET_DEFAULT, [], handler)
 
     def SoftReset(self):
         def handler(message):
-            logging.warning("soft reset response %s", message[4:-1])
+            logging.warning("soft reset response %s", message)
         self.SendCommandWithId(zwave.API_SERIAL_API_SOFT_RESET, [], handler)
 
     def SendCommand(self, func, data, handler):
