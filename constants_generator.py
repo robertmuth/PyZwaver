@@ -771,6 +771,8 @@ C("DeviceResetLocally", 0x5a)
 # special
 C("Mark", 0xef)
 
+# shut up checker
+Mark = 0xef  # will be overwritten by above
 ############################################################
 #
 ############################################################
