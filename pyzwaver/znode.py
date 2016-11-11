@@ -228,17 +228,28 @@ _DEFAULT_MULTILEVEL_SWITCH_SENSOR = command.Value(
 _DEFAULT_MULTILEVEL_SWITCH_SENSOR = command.Value(
     command.SENSOR_KIND_SWITCH_MULTILEVEL, command.UNIT_LEVEL, 0)
 
+
+class _SharedNodeState:
+    """SharedNodeState is a grab bag of stuff shared by all Nodes"""
+
+    def __init__(self, message_queue, event_cb, security_key=0, enable_secure_pairing=True):
+        self.mq = message_queue
+        self.event_cb = event_cb
+        self.security_key = security_key
+        self.enable_secure_pairing = enable_secure_pairing
+
 class Node:
 
     """Node represents a single node in a zwave network.
 
-    The message_queue (_mq) is used to send messages to the node.
-    Message from the node are  ProcessCommand()
+    The message_queue (_shared.mq) is used to send messages to the node.
+    Message from the node are send to the NodeSet first which dispatches them
+    to the relevant Node by calling ProcessCommand() or ProcessNodeInfo().
     """
 
-    def __init__(self, n, message_queue, event_cb):
+    def __init__(self, n, shared):
         assert n >= 1
-        self._mq = message_queue
+        self._shared = shared
         self.n = n
         self._failed = True
         self._is_self = False      # node is the controller
@@ -260,7 +271,6 @@ class Node:
         self._associations = {}
         #
         self.scenes = {}
-        self._event_cb = event_cb
         #
         self.flags = set()
         # static config
@@ -429,7 +439,7 @@ class Node:
             logging.warning(
                 "[%d] state transition %s -- %s", self.n, old_state, new_state)
             self._state = new_state
-            self._event_cb(self.n, command.EVENT_STATE_CHANGE)
+            self._shared.event_cb(self.n, command.EVENT_STATE_CHANGE)
         if new_state == command.NODE_STATE_DISCOVERED:
             if old_state < new_state and self.HasCommandClass(zwave.Security):
                 self._InitializeSecurity()
@@ -487,7 +497,7 @@ class Node:
             self._commands[k] = -1
 
     def ProcessNodeInfo(self, m):
-        self._event_cb(self.n, command.EVENT_NODE_INFO)
+        self._shared.event_cb(self.n, command.EVENT_NODE_INFO)
         self._last_contact = time.time()
         m = MaybePatchCommand(m)
         logging.warning("[%d] process node info: %s", self.n, Hexify(m))
@@ -515,34 +525,33 @@ class Node:
 
     def StoreValue(self, val):
         self._values[val.kind] = val
-        self._event_cb(self.n, command.EVENT_VALUE_CHANGE)
+        self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
 
     def StoreSensor(self, val):
         self._sensors[(val.kind, val.unit)] = val
-        self._event_cb(self.n, command.EVENT_VALUE_CHANGE)
+        self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
 
     def StoreMeter(self, val):
         self._meters[(val.kind, val.unit)] = val
-        self._event_cb(self.n, command.EVENT_VALUE_CHANGE)
+        self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
 
     def StoreCommandVersion(self, val):
         self._commands[val[0]] = val[1]
-        self._event_cb(self.n, command.EVENT_VALUE_CHANGE)
+        self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
 
     def StoreParameter(self, val):
-        print ("@@@@@@@@@@@", val)
         self._parameters[val[0]] = val[1]
-        self._event_cb(self.n, command.EVENT_VALUE_CHANGE)
+        self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
 
     def StoreEvent(self, val):
         self._events[val.kind] = val
-        self._event_cb(self.n, val.kind)
+        self._shared.event_cb(self.n, val.kind)
 
     def StoreAssociation(self, val):
         # we do not support extra long lists
         assert val[2] == 0
         self._associations[val[0]] = val[1:]
-        self._event_cb(self.n, command.EVENT_VALUE_CHANGE)
+        self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
 
     def _OneAction(self, a, actions, value):
         logging.info(
@@ -825,7 +834,7 @@ class Node:
 
             m = zmessage.MakeRawCommandWithId(self.n, raw_cmd, xmit)
             mesg = zmessage.Message(m, priority(self.n), handler, self.n)
-            self._mq.EnqueueMessage(mesg)
+            self._shared.mq.EnqueueMessage(mesg)
 
         # if (num_sec > 0) {
         # MaybeRequestNewNonce(null);
@@ -850,13 +859,13 @@ class Node:
         raw = zmessage.MakeRawMessage(func, data)
         mesg = zmessage.Message(
             raw, zmessage.ControllerPriority(), handler, self.n)
-        self._mq.EnqueueMessage(mesg)
+        self._shared.mq.EnqueueMessage(mesg)
 
     def SendSecureCommand(self, func, data, handler):
         raw = zmessage.MakeRawMessage(func, data)
         mesg = zmessage.Message(
             raw, zmessage.ControllerPriority(), handler, self.n)
-        self._mq.EnqueueMessage(mesg)
+        self._shared.mq.EnqueueMessage(mesg)
 
 
 NODES_HEADERS = [
@@ -878,7 +887,7 @@ class NodeSet(object):
     """NodeSet represents the collection of all nodes in a zwave network.
 
     All incoming application messages from the nodes (to the controller) are arrving in the
-    message_queue (_mq).
+    message_queue (_shared.mq).
 
     The class spawns a receiver thread, which listens to incoming messages and dispatches them
     to the node obect they are coming to.
@@ -892,8 +901,7 @@ class NodeSet(object):
     """
 
     def __init__(self, message_queue, event_cb, refresher_interval=60.0):
-        self._mq = message_queue
-        self._event_cb = event_cb
+        self._shared = _SharedNodeState(message_queue, event_cb, 0)
         self._refresh_interval = refresher_interval
         self.nodes = {}
         self._terminate = False
@@ -974,7 +982,7 @@ class NodeSet(object):
 
     def GetNode(self, num):
         if num not in self.nodes:
-            self.nodes[num] = Node(num, self._mq, self._event_cb)
+            self.nodes[num] = Node(num, self._shared)
         return self.nodes[num]
 
     def DropNode(self, num):
@@ -982,7 +990,7 @@ class NodeSet(object):
 
     def Terminate(self):
         self._terminate = True
-        self._mq.PutIncommingRawMessage(None)
+        self._shared.mq.PutIncommingRawMessage(None)
         self._receiver_thread.join()
         if self._refresher_thread:
             self._refresher_thread.join()
@@ -1031,7 +1039,7 @@ class NodeSet(object):
     def _NodesetReceiverThread(self):
         logging.warning("_NodesetReceiverThread started")
         while True:
-            m = self._mq.GetIncommingRawMessage()
+            m = self._shared.mq.GetIncommingRawMessage()
             if m is None:
                 break
             if m is None:
