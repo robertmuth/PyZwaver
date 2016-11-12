@@ -122,7 +122,10 @@ var TAB_ALL_NODES = "tab-all-nodes";
 var TAB_ONE_NODE = "tab-one-node";
 var TAB_STATUS = "tab-status";
 var TAB_LOGS = "tab-logs";
-
+var STATUS_FIELD = "status";
+var ACTIVITY_FIELD = "activity"
+var HISTORY_FIELD = "history";
+var DRIVE_FIELD = "driver";
 // Is there a literal notation for this?
 var tabToDisplay = {};
 tabToDisplay[TAB_CONTROLLER] = function() {return "/display/controller"; };
@@ -146,13 +149,13 @@ function SocketMessageHandler(e) {
     if (gDebug) console.log("socket: " + tag);
 
     if (tag == "A") {
-         document.getElementById("activity").innerHTML = val;
+         document.getElementById(ACTIVITY_FIELD).innerHTML = val;
     } else if (tag == "S") {
-         document.getElementById("status").innerHTML = val;
+         document.getElementById(STATUS_FIELD).innerHTML = val;
     } else if (tag == "E") {
          gEventHistory.push(val);
          gEventHistory.shift();
-         document.getElementById("history").innerHTML = gEventHistory.join("\\n");
+         document.getElementById(HISTORY_FIELD).innerHTML = gEventHistory.join("\\n");
     } else if (tag == "c") {
          var tab =  document.getElementById(TAB_CONTROLLER);
          tab.innerHTML = val;
@@ -176,7 +179,7 @@ function SocketMessageHandler(e) {
             tab.innerHTML = val;
         }
     } else if (tag == "d") {
-         var tab = document.getElementById("driver");
+         var tab = document.getElementById(DRIVE_FIELD);
          tab.innerHTML = val;
     }
 }
@@ -322,6 +325,19 @@ gSocket.onopen = function (e) {
 };
 
 gSocket.onmessage = SocketMessageHandler;
+
+gSocket.onerror = function (e) {
+   var m = "Cannot connect to Server: try reloading";
+   console.log("ERROR: " + m);
+   document.getElementById(STATUS_FIELD).innerHTML = m;
+   tab.innerHTML = "ERROR: Cannot connect to Server: try reloading";
+}
+
+gSocket.onclose = function (e) {
+    var m =  "Server connection lost: you must reload";
+    console.log("ERROR: " + m);
+    document.getElementById(STATUS_FIELD).innerHTML = m;
+}
 
 ShowTab(TAB_CONTROLLER);
 for (var key in tabToDisplay) {
