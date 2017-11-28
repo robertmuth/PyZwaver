@@ -121,6 +121,8 @@ class Driver(object):
 
     def Terminate(self):
         self._terminate = True
+        self._mq.EnqueueMessage(zmessage.Message(None, zmessage.LowestPriority(), lambda _: None, None))
+        logging.info("Driver terminated")
 
     def SendRaw(self, payload):
         time.sleep(SEND_DELAY)
@@ -139,6 +141,9 @@ class Driver(object):
 
 
     def _DriverSendingThread(self):
+        """
+        Forwards message from _mq to device
+        """
         logging.warning("_DriverSendingThread started")
         while not self._terminate:
             mesg = self._mq.DequeueMessage()

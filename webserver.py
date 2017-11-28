@@ -1016,8 +1016,8 @@ def main():
     CONTROLLER.WaitUntilInitialized()
     print(CONTROLLER)
     NODESET = znode.NodeSet(MQ, NodeEventCallback, OPTIONS.node_auto_refresh_secs)
-    n = NODESET.GetNode(CONTROLLER.node_id)
-    n.InitializeExternally(CONTROLLER.product, CONTROLLER.library_type, True)
+    n = NODESET.GetNode(CONTROLLER.GetNodeId())
+    n.InitializeExternally(CONTROLLER.props.product, CONTROLLER.props.library_type, True)
 
     for num in CONTROLLER.nodes:
         n = NODESET.GetNode(num)

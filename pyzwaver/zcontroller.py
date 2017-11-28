@@ -100,6 +100,88 @@ HANDLER_TYPE_SET_LEARN_MODE = (
     set([zwave.LEARN_MODE_STATUS_DONE]))
 
 
+
+class ControllerProperties:
+
+    def __init__(self):
+        self.home_id = None
+        self.node_id = None
+        self.product = [0, 0, 0]
+        self.chip_type = None
+        self.version = None
+        self.version_str = None
+        self.serial_api_version = None
+        self.serial_version = None
+        self.library_type = None
+        self._api_mask = None
+        self.attrs = set()
+
+
+    def SetVersion(self, version_str, library_type):
+        if version_str[-1] == 0: version_str = version_str[:-1]
+
+        self.library_type = library_type
+        self.version_str = version_str
+        assert self.library_type <= 8
+        if self.library_type == 7:
+            self.attrs.add("bridge")
+        logging.info("library_type: %s", self.library_type)
+
+    def SetId(self, home_id, node_id):
+        self.home_id = home_id
+        self.node_id = node_id
+        logging.info("home-id: 0x%x node-id: %d", self.home_id, self.node_id)
+
+    def SetControllerCapabilites(self, caps):
+        logging.info("capabilities: %x", caps)
+        if caps & zwave.CAP_CONTROLLER_SECONDARY:
+            self.attrs.add("secondary")
+        if caps & zwave.CAP_CONTROLLER_SUC:
+            self.attrs.add("suc")
+        if caps & zwave.CAP_CONTROLLER_SIS:
+            self.attrs.add("sis")
+        if caps & zwave.CAP_CONTROLLER_REAL_PRIMARY:
+            self.attrs.add("real_primary")
+
+    def HasApi(self, func):
+        fid = func - 1
+        return self._api_mask[fid // 8] & (1 << (fid % 8))
+
+    def SetSerialCapabilities(self, serial_api_version, manu_id, type_id, prod_id, api_mask):
+        self.serial_api_version = serial_api_version
+        self.product = (manu_id, type_id, prod_id)
+        self._api_mask = api_mask
+        for func, name in zwave.API_TO_STRING.items():
+            if self.HasApi(func):
+                logging.info("has api %x %s", func, name)
+
+    def SetInitAndReturnBits(self, serial_version, caps, num_bytes, bits, chip_type, version):
+        assert num_bytes == _NUM_NODE_BITFIELD_BYTES
+        self.serial_version = serial_version
+        self.chip_type = chip_type
+        self.version = version
+        logging.info("serial caps: %x", caps)
+        if caps & zwave.SERIAL_CAP_SLAVE:
+            self.attrs.add("serial_slave")
+        if caps & zwave.SERIAL_CAP_TIMER_SUPPORT:
+            self.attrs.add("serial_timer")
+        if caps & zwave.SERIAL_CAP_SECONDARY:
+            self.attrs.add("serial_secondary")
+        return bits
+
+    def __str__(self):
+        out = []
+        out.append("home: %08x  node: %02x" % (self.home_id, self.node_id))
+        out.append("versions: %s %x %x (%s)" %
+                   (self.version, self.serial_api_version, self.serial_version, self.version_str))
+        out.append("chip: %x.%02x" % (self.chip_type, self.version))
+        out.append("product: %04x %04x %04x  %x" %
+                   (self.product[0], self.product[1], self.product[2], self.library_type))
+        out.append("attrs: %s" % repr(self.attrs))
+        return "\n".join(out)
+
+
+
 class Controller:
     """Represents the controller node in a Zwave network
     The message_queue is used to send messages to the physical controller and
@@ -110,74 +192,36 @@ class Controller:
         self._event_cb = event_cb
         self._pairing_timeout_sec = pairing_timeout_secs
         self._state = CONTROLLER_STATE_NONE
-        self.home_id = None
-        self.node_id = None
-        self.product = [0, 0, 0]
         self._mq = message_queue
-        self.chip_type = None
-        self.version = None
-        self.version = None
-        self.serial_api_version = None
-        self.serial_version = None
-        self.library_type = None
-        self._api_mask = None
         self.nodes = set()
         self.failed_nodes = set()
-        self._attr = set()
+        self.props = ControllerProperties()
 
     def __str__(self):
         out = []
-        out.append("home: %08x  node: %02x" % (self.home_id, self.node_id))
-        out.append("versions: %s %x %x" %
-                   (self.version, self.serial_api_version, self.serial_version))
-        out.append("chip: %x.%02x" % (self.chip_type, self.version))
-        out.append("product: %04x %04x %04x  %x" %
-                   (self.product[0], self.product[1], self.product[2], self.library_type))
-        out.append("attr: %s" % repr(self._attr))
+        out.append(str(self.props))
         out.append("nodes: %s" % repr(self.nodes))
         out.append("failed_nodes: %s" % repr(self.failed_nodes))
         out.append("")
         return "\n".join(out)
-
-    def HasApi(self, func):
-        fid = func - 1
-        return self._api_mask[fid // 8] & (1 << (fid % 8))
 
     def Priority(self):
         return zmessage.ControllerPriority()
 
     def UpdateVersion(self):
         def handler(data):
-            data = data[4:-1]
-            assert data[-2] == 0
-            self.library_type = data[-1]
-            self.version = data[:-2]
-            assert self.library_type <= 8
-            if self.library_type == 7:
-                self._attr.add("bridge")
-            logging.info("library_type: %s", self.library_type)
+            self.props.SetVersion(*struct.unpack(">12sB", data[4:-1]))
         self.SendCommand(zwave.API_ZW_GET_VERSION, [], handler)
 
     def UpdateId(self):
         def handler(data):
-            data = data[4:-1]
-            self.home_id, self.node_id = struct.unpack(">IB", data)
-            logging.info(
-                "home-id: 0x%x node-id: %d", self.home_id, self.node_id)
+            self.props.SetId(*struct.unpack(">IB", data[4:-1]))
+
         self.SendCommand(zwave.API_ZW_MEMORY_GET_ID, [], handler)
 
     def UpdateControllerCapabilities(self):
         def handler(data):
-            caps = data[4]
-            logging.info("capabilities: %x", caps)
-            if caps & zwave.CAP_CONTROLLER_SECONDARY:
-                self._attr.add("secondary")
-            if caps & zwave.CAP_CONTROLLER_SUC:
-                self._attr.add("suc")
-            if caps & zwave.CAP_CONTROLLER_SIS:
-                self._attr.add("sis")
-            if caps & zwave.CAP_CONTROLLER_REAL_PRIMARY:
-                self._attr.add("real_primary")
+            self.props.SetControllerCapabilites(data[4])
 
         self.SendCommand(zwave.API_ZW_GET_CONTROLLER_CAPABILITIES, [], handler)
 
@@ -185,38 +229,22 @@ class Controller:
         """
         """
         def handler(data):
-            data = data[4:-1]
-            self.serial_api_version, manu_id, type_id, prod_id, self._api_mask = struct.unpack(
-                ">HHHH32s", data)
-            self.product = (manu_id, type_id, prod_id)
-            for func, name in zwave.API_TO_STRING.items():
-                if self.HasApi(func):
-                    logging.info("has api %x %s", func, name)
+            self.props.SetSerialCapabilities(*struct.unpack(">HHHH32s", data[4:-1]))
 
         self.SendCommand(zwave.API_SERIAL_API_GET_CAPABILITIES, [], handler)
 
     def UpdateSerialApiGetInitData(self):
         """This get all the node numbers"""
         def handler(data):
-            data = data[4:-1]
-            self.serial_version, caps, num_bytes, bits, self.chip_type, self.version = struct.unpack(
-                ">BBB29sBB", data)
-            logging.info("serial caps: %x", caps)
-            if caps & zwave.SERIAL_CAP_SLAVE:
-                self._attr.add("serial_slave")
-            if caps & zwave.SERIAL_CAP_TIMER_SUPPORT:
-                self._attr.add("serial_timer")
-            if caps & zwave.SERIAL_CAP_SECONDARY:
-                self._attr.add("serial_secondary")
-
-            assert num_bytes == _NUM_NODE_BITFIELD_BYTES
+            bits = self.props.SetInitAndReturnBits(*struct.unpack(">BBB29sBB", data[4:-1]))
             self.nodes = ExtractNodes(bits)
+
         self.SendCommand(zwave.API_SERIAL_API_GET_INIT_DATA, [], handler)
 
     def SetTimeouts(self, ack_timeout_msec, byte_timeout_msec):
         def handler(data):
-            logging.info(
-                "previous timeouts: %d %d", data[4] * 10, data[5] * 10)
+            logging.info("previous timeouts: %d %d", data[4] * 10, data[5] * 10)
+
         self.SendCommand(zwave.API_SERIAL_API_SET_TIMEOUTS,
                          [ack_timeout_msec // 10, byte_timeout_msec // 10],
                          handler)
@@ -390,12 +418,12 @@ class Controller:
 
     def SetDefault(self):
         def handler(message):
-            logging.warning("set default response %s", message)
+            logging.warning("set default response %s", message[4:-1])
         self.SendCommandWithId(zwave.API_ZW_SET_DEFAULT, [], handler)
 
     def SoftReset(self):
         def handler(message):
-            logging.warning("soft reset response %s", message)
+            logging.warning("soft reset response %s", message[4:-1])
         self.SendCommandWithId(zwave.API_SERIAL_API_SOFT_RESET, [], handler)
 
     def SendCommand(self, func, data, handler):
@@ -440,10 +468,12 @@ class Controller:
     def TriggerNodesUpdate(self):
         logging.info("trigger nodes update")
         for n in self.nodes:
-            if n == self.node_id:
+            if n == self.props.node_id:
                 continue
             self.RequestNodeInfo(n)
 
+    def GetNodeId(self):
+         return self.props.node_id
 
     def Update(self):
         #self._event_cb(ACTIVITY_CONTROLLER_UPDATE, EVENT_UPDATE_STARTED)
