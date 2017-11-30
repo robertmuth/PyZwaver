@@ -97,6 +97,8 @@ def PrettifyRawMessage(m):
         out[3] = zwave.API_TO_STRING[func] + ":" + out[3]
     if func == zwave.API_ZW_APPLICATION_UPDATE and len(m) > 5:
         out[5] = "node:" + out[5]
+        if m[2] == zwave.REQUEST:
+            out[4] = zwave.UPDATE_STATE_TO_STRING[m[4]]
     elif func == zwave.API_APPLICATION_COMMAND_HANDLER and len(m) > 8:
         out[6] = "len:" + out[6]
         out[5] = "node:" + out[5]
@@ -125,6 +127,8 @@ def PrettifyRawMessage(m):
           func == zwave.API_ZW_IS_FAILED_NODE_ID) and len(m) > 4:
         if m[2] == zwave.REQUEST and len(out) > 4:
             out[4] = "node:" + out[4]
+    elif func == zwave.API_ZW_ADD_NODE_TO_NETWORK:
+        out[4] = zwave.ADD_NODE_TO_STRING[m[4]]
     elif (func == zwave.API_ZW_SEND_DATA or
           func == zwave.API_ZW_REPLICATION_SEND_DATA) and len(m) > 7:
         if m[2] == zwave.REQUEST:
