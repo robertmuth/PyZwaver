@@ -535,6 +535,9 @@ AssociationGroupInformation_InfoGet = 0x03
 AssociationGroupInformation_InfoReport = 0x04
 AssociationGroupInformation_ListGet = 0x05
 AssociationGroupInformation_ListReport = 0x06
+CentralScene_SupportedGet = 0x01
+CentralScene_SupportedReport = 0x02
+CentralScene_Notification = 0x03
 ZwavePlusInfo_Get = 0x01
 ZwavePlusInfo_Report = 0x02
 MultiInstance_Get = 0x04
@@ -702,6 +705,9 @@ SUBCMD_TO_STRING = {
     0x5904: 'AssociationGroupInformation_InfoReport',
     0x5905: 'AssociationGroupInformation_ListGet',
     0x5906: 'AssociationGroupInformation_ListReport',
+    0x5b01: 'CentralScene_SupportedGet',
+    0x5b02: 'CentralScene_SupportedReport',
+    0x5b03: 'CentralScene_Notification',
     0x5e01: 'ZwavePlusInfo_Get',
     0x5e02: 'ZwavePlusInfo_Report',
     0x6004: 'MultiInstance_Get',
@@ -963,6 +969,11 @@ SUBCMD_TO_PARSE_TABLE = {
     0x5904 : ['G{groups}'],                                   # InfoReport (4)
     0x5905 : ['B{mode}', 'B{group}'],                         # ListGet (5)
     0x5906 : ['B{group}', 'A{commands}'],                     # ListReport (6)
+
+# CentralScene (0x5b = 91)
+    0x5b01 : [],                                              # SupportedGet (1)
+    0x5b02 : ['B{count}'],                                    # SupportedReport (2)
+    0x5b03 : ['B{count}', 'B{mode}', 'B{scene}'],             # Notification (3)
 
 # ZwavePlusInfo (0x5e = 94)
     0x5e01 : [],                                              # Get (1)

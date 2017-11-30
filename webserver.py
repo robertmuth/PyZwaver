@@ -374,7 +374,7 @@ tornado.options.define("node_auto_refresh_secs",
                        help="seconds between refreshs")
 
 tornado.options.define("pairing_timeout_secs",
-                       default=12,
+                       default=30,
                        type=int,
                        help="seconds before pairing is auto aborted")
 
@@ -879,25 +879,25 @@ class ControllerActionHandler(BaseHandler):
         cmd = token.pop(0)
         try:
             if cmd == "add_node":
-                CONTROLLER.AddNodeToNetwork()
-                CONTROLLER.StopAddNodeToNetwork()
+                CONTROLLER.AddNodeToNetwork(ControllerEventCallback)
+                CONTROLLER.StopAddNodeToNetwork(ControllerEventCallback)
             elif cmd == "stop_add_node":
-                CONTROLLER.StopAddNodeToNetwork()
+                CONTROLLER.StopAddNodeToNetwork(ControllerEventCallback)
             elif cmd == "add_controller_primary":
-                CONTROLLER.ChangeController()
-                CONTROLLER.StopChangeController()
+                CONTROLLER.ChangeController(ControllerEventCallback)
+                CONTROLLER.StopChangeController(ControllerEventCallback)
             elif cmd == "stop_add_controller_primary":
-                CONTROLLER.StopChangeController()
+                CONTROLLER.StopChangeController(ChangeController)
             elif cmd == "remove_node":
-                CONTROLLER.RemoveNodeFromNetwork()
-                CONTROLLER.StopRemoveNodeFromNetwork()
+                CONTROLLER.RemoveNodeFromNetwork(ControllerEventCallback)
+                CONTROLLER.StopRemoveNodeFromNetwork(CONTROLLER)
             elif cmd == "stop_remove_node":
-                CONTROLLER.StopRemoveNodeFromNetwork()
+                CONTROLLER.StopRemoveNodeFromNetwork(ControllerEventCallback)
             elif cmd == "set_learn_mode":
                 CONTROLLER.SetLearnMode()
-                CONTROLLER.StopSetLearnMode()
+                CONTROLLER.StopSetLearnMode(ControllerEventCallback)
             elif cmd == "stop_set_learn_mode":
-                CONTROLLER.StopSetLearnMode()
+                CONTROLLER.StopSetLearnMode(ControllerEventCallback)
             elif cmd == "soft_reset":
                 CONTROLLER.SoftReset()
             elif cmd == "hard_reset":

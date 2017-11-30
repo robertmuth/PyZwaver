@@ -655,6 +655,7 @@ class Node:
         self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
 
     def StoreMeter(self, val):
+        if val is None: return
         self._meters[(val.kind, val.unit)] = val
         self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
 
@@ -677,19 +678,19 @@ class Node:
                 self._commands.SetVersion(value[0], value[1])
                 self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
         elif a == command.ACTION_STORE_SENSOR:
-            self.StoreSensor(command.GetValue(actions, value))
+            self.StoreSensor(command.GetValue(actions, value, prefix))
         elif a == command.ACTION_STORE_VALUE:
             if len(value) == 1:
-                self.StoreValue(command.GetValue(actions, value))
+                self.StoreValue(command.GetValue(actions, value, prefix))
         elif a == command.ACTION_STORE_MAP:
-            val = command.GetValue(actions, value)
+            val = command.GetValue(actions, value, prefix)
             if val.kind not in self._values:
                 self._values[val.kind] = {}
             self._values[val.kind][val.unit] = val
         elif a == command.ACTION_STORE_EVENT:
-            self.StoreEvent(command.GetValue(actions, value))
+            self.StoreEvent(command.GetValue(actions, value, prefix))
         elif a == command.ACTION_STORE_METER:
-            self.StoreMeter(command.GetValue(actions, value))
+            self.StoreMeter(command.GetValue(actions, value, prefix))
         elif a == command.ACTION_STORE_PARAMETER:
             assert len(value) == 2
             self.StoreParameter(value)
@@ -745,6 +746,10 @@ class Node:
         k = (data[0], data[1])
         prefix = self.LogPrefix(k)
         value = command.ParseCommand(data, prefix)
+        if value is None:
+            logging.error("%s parsing failed for %s", prefix, Hexify(data))
+            return
+
         state_change = command.STATE_CHANGE.get(k)
         if state_change:
             self._OneAction(state_change, value, prefix)
@@ -1163,8 +1168,10 @@ class NodeSet(object):
             # logging.warning("NodeSet received: %s",  zmessage.PrettifyRawMessage(m))
             kind = m[4]
             if kind == zwave.UPDATE_STATE_NODE_INFO_REQ_FAILED:
-                logging.error(
-                    "update request failed: %s", zmessage.PrettifyRawMessage(m))
+                n = m[5]
+                if n != 0:
+                    logging.error(
+                        "update request failed: %s", zmessage.PrettifyRawMessage(m))
             elif kind == zwave.UPDATE_STATE_NODE_INFO_RECEIVED:
                 # the node is awake now and/or has changed values
                 n = m[5]

@@ -512,7 +512,7 @@ def ParseCommand(m, prefix):
     for t in table:
         new_index, value = _PARSE_ACTIONS[t[0]](m, index)
         if value is None:
-            logging.error("%s malformed message while parsing format %s", prefix, t[0], table)
+            logging.error("%s malformed message while parsing format %s %s", prefix, t[0], table)
             return None
         out.append(value)
         index = new_index
@@ -752,7 +752,7 @@ class Value:
             return "%s[%s, %s]" % (self.value,self.kind, self.unit)
 
 
-def GetValue(action, value):
+def GetValue(action, value, prefix):
     t = action.pop(0)
     if t == VALUE_TYPE_SCALAR:
         assert len(value) == 1
@@ -780,7 +780,8 @@ def GetValue(action, value):
         scale, reading = value[1]
         unit = info[1][scale]
         if unit is None:
-            logging.error("bad sensor reading [%d, %d]: %s", kind, scale, info)
+            logging.error("%s bad sensor reading [%d, %d]: %s",
+                          prefix, kind, scale, info)
         assert unit is not None
         return Value(info[0], unit, reading)
     elif t == VALUE_TYPE_MAP_LIST:
@@ -791,7 +792,10 @@ def GetValue(action, value):
     elif t == VALUE_TYPE_METER_NORMAL:
         assert len(value) == 1
         val = value[0]
-        assert len(val) == 5
+        if len(val) != 5:
+            logging.error("%s bad meter normal %s %s",
+                          prefix, action, value)
+            return None
         kind = val[0]
         scale =  val[1]
         info = METER_TYPES[kind]

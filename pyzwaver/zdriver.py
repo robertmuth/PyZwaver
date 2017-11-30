@@ -126,7 +126,7 @@ class Driver(object):
 
     def SendRaw(self, payload):
         time.sleep(SEND_DELAY)
-        logging.info("sending: %s", zmessage.PrettifyRawMessage(payload))
+        # logging.info("sending: %s", zmessage.PrettifyRawMessage(payload))
         self.history.LogSent(payload)
         self._device.write(payload)
         self._device.flush()
@@ -134,7 +134,7 @@ class Driver(object):
     # Without delay
     def SendControl(self, payload):
         assert len(payload) == 1
-        logging.info("sending: %s", zmessage.PrettifyRawMessage(payload))
+        # logging.info("sending: %s", zmessage.PrettifyRawMessage(payload))
         self.history.LogSent(payload)
         self._device.write(payload)
         self._device.flush()

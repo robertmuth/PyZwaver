@@ -573,7 +573,7 @@ class MessageQueue:
                 if mesg.callback:
                     mesg.callback(None)
                 logging.error(
-                    "timeout for %s", PrettifyRawMessage(mesg.payload))
+                    "timeout (%d) for %s", mesg.timeout, PrettifyRawMessage(mesg.payload))
                 mesg.SetState(MESSAGE_STATE_ABORTED)
                 break
         mesg.SetState(MESSAGE_STATE_COMPLETED)

@@ -103,6 +103,7 @@ HANDLER_TYPE_REMOVE_NODE = (zwave.REMOVE_NODE_STATUS_TO_STRING, {
     zwave.REMOVE_NODE_STATUS_NOT_INCLUSION_CONTROLLER: PAIRING_ACTION_FAILED,
     zwave.REMOVE_NODE_STATUS_FAILED: PAIRING_ACTION_FAILED,
     zwave.REMOVE_NODE_STATUS_DONE: PAIRING_ACTION_DONE_UPDATE,
+    zwave.REMOVE_NODE_STATUS_REMOVING_CONTROLLER: PAIRING_ACTION_CONTINUE,
 })
 
 
@@ -339,13 +340,14 @@ class Controller:
         stringMap, actions = receiver_type
         def Handler(m):
             if m is None:
-                logging.warning("[%s] Aborted", activity)
+                logging.error("[%s] Aborted", activity)
                 event_cb(activity, EVENT_PAIRING_ABORTED)
                 return True
             status = m[5]
             node = m[6]
             name = stringMap[status]
             a = actions[status]
+            logging.error("pairing status update: %s", a)
             if a == PAIRING_ACTION_CONTINUE:
                 logging.warning("[%s] Continue - %s [%d]" % (activity, name, node))
                 event_cb(activity, EVENT_PAIRING_CONTINUE)
@@ -374,42 +376,45 @@ class Controller:
     def AddNodeToNetwork(self, event_cb):
         mode = [zwave.ADD_NODE_ANY]
         cb = self.FancyReceiver(ACTIVITY_ADD_NODE, HANDLER_TYPE_ADD_NODE, event_cb)
-        return self.SendCommandWithId(zwave.API_ZW_ADD_NODE_TO_NETWORK, mode, cb, self._pairing_timeout_sec)
+        return self.SendCommandWithId(zwave.API_ZW_ADD_NODE_TO_NETWORK, mode, cb,
+                                      timeout=self._pairing_timeout_sec)
 
     def StopAddNodeToNetwork(self, event_cb):
         mode = [zwave.ADD_NODE_STOP]
         cb = self.FancyReceiver(ACTIVITY_ADD_NODE, HANDLER_TYPE_STOP, event_cb)
-        return self.SendCommandWithId(zwave.API_ZW_ADD_NODE_TO_NETWORK, mode, cb, self._pairing_timeout_sec)
+        return self.SendCommandWithId(zwave.API_ZW_ADD_NODE_TO_NETWORK, mode, cb,
+                                      timeout=self._pairing_timeout_sec)
 
-    def RemoveNodeFromNetwork(self):
+    def RemoveNodeFromNetwork(self, event_cb):
         mode = [zwave.REMOVE_NODE_ANY]
-        cb = self.FancyReceiver(ACTIVITY_REMOVE_NODE, HANDLER_TYPE_REMOVE_NODE)
-        return self.SendCommandWithId(zwave.API_ZW_REMOVE_NODE_FROM_NETWORK, mode, cb, self._pairing_timeout_sec)
+        cb = self.FancyReceiver(ACTIVITY_REMOVE_NODE, HANDLER_TYPE_REMOVE_NODE, event_cb)
+        return self.SendCommandWithId(zwave.API_ZW_REMOVE_NODE_FROM_NETWORK, mode, cb,
+                                      timeout=self._pairing_timeout_sec)
 
-    def StopRemoveNodeFromNetwork(self):
+    def StopRemoveNodeFromNetwork(self, event_cb):
         mode = [zwave.REMOVE_NODE_STOP]
         # NOTE: this will sometimes result in a "stray request" being sent back:
         #  SOF len:07 REQU API_ZW_REMOVE_NODE_FROM_NETWORK:4b cb:64 status:06 00 00 chk:d1
         # We just drop this message on the floor
         return self.SendCommandWithIdNoResponse(zwave.API_ZW_REMOVE_NODE_FROM_NETWORK, mode)
 
-    def SetLearnMode(self):
+    def SetLearnMode(self, event_cb):
         mode = [zwave.LEARN_MODE_NWI]
-        cb = self.FancyReceiver(ACTIVITY_SET_LEARN_MODE, HANDLER_TYPE_SET_LEARN_MODE)
+        cb = self.FancyReceiver(ACTIVITY_SET_LEARN_MODE, HANDLER_TYPE_SET_LEARN_MODE, event_cb)
         return self.SendCommandWithId(zwave.API_ZW_SET_LEARN_MODE, mode, cb, timeout=self._pairing_timeout_sec)
 
 
-    def StopSetLearnMode(self):
+    def StopSetLearnMode(self, event_cb):
         mode = [zwave.LEARN_MODE_DISABLE]
         return self.SendCommandWithIdNoResponse(zwave.API_ZW_SET_LEARN_MODE, mode)
 
 
-    def ChangeController(self):
+    def ChangeController(self, event_cb):
         mode = [zwave.CONTROLLER_CHANGE_START]
-        cb = self.FancyReceiver(ACTIVITY_CHANGE_CONTROLLER, HANDLER_TYPE_ADD_NODE)
+        cb = self.FancyReceiver(ACTIVITY_CHANGE_CONTROLLER, HANDLER_TYPE_ADD_NODE, event_cb)
         return self.SendCommandWithId(zwave.API_ZW_CONTROLLER_CHANGE, mode, cb, timeout=self._pairing_timeout_sec)
 
-    def StopChangeController(self):
+    def StopChangeController(self, event_cb):
         mode = [zwave.CONTROLLER_CHANGE_STOP]
         return self.SendCommandWithIdNoResponse(zwave.API_ZW_CONTROLLER_CHANGE, mode)
 

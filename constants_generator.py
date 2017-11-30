@@ -746,9 +746,9 @@ C("Security", 0x98,
 
 
 C("TimeParameters", 0x8b,
-  Set = (0x01, "C{date}"),
-  Get = (0x02, ""),
-  Report = (0x03, "C{date}"),
+  Set=(0x01, "C{date}"),
+  Get=(0x02, ""),
+  Report=(0x03, "C{date}"),
 )
 
 C("AssociationCommandConfiguration", 0x9b,
@@ -761,7 +761,12 @@ C("AssociationCommandConfiguration", 0x9b,
 )
 
 
-C("CentralScene", 0x5b)
+C("CentralScene", 0x5b,
+  SupportedGet=(0x01, ""),
+  SupportedReport=(0x02, "B{count}"),
+  Notification=(0x03, "B{count},B{mode},B{scene}"),
+)
+
 C("ManufacturerProprietary", 0x91)
 C("SimpleAvControl", 0x94)
 C("BasicWindowCovering", 0x50)
