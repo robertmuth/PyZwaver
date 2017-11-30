@@ -361,6 +361,7 @@ BasicWindowCovering = 0x50
 CRC16Encap = 0x56
 AssociationGroupInformation = 0x59
 DeviceResetLocally = 0x5a
+CentralScene = 0x5b
 ZwavePlusInfo = 0x5e
 MultiInstance = 0x60
 DoorLock = 0x62
@@ -428,6 +429,7 @@ CMD_TO_STRING = {
     0x56: 'CRC16Encap',
     0x59: 'AssociationGroupInformation',
     0x5a: 'DeviceResetLocally',
+    0x5b: 'CentralScene',
     0x5e: 'ZwavePlusInfo',
     0x60: 'MultiInstance',
     0x62: 'DoorLock',

@@ -438,7 +438,8 @@ def C(base, cmd, **subs):
     global SUBCMD_TO_STRING
     global CMD_TO_STRING
     global SUBCMD_TO_PARSE_TABLE
-    assert cmd not in CMD_TO_STRING
+    
+    assert cmd not in CMD_TO_STRING, "duplicate command: %s" % cmd
     CMD_TO_STRING[cmd] = base
     #assert base not in globals()
     globals()[base] = cmd
@@ -588,10 +589,9 @@ C("AssociationGroupInformation", 0x59,
 )
 
 C("ZwavePlusInfo", 0x5e,
-  Get = (0x01, ""),
-  Report = (0x02, "B{version},B{role},W{icon},W{type}"),
+  Get=(0x01, ""),
+  Report=(0x02, "B{version},B{role},W{icon},W{type}"),
 )
-
 
 C("MultiInstance", 0x60,
   Get=(0x4, "B{mode}"),
@@ -603,7 +603,8 @@ C("MultiInstance", 0x60,
   ChannelCapabilityReport =(0x0a, ""),
   ChannelEndPointFind =(0x0b, ""),
   ChannelEndPointFindReport =(0x0c, ""),
-  ChannelEncap =(0x0d, ""))
+  ChannelEncap =(0x0d, ""),
+)
 
 C("DoorLock", 0x62,
   Set=(0x1, "B{status}"),
@@ -625,7 +626,8 @@ C("UserCode", 0x63,
 C("Configuration", 0x70,
   Set=(0x4, "B{parameter},V{value}"),
   Get=(0x5, "B{parameter}"),
-  Report=(0x6, "B{parameter},V{value}"))
+  Report=(0x6, "B{parameter},V{value}"),
+)
 
 C("Alarm", 0x71,
   Get=(0x4, ""),
@@ -759,6 +761,7 @@ C("AssociationCommandConfiguration", 0x9b,
 )
 
 
+C("CentralScene", 0x5b)
 C("ManufacturerProprietary", 0x91)
 C("SimpleAvControl", 0x94)
 C("BasicWindowCovering", 0x50)
