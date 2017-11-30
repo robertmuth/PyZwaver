@@ -111,11 +111,11 @@ class Crypter:
 
 class Nonce:
     def __init(self, value, now):
-        self._value = value
-        self._expiration = now + _NONCE_EXPIRATION_SEC
+        self.value = value
+        self.expiration = now + _NONCE_EXPIRATION_SEC
 
     def IsExpired(self, now):
-        return now > self._expiration
+        return now > self.expiration
 
 class SecureQueue:
     """ SecurityQueue handles per node security
@@ -127,36 +127,44 @@ class SecureQueue:
     An out-bound nonce is provide by the *other* node so that *this* node can send it
     encrypted messages.
     """
-    pass
 
-#     def __init(self, node, controller_node, random):
-#         self,_node = node
-#         self._queue = []
-#         self._crypter = _Crypter(_DEFAULT_KEY)
-#         self._controller_node = controller_node
-#         # for message send form controller to the node
-#         self,_nonce_outbound = Nonce(None, -_NONCE_EXPIRATION_SEC)
-#         self,_nonce_outbound_requested = False
+    def EnqueueMessage(self, message):
+        self._queue.append(message)
 
-#     def GetNextCommandAfterReceivingNonce(self, nonce):
-#         self._nonce_outbound = nonce
-#         self,_nonce_outbound_request_time = _EXPIRED
-#         if len(self._queue) != 0:
-#             return None
-#         cmd = self._queue.pop(0)
-#         raw = command.AssembleCommand(cmd)
-#         wrapped = self._security.Wrap(raw,
-#                                       nonce,
-#                                       GetRandomList(8),
-#                                       zwave.Security_MessageEncap,
-#                                       self._controller,
-#                                       self._node)
-#         if cmd[0] == zwave.Security and cmd[1] == zwave.Security_NetworkKeySet:
-#             logging.warning("about to change key to %s", repr(cmd[2]));
-#             self._crypter = _Crypter(cmd[2])
-#         }
-#         return [zwave.Security, zwave.Security_MessageEncap, wrapped];
+    def SetKey(self, key):
+        logging.warning("about to change key to %s", repr(key));
+        self._crypter = _Crypter(key)
+
+    def GetRandomList(self, n):
+        # DEBUGGING HACK FIXME
+        return _CRYPT_SECRET[:n]
 
 
-#     def Push(self, message):
-#         self._queue.append(message)
+    def __init(self, node, controller_node, random):
+         self,_node = node
+         self._controller_node = controller_node
+         self.SetKey(_DEFAULT_KEY)
+         self._queue = []
+
+
+         # for message send form controller to the node
+         self,_nonce_outbound = Nonce(None, -_NONCE_EXPIRATION_SEC)
+         self,_nonce_outbound_requested = False
+
+    def ProcessReceivedNonce(self, nonce):
+        # we assume the nonce is not expired
+        self._nonce_outbound = nonce
+        if len(self._queue) != 0:
+            return None
+        cmd = self._queue.pop(0)
+        raw = command.AssembleCommand(cmd)
+        wrapped = self._security.Wrap(raw,
+                                      nonce.value,
+                                      self.GetRandomList(8),
+                                      zwave.Security_MessageEncap,
+                                      self._controller,
+                                      self._node)
+        if cmd[0] == zwave.Security and cmd[1] == zwave.Security_NetworkKeySet:
+            self.SetKey(cmd[2])
+
+        return [zwave.Security, zwave.Security_MessageEncap, wrapped];

@@ -31,7 +31,7 @@ import queue
 from pyzwaver import zmessage
 from pyzwaver import command
 from pyzwaver import zwave
-
+from pyzwaver import zsecurity
 
 def Hexify(t):
     return ["%02x" % i for i in t]
@@ -99,7 +99,6 @@ _STATIC_PROPERTY_QUERIES = [
     [zwave.DoorLock, zwave.DoorLock_ConfigurationGet],
     [zwave.DoorLockLogging, zwave.DoorLockLogging_SupportedGet],
 
-    [zwave.Association, zwave.Association_GroupingsGet],
     [zwave.Meter, zwave.Meter_SupportedGet],
     [zwave.SensorAlarm, zwave.SensorAlarm_SupportedGet],
     [zwave.ThermostatMode, zwave.ThermostatMode_SupportedGet],
@@ -123,6 +122,8 @@ _STATIC_PROPERTY_QUERIES = [
     # arguably dynamic
     [zwave.Clock, zwave.Clock_Get],
     [zwave.Firmware, zwave.Firmware_MetadataGet],
+    [zwave.Association, zwave.Association_GroupingsGet],
+    [zwave.AssociationGroupInformation, zwave.AssociationGroupInformation_InfoGet, 64, 0],
 ]
 
 
@@ -219,9 +220,6 @@ _DEFAULT_METER_SUPPORTED = command.Value(
 _DEFAULT_SENSOR_SUPPORTED = command.Value(
     command.VALUE_SENSOR_SUPPORTED, command.UNIT_NONE, 0)
 
-_DEFAULT_VALUE_ASSOCIATIONS = command.Value(
-    command.VALUE_ASSOCIATIONS, command.UNIT_NONE, 0)
-
 _DEFAULT_MULTILEVEL_SWITCH_SENSOR = command.Value(
     command.SENSOR_KIND_SWITCH_MULTILEVEL, command.UNIT_LEVEL, 0)
 
@@ -238,6 +236,75 @@ class _SharedNodeState:
         self.security_key = security_key
         self.enable_secure_pairing = enable_secure_pairing
 
+
+
+class AssociationGroup:
+    def __init__(self, no):
+        self._no = no
+        self._nodes = []
+        self._capacity = 0
+        self._name = ""
+        self._profile = None
+        self._event = None
+
+    def SetNodes(self, capacity, nodes):
+        self._capacity = capacity
+        self._nodes = nodes
+
+    def SetMeta(self, profile, event):
+        self._profile = profile
+        self._event = event
+
+    def SetName(self, name):
+        self._name = name
+
+    def __str__(self):
+        return "Group %d [%s]  profile:%d  event:%d  capacity:%d  nodes:%s" % (
+            self._no, self._name, self._profile, self._event, self._capacity, self._nodes)
+
+class NodeAssociations:
+
+    def __init__(self):
+        self._groups = {}
+        self._count = -1
+
+    def GetGroup(self, no):
+        g = self._groups.get(no)
+        if g != None: return g
+        g = AssociationGroup(no)
+        self._groups[no] = g
+        return g
+
+    def StoreCount(self, val):
+        self._count = val[0]
+
+    def StoreNodes(self, val):
+        # we do not support extra long lists
+        no = val[0]
+        capacity = val[1]
+        assert val[2] == 0
+        nodes = val[3]
+        self.GetGroup(no).SetNodes(capacity, nodes)
+
+    def StoreName(self, val):
+        no = val[0]
+        name = val[1]
+        self.GetGroup(no).SetName(name)
+
+    def StoreMeta(self, val):
+        for no, profile, event in val[0]:
+            self.GetGroup(no).SetMeta(profile, event)
+
+    def GetNumbers(self):
+        if len(self._groups) > 0:
+            return self._groups.keys()
+        n = self._count
+        if n == 0 or n == 255: n = 4
+        return list(range(1, n + 1)) + [255]
+
+    def __str__(self):
+        return "\n".join([str(g) for g in self._groups.values()])
+
 class Node:
 
     """Node represents a single node in a zwave network.
@@ -251,6 +318,7 @@ class Node:
         assert n >= 1
         self._shared = shared
         self.n = n
+        self.name = "Node %d" % n
         self._failed = True
         self._is_self = False      # node is the controller
         self._state = command.NODE_STATE_NONE
@@ -261,6 +329,7 @@ class Node:
         self._protocol_version = 0
 
         self._commands = {}
+        self._secure_commands = {}
         self._controls = set()
 
         self._values = {}
@@ -268,7 +337,7 @@ class Node:
         self._meters = {}
         self._sensors = {}
         self._parameters = {}
-        self._associations = {}
+        self._associations = NodeAssociations()
         #
         self.scenes = {}
         #
@@ -322,7 +391,7 @@ class Node:
         p = self._values.get(command.VALUE_SENSOR_SUPPORTED, _DEFAULT_SENSOR_SUPPORTED)
         return BitsToSetWithOffset(p.value, 1)
 
-    def GetAllAssociations(self):
+    def GetAssociations(self):
         return self._associations
 
     def GetAllSensors(self):
@@ -339,6 +408,7 @@ class Node:
 
     def GetAllValues(self):
         return self._values
+
 
     def __lt__(self, other):
         return self.n < other.n
@@ -358,6 +428,7 @@ class Node:
             "\nflags:        " + repr(self.flags),
         ]
         return "  ".join(out)
+
     def __str__(self):
         out = [self.BasicString()]
 # self._values.get(VALUE_PROUCT, DEFAULT_PRODUCT))
@@ -381,11 +452,12 @@ class Node:
                 "  sensors:      " + RenderValues(self._sensors.values()))
         out.append("  values:       " + RenderValues(self._values.values()))
         out.append("  events:       " + repr(self._events))
-        out.append("  associations: " + repr(self._associations))
         out.append("  parameters:   " + repr(CompactifyParams(self._parameters)))
         out.append("  commands:     " +
                    repr([(zwave.CMD_TO_STRING.get(c, "UKNOWN:%d" % c), c, v)
                         for c, v in self._commands.items()]))
+        out.append("  associations:")
+        out.append(str(self._associations))
         return "\n".join(out)
 
     def BasicInfo(self):
@@ -448,6 +520,10 @@ class Node:
         else:
             self.RefreshDynamicValues()
 
+    def _IsSecureCommand(self, cmd, sub_cmd):
+        if cmd == zwave.Security:
+            return sub_cmd in [zwave.Security_NetworkKeySet, zwave.Security_SupportedGet]
+        return cmd in self._secure_commands
 
     def _InitializeSecurity(self):
         logging.error("[%d] initializing security", self.n)
@@ -521,7 +597,10 @@ class Node:
         pass
 
     def SecurityChangeKey(self, key):
-        assert len(key) == 16
+        logging.warning("SecurityChangeKey")
+        self.BatchCommandSubmitFilteredFast(
+            [[zwave.Security, zwave.Security_NetworkSetKey, key]], XMIT_OPTIONS_SECURE)
+
 
     def StoreValue(self, val):
         self._values[val.kind] = val
@@ -546,12 +625,6 @@ class Node:
     def StoreEvent(self, val):
         self._events[val.kind] = val
         self._shared.event_cb(self.n, val.kind)
-
-    def StoreAssociation(self, val):
-        # we do not support extra long lists
-        assert val[2] == 0
-        self._associations[val[0]] = val[1:]
-        self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
 
     def _OneAction(self, a, actions, value):
         logging.info(
@@ -583,17 +656,32 @@ class Node:
                 pass
             else:
                 self.scenes[value[0]] = value[1:]
-        elif a == command.ACTION_STORE_ASSOCIATION:
+        elif a == command.ACTION_STORE_ASSOCIATION_GROUP_COUNT:
+            assert len(value) == 1
+            self._associations.StoreCount(value)
+            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
+        elif a == command.ACTION_STORE_ASSOCIATION_GROUP_NODES:
             assert len(value) == 4
-            self.StoreAssociation(value)
+            self._associations.StoreNodes(value)
+            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
+        elif a == command.ACTION_STORE_ASSOCIATION_GROUP_NAME:
+            assert len(value) == 2
+            self._associations.StoreName(value)
+            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
+        elif a == command.ACTION_STORE_ASSOCIATION_GROUP_META:
+            assert len(value) == 1
+            self._associations.StoreMeta(value)
+            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
         elif a == command.ACTION_CHANGE_STATE:
             state = actions.pop(0)
             self._MaybeChangeState(state)
         elif a == command.SECURITY_SCHEME:
             assert len(value) == 1
             if value[0] == 0:
-                self.SecurityChangeKey([1] * 16)
+                # not paired yet start key exchange
+                self.SecurityChangeKey(self._shared,security_key)
             else:
+                # already paired
                 self.SecurityRequestClasses()
         else:
             logging.error("unexpected: %s %s %s", a, actions, value)
@@ -666,7 +754,7 @@ class Node:
             self._RequestNodeInfo(r)
 
         if retries > 0:
-            logging.warning("[%d] RequestNodeInfo %d", self.n, retries)
+            logging.warning("[%d] RequestNodeInfo try:%d", self.n, retries)
             self.SendCommand(zwave.API_ZW_REQUEST_NODE_INFO, [self.n], handler)
         else:
             logging.error("[%d] RequestNodeInfo failed permanently", self.n)
@@ -769,13 +857,12 @@ class Node:
         self.BatchCommandSubmitFilteredFast(reqs, XMIT_OPTIONS)
 
     def RefreshAssociations(self):
-        n = self._values.get(command.VALUE_ASSOCIATIONS, _DEFAULT_VALUE_ASSOCIATIONS).value
-        # work around for cooper stuff
-        if n == 0 or n == 255:
-            n = 4
-        # 255 needed for cooper and wt00z
-        groups = list(range(1, n + 1)) + [255]
-        c = [[zwave.Association, zwave.Association_Get, g] for g in groups]
+        c = []
+        for no in self._associations.GetNumbers():
+            c.append([zwave.Association, zwave.Association_Get, no])
+            c.append([zwave.AssociationGroupInformation,
+                      zwave.AssociationGroupInformation_NameGet, no])
+
         self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)
 
     def AssociationAdd(self, group, n):
@@ -821,6 +908,9 @@ class Node:
             if not self.HasCommandClass(cmd[0]):
                 continue
 
+            if self._IsSecureCommand(cmd[0], cmd[1]):
+                self._secure_messaging.Send(cmd)
+                continue
             def handler(m):
                 logging.debug("@@handler invoked")
             try:
@@ -835,9 +925,6 @@ class Node:
             m = zmessage.MakeRawCommandWithId(self.n, raw_cmd, xmit)
             mesg = zmessage.Message(m, priority(self.n), handler, self.n)
             self._shared.mq.EnqueueMessage(mesg)
-
-        # if (num_sec > 0) {
-        # MaybeRequestNewNonce(null);
 
     def BatchCommandSubmitFilteredSlow(self, commands, xmit):
         self.BatchCommandSubmitFiltered(commands, zmessage.NodePriorityLo, xmit)
@@ -901,7 +988,7 @@ class NodeSet(object):
     """
 
     def __init__(self, message_queue, event_cb, refresher_interval=60.0):
-        self._shared = _SharedNodeState(message_queue, event_cb, 0)
+        self._shared = _SharedNodeState(message_queue, event_cb, [1] * 16)
         self._refresh_interval = refresher_interval
         self.nodes = {}
         self._terminate = False
@@ -994,9 +1081,10 @@ class NodeSet(object):
         self._receiver_thread.join()
         if self._refresher_thread:
             self._refresher_thread.join()
+        logging.info("NodeSet terminated")
 
     def HandleMessage(self, m):
-        logging.info("NodeSet received: %s",  zmessage.PrettifyRawMessage(m))
+        #logging.info("NodeSet received: %s",  zmessage.PrettifyRawMessage(m))
         if m[3] == zwave.API_APPLICATION_COMMAND_HANDLER:
             _ = m[4]   # status
             n = m[5]
@@ -1015,8 +1103,7 @@ class NodeSet(object):
             if node._state < command.NODE_STATE_DISCOVERED:
                 node.Ping(3, True)
         elif m[3] == zwave.API_ZW_APPLICATION_UPDATE:
-            logging.warning(
-                "NodeSet received: %s",  zmessage.PrettifyRawMessage(m))
+            # logging.warning("NodeSet received: %s",  zmessage.PrettifyRawMessage(m))
             kind = m[4]
             if kind == zwave.UPDATE_STATE_NODE_INFO_REQ_FAILED:
                 logging.error(

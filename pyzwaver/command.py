@@ -63,10 +63,13 @@ ACTION_STORE_MAP = "StoreMap"
 ACTION_STORE_SENSOR = "StoreSensor"
 ACTION_STORE_METER = "StoreMeter"
 ACTION_STORE_SCENE = "StoreScene"
-ACTION_STORE_ASSOCIATION = "StoreAssociation"
 ACTION_STORE_COMMAND_VERSION = "StoreCommandVersion"
 ACTION_STORE_PARAMETER = "StoreParameter"
 ACTION_CHANGE_STATE = "CHANGE_STATE"
+ACTION_STORE_ASSOCIATION_GROUP_NODES = "StoreAssociationGroupNodes"
+ACTION_STORE_ASSOCIATION_GROUP_NAME = "StoreAssociationGroupName"
+ACTION_STORE_ASSOCIATION_GROUP_META = "StoreAssociationGroupMeta"
+ACTION_STORE_ASSOCIATION_GROUP_COUNT = "StoreAssociationGroupCount"
 
 #
 SECURITY_SET_CLASS = "SecuritySetClass"
@@ -329,7 +332,7 @@ def _ParseName(m, index):
 
 def _ParseStringWithLength(m, index):
     size = m[index]
-    return 1 + size + index, m[index + 1, size]
+    return 1 + size + index, bytes(m[index + 1: size])
 
 
 def _ParseStringWithLengthAndEncoding(m, index):
@@ -351,6 +354,21 @@ def _ExtractBitVector(data, offset):
                 bits.add(j + i * 8 + offset)
     return bits
 
+def _ParseGroups(m, index):
+    misc = m[index]
+    count = misc & 0x3f
+    if len(m) < index + 1 + count * 7:
+        logging.error("malformed groups section: %d (%d)", len(m), count)
+        return index, None
+    groups = []
+    index += 1
+    for i in range(count):
+        num = m[index + 0]
+        profile = m[index + 2] * 256 + m[index + 3]
+        event = m[index + 5] * 256 + m[index + 6]
+        groups.append((num, profile, event))
+        index += 7
+    return index, groups,
 
 def _ParseBitVector(m, index):
     size = m[index]
@@ -440,6 +458,7 @@ _PARSE_ACTIONS = {
     'F': _ParseStringWithLengthAndEncoding,
     'B': _ParseByte,
     'C': _ParseDate,
+    'G': _ParseGroups,
     'N': _ParseName,
     'L': _ParseListRest,
     'R': _ParseRestLittleEndianInt,   # as integer
@@ -554,7 +573,6 @@ def AssembleCommand(raw_cmd):
 
 _STORE_VALUE_SCALAR_ACTIONS = {
     # report scalar
-    (zwave.Association, zwave.Association_GroupingsReport) : None,
     (zwave.SwitchAll, zwave.SwitchAll_Report) : None,
     (zwave.Protection, zwave.Protection_Report) : None,
     (zwave.NodeNaming, zwave.NodeNaming_Report) : None,
@@ -619,10 +637,17 @@ ACTIONS = {
     [ACTION_STORE_SENSOR, VALUE_TYPE_SENSOR_NORMAL],
     (zwave.Meter, zwave.Meter_Report):
     [ACTION_STORE_METER, VALUE_TYPE_METER_NORMAL],
-    (zwave.Association, zwave.Association_Report):
-    [ACTION_STORE_ASSOCIATION],
     (zwave.Configuration, zwave.Configuration_Report):
     [ACTION_STORE_PARAMETER],
+    #
+    (zwave.Association, zwave.Association_GroupingsReport) :
+    [ACTION_STORE_ASSOCIATION_GROUP_COUNT],
+    (zwave.Association, zwave.Association_Report):
+    [ACTION_STORE_ASSOCIATION_GROUP_NODES],
+    (zwave.AssociationGroupInformation, zwave.AssociationGroupInformation_NameReport):
+    [ACTION_STORE_ASSOCIATION_GROUP_NAME],
+    (zwave.AssociationGroupInformation, zwave.AssociationGroupInformation_InfoReport):
+    [ACTION_STORE_ASSOCIATION_GROUP_META],
     #
     (zwave.Alarm, zwave.Alarm_Report):
     [ACTION_STORE_EVENT, VALUE_TYPE_LIST, EVENT_ALARM],
