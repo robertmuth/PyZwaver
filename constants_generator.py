@@ -357,6 +357,7 @@ ALLOWED_PARAMETER_FORMATS = set([
 "3{XXX}",     # 24bit
 "A{code}",
 "A{name}",
+"A{commands}",
 "B{active}",
 "B{alarm}",
 "B{application}",
@@ -583,7 +584,7 @@ C("AssociationGroupInformation", 0x59,
   InfoGet=(0x3, "B{mode},B{group}"),
   InfoReport=(0x4,  "G{groups}"),
   ListGet=(0x5, "B{mode},B{group}"),
-  ListReport=(0x6,  "B{group}"),
+  ListReport=(0x6,  "B{group},A{commands}"),
 )
 
 C("ZwavePlusInfo", 0x5e,

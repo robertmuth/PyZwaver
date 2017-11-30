@@ -70,6 +70,7 @@ ACTION_STORE_ASSOCIATION_GROUP_NODES = "StoreAssociationGroupNodes"
 ACTION_STORE_ASSOCIATION_GROUP_NAME = "StoreAssociationGroupName"
 ACTION_STORE_ASSOCIATION_GROUP_META = "StoreAssociationGroupMeta"
 ACTION_STORE_ASSOCIATION_GROUP_COUNT = "StoreAssociationGroupCount"
+ACTION_STORE_ASSOCIATION_GROUP_COMMANDS = "StoreAssociationGroupCommands"
 
 #
 SECURITY_SET_CLASS = "SecuritySetClass"
@@ -648,6 +649,8 @@ ACTIONS = {
     [ACTION_STORE_ASSOCIATION_GROUP_NAME],
     (zwave.AssociationGroupInformation, zwave.AssociationGroupInformation_InfoReport):
     [ACTION_STORE_ASSOCIATION_GROUP_META],
+    (zwave.AssociationGroupInformation, zwave.AssociationGroupInformation_ListReport):
+    [ACTION_STORE_ASSOCIATION_GROUP_COMMANDS],
     #
     (zwave.Alarm, zwave.Alarm_Report):
     [ACTION_STORE_EVENT, VALUE_TYPE_LIST, EVENT_ALARM],

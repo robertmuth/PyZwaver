@@ -246,7 +246,7 @@ class AssociationGroup:
         self._name = ""
         self._profile = None
         self._event = None
-
+        self._commands = None
     def SetNodes(self, capacity, nodes):
         self._capacity = capacity
         self._nodes = nodes
@@ -258,9 +258,12 @@ class AssociationGroup:
     def SetName(self, name):
         self._name = name
 
+    def SetCommands(self, commands):
+        self._commands = commands
+
     def __str__(self):
-        return "Group %d [%s]  profile:%d  event:%d  capacity:%d  nodes:%s" % (
-            self._no, self._name, self._profile, self._event, self._capacity, self._nodes)
+        return "Group %d [%s]  profile:%d  event:%d  cmds:%s  capacity:%d  nodes:%s" % (
+            self._no, self._name, self._profile, self._event, self._commands, self._capacity, self._nodes)
 
 class NodeAssociations:
 
@@ -290,6 +293,11 @@ class NodeAssociations:
         no = val[0]
         name = val[1]
         self.GetGroup(no).SetName(name)
+
+    def StoreCommands(self, val):
+        no = val[0]
+        commands = val[1]
+        self.GetGroup(no).SetCommands(commands)
 
     def StoreMeta(self, val):
         for no, profile, event in val[0]:
@@ -672,6 +680,10 @@ class Node:
             assert len(value) == 1
             self._associations.StoreMeta(value)
             self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
+        elif a == command.ACTION_STORE_ASSOCIATION_GROUP_COMMANDS:
+            assert len(value) == 2
+            self._associations.StoreCommands(value)
+            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
         elif a == command.ACTION_CHANGE_STATE:
             state = actions.pop(0)
             self._MaybeChangeState(state)
@@ -862,6 +874,8 @@ class Node:
             c.append([zwave.Association, zwave.Association_Get, no])
             c.append([zwave.AssociationGroupInformation,
                       zwave.AssociationGroupInformation_NameGet, no])
+            c.append([zwave.AssociationGroupInformation,
+                      zwave.AssociationGroupInformation_ListGet, 0, no])
 
         self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)
 
