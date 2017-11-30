@@ -471,9 +471,7 @@ Basic_Set = 0x01
 Basic_Get = 0x02
 Basic_Report = 0x03
 ControllerReplication_TransferGroup = 0x31
-ControllerReplication_TransferGroupName = 0x32
 ControllerReplication_TransferScene = 0x33
-ControllerReplication_TransferSceneName = 0x34
 ApplicationStatus_Busy = 0x01
 ApplicationStatus_RejectedRequest = 0x02
 SwitchBinary_Set = 0x01
@@ -529,6 +527,12 @@ DoorLockLogging_SupportedGet = 0x01
 DoorLockLogging_SupportedReport = 0x02
 DoorLockLogging_Get = 0x03
 DoorLockLogging_Report = 0x04
+AssociationGroupInformation_NameGet = 0x01
+AssociationGroupInformation_NameReport = 0x02
+AssociationGroupInformation_InfoGet = 0x03
+AssociationGroupInformation_InfoReport = 0x04
+AssociationGroupInformation_ListGet = 0x05
+AssociationGroupInformation_ListReport = 0x06
 ZwavePlusInfo_Get = 0x01
 ZwavePlusInfo_Report = 0x02
 MultiInstance_Get = 0x04
@@ -634,9 +638,7 @@ SUBCMD_TO_STRING = {
     0x2002: 'Basic_Get',
     0x2003: 'Basic_Report',
     0x2131: 'ControllerReplication_TransferGroup',
-    0x2132: 'ControllerReplication_TransferGroupName',
     0x2133: 'ControllerReplication_TransferScene',
-    0x2134: 'ControllerReplication_TransferSceneName',
     0x2201: 'ApplicationStatus_Busy',
     0x2202: 'ApplicationStatus_RejectedRequest',
     0x2501: 'SwitchBinary_Set',
@@ -692,6 +694,12 @@ SUBCMD_TO_STRING = {
     0x4c02: 'DoorLockLogging_SupportedReport',
     0x4c03: 'DoorLockLogging_Get',
     0x4c04: 'DoorLockLogging_Report',
+    0x5901: 'AssociationGroupInformation_NameGet',
+    0x5902: 'AssociationGroupInformation_NameReport',
+    0x5903: 'AssociationGroupInformation_InfoGet',
+    0x5904: 'AssociationGroupInformation_InfoReport',
+    0x5905: 'AssociationGroupInformation_ListGet',
+    0x5906: 'AssociationGroupInformation_ListReport',
     0x5e01: 'ZwavePlusInfo_Get',
     0x5e02: 'ZwavePlusInfo_Report',
     0x6004: 'MultiInstance_Get',
@@ -793,58 +801,58 @@ SUBCMD_TO_STRING = {
 }
 
 GENERIC_SPECIFIC_DB = {
-0x2001 : ['Routing Binary Sensor', [48], [32], 0x30],
-0x0103 : ['Portable Installer Tool', [33, 114, 134, 143], [33, 96, 112, 114, 132, 133, 134, 142, 32], 0x00],
-0x0901 : ['Simple Window Covering', [80, 32], [], 0x50],
-0xa108 : ['Basic Zensor Smoke Sensor', [113, 114, 134], [113, 32], 0x71],
-0x1107 : ['Motor Control Class C', [37, 114, 134, 32, 38], [], 0x26],
-0x4001 : ['Door Lock', [98, 32], [], 0x62],
-0x1204 : ['Multilevel Toggle Remote Switch', [], [41, 32], 0x29],
-0x0201 : ['Static PC Controller', [], [32], 0x00],
-0xa107 : ['Routing Smoke Sensor', [113, 114, 128, 133, 134], [113, 32], 0x71],
-0x0311 : ['Satellite Receiver V2', [114, 134, 148, 32], [], 0x94],
-0x0805 : ['Setback Thermostat', [64, 67, 71, 114, 134, 32], [], 0x40],
-0x4003 : ['Secure Keypad Door Lock', [98, 99, 114, 134, 152, 32], [], 0x62],
-0x1201 : ['Binary Remote Switch', [], [37, 32], 0x25],
-0x0102 : ['Portable Scene Controller', [45, 114, 133], [43, 32], 0x00],
-0xa103 : ['Basic Zensor Alarm Sensor', [113, 114, 134], [113, 32], 0x71],
-0x1106 : ['Motor Control Class B', [37, 114, 134, 32, 38], [], 0x26],
-0x0801 : ['Heating Thermostat', [32], [], 0x00],
-0x1003 : ['Binary Scene Switch', [39, 43, 44, 114, 32, 37], [], 0x25],
-0xa10a : ['Advanced Zensor Smoke Sensor', [113, 114, 128, 133, 134], [113, 32], 0x71],
-0xa101 : ['Basic Routing Alarm Sensor', [113, 114, 133, 134], [113, 32], 0x71],
-0xa106 : ['Basic Routing Smoke Sensor', [113, 114, 133, 134], [113, 32], 0x71],
-0x0202 : ['Static Scene Controller', [45, 114, 133], [43, 32], 0x00],
-0x0806 : ['General Thermostat V2', [64, 67, 114, 134, 32], [], 0x40],
-0x0401 : ['Simple Display', [114, 134, 146, 147, 32], [], 0x00],
-0x0101 : ['Portable Remote Controller', [], [32], 0x00],
-0xa109 : ['Zensor Smoke Sensor', [113, 114, 128, 134], [113, 32], 0x71],
-0x1105 : ['Motor Control Class A', [37, 114, 134, 32, 38], [], 0x26],
-0x0802 : ['General Thermostat', [64, 67, 114, 32], [], 0x40],
-0x1202 : ['Multilevel Remote Switch', [], [38, 32], 0x26],
-0xa102 : ['Routing Alarm Sensor', [113, 114, 128, 133, 134], [113, 32], 0x71],
-0x1101 : ['Multilevel Power Switch', [39, 32, 38], [], 0x26],
-0xa105 : ['Advanced Zensor Alarm Sensor', [113, 114, 128, 133, 134], [113, 32], 0x71],
-0x1302 : ['Multilevel Toggle Switch', [38, 41, 32], [], 0x29],
-0x0203 : ['Static Installer Tool', [33, 114, 134, 143], [33, 96, 112, 114, 132, 133, 134, 142, 32], 0x00],
-0x1200 : ['Remote Switch', [], [32, 32], 0x00],
 0x0100 : ['Remote Controller', [], [32], 0x00],
-0x0f01 : ['Basic Repeater Slave', [32], [], 0x00],
-0x2101 : ['Routing Multilevel Sensor', [49], [32], 0x31],
-0x1104 : ['Multilevel Scene Switch', [39, 43, 44, 114, 32, 38], [], 0x26],
-0x5001 : ['Energy Production', [144, 32, 114, 134, 136], [], 0x00],
-0x0803 : ['Setback Schedule Thermostat', [70, 114, 134, 143, 32], [70, 129, 143], 0x46],
-0x1203 : ['Binary Toggle Remote Switch', [], [40, 32], 0x28],
-0x3101 : ['Simple Meter', [50, 114, 134], [32], 0x32],
-0xa104 : ['Zensor Alarm Sensor', [113, 114, 128, 134], [113, 32], 0x71],
-0x4002 : ['Advanced Door Lock', [98, 114, 134, 32], [], 0x62],
-0x1001 : ['Binary Power Switch', [39, 32, 37], [], 0x25],
-0x0312 : ['Doorbell', [48, 114, 133, 134, 32], [], 0x30],
-0x1103 : ['Multiposition Motor', [114, 134, 32, 38], [], 0x26],
-0xa100 : ['Alarm Sensor', [], [32], 0x71],
-0x1301 : ['Binary Toggle Switch', [37, 40, 32], [], 0x28],
+0x0101 : ['Portable Remote Controller', [], [32], 0x00],
+0x0102 : ['Portable Scene Controller', [45, 114, 133], [43, 32], 0x00],
+0x0103 : ['Portable Installer Tool', [33, 114, 134, 143], [33, 96, 112, 114, 132, 133, 134, 142, 32], 0x00],
+0x0201 : ['Static PC Controller', [], [32], 0x00],
+0x0202 : ['Static Scene Controller', [45, 114, 133], [43, 32], 0x00],
+0x0203 : ['Static Installer Tool', [33, 114, 134, 143], [33, 96, 112, 114, 132, 133, 134, 142, 32], 0x00],
 0x0304 : ['Satellite Receiver', [114, 134, 148, 32], [], 0x00],
+0x0311 : ['Satellite Receiver V2', [114, 134, 148, 32], [], 0x94],
+0x0312 : ['Doorbell', [48, 114, 133, 134, 32], [], 0x30],
+0x0401 : ['Simple Display', [114, 134, 146, 147, 32], [], 0x00],
+0x0801 : ['Heating Thermostat', [32], [], 0x00],
+0x0802 : ['General Thermostat', [64, 67, 114, 32], [], 0x40],
+0x0803 : ['Setback Schedule Thermostat', [70, 114, 134, 143, 32], [70, 129, 143], 0x46],
 0x0804 : ['Setpoint Thermostat', [67, 114, 134, 143, 32], [67, 143], 0x43],
+0x0805 : ['Setback Thermostat', [64, 67, 71, 114, 134, 32], [], 0x40],
+0x0806 : ['General Thermostat V2', [64, 67, 114, 134, 32], [], 0x40],
+0x0901 : ['Simple Window Covering', [80, 32], [], 0x50],
+0x0f01 : ['Basic Repeater Slave', [32], [], 0x00],
+0x1001 : ['Binary Power Switch', [39, 32, 37], [], 0x25],
+0x1003 : ['Binary Scene Switch', [39, 43, 44, 114, 32, 37], [], 0x25],
+0x1101 : ['Multilevel Power Switch', [39, 32, 38], [], 0x26],
+0x1103 : ['Multiposition Motor', [114, 134, 32, 38], [], 0x26],
+0x1104 : ['Multilevel Scene Switch', [39, 43, 44, 114, 32, 38], [], 0x26],
+0x1105 : ['Motor Control Class A', [37, 114, 134, 32, 38], [], 0x26],
+0x1106 : ['Motor Control Class B', [37, 114, 134, 32, 38], [], 0x26],
+0x1107 : ['Motor Control Class C', [37, 114, 134, 32, 38], [], 0x26],
+0x1200 : ['Remote Switch', [], [32, 32], 0x00],
+0x1201 : ['Binary Remote Switch', [], [37, 32], 0x25],
+0x1202 : ['Multilevel Remote Switch', [], [38, 32], 0x26],
+0x1203 : ['Binary Toggle Remote Switch', [], [40, 32], 0x28],
+0x1204 : ['Multilevel Toggle Remote Switch', [], [41, 32], 0x29],
+0x1301 : ['Binary Toggle Switch', [37, 40, 32], [], 0x28],
+0x1302 : ['Multilevel Toggle Switch', [38, 41, 32], [], 0x29],
+0x2001 : ['Routing Binary Sensor', [48], [32], 0x30],
+0x2101 : ['Routing Multilevel Sensor', [49], [32], 0x31],
+0x3101 : ['Simple Meter', [50, 114, 134], [32], 0x32],
+0x4001 : ['Door Lock', [98, 32], [], 0x62],
+0x4002 : ['Advanced Door Lock', [98, 114, 134, 32], [], 0x62],
+0x4003 : ['Secure Keypad Door Lock', [98, 99, 114, 134, 152, 32], [], 0x62],
+0x5001 : ['Energy Production', [144, 32, 114, 134, 136], [], 0x00],
+0xa100 : ['Alarm Sensor', [], [32], 0x71],
+0xa101 : ['Basic Routing Alarm Sensor', [113, 114, 133, 134], [113, 32], 0x71],
+0xa102 : ['Routing Alarm Sensor', [113, 114, 128, 133, 134], [113, 32], 0x71],
+0xa103 : ['Basic Zensor Alarm Sensor', [113, 114, 134], [113, 32], 0x71],
+0xa104 : ['Zensor Alarm Sensor', [113, 114, 128, 134], [113, 32], 0x71],
+0xa105 : ['Advanced Zensor Alarm Sensor', [113, 114, 128, 133, 134], [113, 32], 0x71],
+0xa106 : ['Basic Routing Smoke Sensor', [113, 114, 133, 134], [113, 32], 0x71],
+0xa107 : ['Routing Smoke Sensor', [113, 114, 128, 133, 134], [113, 32], 0x71],
+0xa108 : ['Basic Zensor Smoke Sensor', [113, 114, 134], [113, 32], 0x71],
+0xa109 : ['Zensor Smoke Sensor', [113, 114, 128, 134], [113, 32], 0x71],
+0xa10a : ['Advanced Zensor Smoke Sensor', [113, 114, 128, 133, 134], [113, 32], 0x71],
 }
 
 SUBCMD_TO_PARSE_TABLE = {
@@ -859,9 +867,7 @@ SUBCMD_TO_PARSE_TABLE = {
 
 # ControllerReplication (0x21 = 33)
     0x2131 : ['B{seq}', 'B{group}', 'B{node}'],               # TransferGroup (49)
-    0x2132 : ['B{seq}', 'B{group}', 'S{name}'],               # TransferGroupName (50)
     0x2133 : ['B{seq}', 'B{scene}', 'B{node}', 'B{level}'],   # TransferScene (51)
-    0x2134 : ['B{seq}', 'B{scene}', 'S{name}'],               # TransferSceneName (52)
 
 # ApplicationStatus (0x22 = 34)
     0x2201 : ['B{status}', 'B{delay}'],                       # Busy (1)
@@ -947,6 +953,14 @@ SUBCMD_TO_PARSE_TABLE = {
     0x4c02 : ['B{count}'],                                    # SupportedReport (2)
     0x4c03 : ['B{count}'],                                    # Get (3)
     0x4c04 : ['B{count}', 'C{date}', 'B{type}', 'B{user}', 'A{code}'],  # Report (4)
+
+# AssociationGroupInformation (0x59 = 89)
+    0x5901 : ['B{group}'],                                    # NameGet (1)
+    0x5902 : ['B{group}', 'A{name}'],                         # NameReport (2)
+    0x5903 : ['B{mode}', 'B{group}'],                         # InfoGet (3)
+    0x5904 : ['G{groups}'],                                   # InfoReport (4)
+    0x5905 : ['B{mode}', 'B{group}'],                         # ListGet (5)
+    0x5906 : ['B{group}'],                                    # ListReport (6)
 
 # ZwavePlusInfo (0x5e = 94)
     0x5e01 : [],                                              # Get (1)

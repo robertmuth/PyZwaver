@@ -18,6 +18,9 @@
 """
 constants_generator.py constains code for emitting all Z-Wave related constants
 for use with various languages: Python, Dart, HTML (for inspection)
+
+# for constants see:
+# https://github.com/openhab/org.openhab.binding.zwave/tree/master/src/main/java/org/openhab/binding/zwave/internal/protocol/commandclass
 """
 
 import collections
@@ -353,6 +356,7 @@ SUBCMD_TO_PARSE_TABLE = {}
 ALLOWED_PARAMETER_FORMATS = set([
 "3{XXX}",     # 24bit
 "A{code}",
+"A{name}",
 "B{active}",
 "B{alarm}",
 "B{application}",
@@ -394,6 +398,7 @@ ALLOWED_PARAMETER_FORMATS = set([
 "C{date}",
 "D{code}",
 "D{data}",
+"G{groups}",
 "F{bytes}",
 "K{key}",
 "L{command}",
@@ -403,7 +408,6 @@ ALLOWED_PARAMETER_FORMATS = set([
 "N{name}",
 "O{nonce}",
 "R{bits}",
-"S{name}",
 "T{alarm}",
 "U{thermo}",
 "V{value}",
@@ -471,9 +475,10 @@ C("Basic", 0x20,
 
 C("ControllerReplication", 0x21,
   TransferGroup=(0x31, "B{seq},B{group},B{node}"),
-  TransferGroupName=(0x32, "B{seq},B{group},S{name}"),  # ERROR use N?
+  #TransferGroupName=(0x32, "B{seq},B{group},S{name}"),  # ERROR use N?
   TransferScene=(0x33, "B{seq},B{scene},B{node},B{level}"),
-  TransferSceneName=(0x34, "B{seq},B{scene},S{name}"))   #ERROR use N?
+  #TransferSceneName=(0x34, "B{seq},B{scene},S{name}"),   #ERROR use N?
+)
 
 C("ApplicationStatus", 0x22,
   Busy=(0x01, "B{status},B{delay}"),
@@ -572,7 +577,14 @@ C("DoorLockLogging", 0x4C,
 
 C("ScheduleEntryLock", 0x4e)
 
-C("AssociationGroupInformation", 0x59)
+C("AssociationGroupInformation", 0x59,
+  NameGet=(0x1, "B{group}"),
+  NameReport=(0x2,  "B{group},A{name}"),
+  InfoGet=(0x3, "B{mode},B{group}"),
+  InfoReport=(0x4,  "G{groups}"),
+  ListGet=(0x5, "B{mode},B{group}"),
+  ListReport=(0x6,  "B{group}"),
+)
 
 C("ZwavePlusInfo", 0x5e,
   Get = (0x01, ""),
