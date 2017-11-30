@@ -72,6 +72,23 @@ ACTION_STORE_ASSOCIATION_GROUP_META = "StoreAssociationGroupMeta"
 ACTION_STORE_ASSOCIATION_GROUP_COUNT = "StoreAssociationGroupCount"
 ACTION_STORE_ASSOCIATION_GROUP_COMMANDS = "StoreAssociationGroupCommands"
 
+ALL_ACTIONS = set([
+    ACTION_STORE_VALUE,
+    ACTION_STORE_EVENT,
+    ACTION_STORE_MAP,
+    ACTION_STORE_SENSOR,
+    ACTION_STORE_METER,
+    ACTION_STORE_SCENE,
+    ACTION_STORE_COMMAND_VERSION,
+    ACTION_STORE_PARAMETER,
+    ACTION_CHANGE_STATE,
+    ACTION_STORE_ASSOCIATION_GROUP_NODES,
+    ACTION_STORE_ASSOCIATION_GROUP_NAME,
+    ACTION_STORE_ASSOCIATION_GROUP_META,
+    ACTION_STORE_ASSOCIATION_GROUP_COUNT,
+    ACTION_STORE_ASSOCIATION_GROUP_COMMANDS
+])
+
 #
 SECURITY_SET_CLASS = "SecuritySetClass"
 SECURITY_SCHEME = "SecurityScheme"
@@ -482,12 +499,12 @@ def _GetParameterDescriptors(m):
     return zwave.SUBCMD_TO_PARSE_TABLE[key]
 
 
-def ParseCommand(m):
+def ParseCommand(m, prefix):
     """ParseCommand decodes an API_APPLICATION_COMMAND request into a list of values"""
     table = _GetParameterDescriptors(m)
 
     if table is None:
-        logging.error("unknown command")
+        logging.error("%s unknown command", prefix)
         return []
 
     out = []
@@ -495,7 +512,7 @@ def ParseCommand(m):
     for t in table:
         new_index, value = _PARSE_ACTIONS[t[0]](m, index)
         if value is None:
-            logging.error("malformed message while parsing %s", t[0])
+            logging.error("%s malformed message while parsing format %s", prefix, t[0], table)
             return None
         out.append(value)
         index = new_index
@@ -599,6 +616,7 @@ _STORE_VALUE_LIST_ACTIONS = {
     (zwave.Powerlevel, zwave.Powerlevel_Report) : None,
     (zwave.SensorAlarm, zwave.SensorAlarm_SupportedReport) : None,
     (zwave.ThermostatMode, zwave.ThermostatMode_Report) : None,
+    # needs work
     (zwave.ManufacturerSpecific, zwave.ManufacturerSpecific_DeviceSpecificReport) : None,
     (zwave.ApplicationStatus, zwave.ApplicationStatus_Busy) : None,
     (zwave.MultiInstance, zwave.MultiInstance_ChannelEndPointReport) : None,
@@ -665,7 +683,7 @@ ACTIONS = {
     (zwave.Security, zwave.Security_NetworkKeyVerify): [SECURITY_KEY_VERIFY],
 }
 
-_STATE_CHANGE = {
+STATE_CHANGE = {
     (zwave.ManufacturerSpecific, zwave.ManufacturerSpecific_Report):
     [ACTION_CHANGE_STATE, NODE_STATE_INTERVIEWED],
 }
@@ -680,10 +698,6 @@ def PatchUpActions():
 
     for k, v in _STORE_SENSOR_ACTIONS.items():
         ACTIONS[k] = [ACTION_STORE_SENSOR, VALUE_TYPE_SENSOR_VALUE] + v
-
-    for k, v in _STATE_CHANGE.items():
-        ACTIONS[k] += v
-
 
 PatchUpActions()
 
@@ -746,7 +760,7 @@ def GetValue(action, value):
         kind = action.pop(0)
         return Value(kind, UNIT_NONE, value[0])
     elif t == VALUE_TYPE_LIST:
-        assert type(value) == list
+        assert type(value) == list, "expected list value"
         kind = action.pop(0)
         return Value(kind, UNIT_NONE, value)
     elif t == VALUE_TYPE_CONST:

@@ -538,13 +538,14 @@ def RenderAllReadings(values1, values2):
     return out
 
 def ClassSpecificNodeButtons(node):
+    commands = node.GetCommands()
     out = []
-    if node.HasCommandClass(zwave.SwitchBinary):
+    if commands.HasCommandClass(zwave.SwitchBinary):
         out.append(MakeNodeButton(node, "binary_switch/0", "Off"))
         out.append(MakeNodeButton(node, "binary_switch/255", "On"))
-    if node.HasCommandClass(zwave.SwitchMultilevel):
+    if commands.HasCommandClass(zwave.SwitchMultilevel):
         out.append(MakeNodeRange(node, "multilevel_switch", 0, 100)),
-    if node.HasCommandClass(zwave.Meter):
+    if commands.HasCommandClass(zwave.Meter):
         # reset
         pass
     return out
@@ -679,19 +680,20 @@ class DisplayHandler(BaseHandler):
         self.finish()
 
 
-def RenderAssociationRow(node, group, content):
+def RenderAssociationGroup(node: znode.Node, group: znode.AssociationGroup):
+    no = group._no
     out = ["<tr>"
-           "<th>", "Group %d [%d]:" % (group, content[0]), "</th>",
+           "<th>", "Group %d %s [%d]:" % (no, group._name, group._capacity), "</th>",
            "<td>",
            ]
-    for n in content[2]:
+    for n in group._nodes:
         out += ["%d" % n,
-                MakeNodeButton(node, "association_remove/%d/%d" % (group, n), "X", "remove"),
+                MakeNodeButton(node, "association_remove/%d/%d" % (no, n), "X", "remove"),
                 "&nbsp;"]
 
     out += ["</td>",
             "<td>",
-            MakeNodeButtonInput(node, "association_add/%d/" % group, "Add Node"),
+            MakeNodeButtonInput(node, "association_add/%d/" % no, "Add Node"),
             "<input type=number min=0 max=232 value=0>",
             "</td>",
             "</tr>"]
@@ -704,25 +706,27 @@ def RenderNodeCommandClasses(node):
            "<p>",
            "<table>",
     ]
-    for cls, version in sorted(node.GetAllCommandClasses().items()):
+    commands = node.GetCommands()
+    for cls, version in commands.CommandVersions():
         name =  "%s [%d]" % (zwave.CMD_TO_STRING.get(cls, "UKNOWN:%d" % cls), cls)
         out += ["<tr><td>", name, "</td><td>", str(version), "</td></tr>"]
     out += ["</table>"]
     return out
 
-def RenderNodeAssociations(node):
+def RenderNodeAssociations(node: znode.Node):
     out = ["<h2>Associations</h2>",
            MakeNodeButton(node, "refresh_assoc", "Probe"),
            "<p>",
            "<table>",
     ]
-    for group, content in sorted(node.GetAllAssociations().items()):
-        out.append(RenderAssociationRow(node, group, content))
+    associations = node.GetAssociations()
+    for group in associations.Groups():
+        out.append(RenderAssociationGroup(node, group))
     out += ["</table>"]
     return out
 
 
-def RenderNodeParameters(node):
+def RenderNodeParameters(node: znode.Node):
     compact = znode.CompactifyParams(node.GetAllParameters())
     out = ["<h2>Configuration</h2>",
            MakeNodeButton(node, "refresh_parameters", "Probe"),
@@ -989,7 +993,7 @@ def main():
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     logger.setLevel(logging.WARNING)
-    #logger.setLevel(logging.ERROR)
+    logger.setLevel(logging.ERROR)
     for h in logger.handlers:
         h.setFormatter(MyFormatter())
 

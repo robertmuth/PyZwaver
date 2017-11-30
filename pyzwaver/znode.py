@@ -107,8 +107,12 @@ _STATIC_PROPERTY_QUERIES = [
     [zwave.SwitchMultilevel, zwave.SwitchMultilevel_SupportedGet],
     [zwave.MultiInstance, zwave.MultiInstance_ChannelEndPointGet],
 
+    # device type
     [zwave.ManufacturerSpecific,
         zwave.ManufacturerSpecific_DeviceSpecificGet, 0],
+    # serial no
+    [zwave.ManufacturerSpecific,
+        zwave.ManufacturerSpecific_DeviceSpecificGet, 1],
 
     [zwave.TimeParameters, zwave.TimeParameters_Get],
     [zwave.ZwavePlusInfo, zwave.ZwavePlusInfo_Get],
@@ -247,6 +251,7 @@ class AssociationGroup:
         self._profile = None
         self._event = None
         self._commands = None
+
     def SetNodes(self, capacity, nodes):
         self._capacity = capacity
         self._nodes = nodes
@@ -277,6 +282,10 @@ class NodeAssociations:
         g = AssociationGroup(no)
         self._groups[no] = g
         return g
+
+    def Groups(self):
+        ordered = sorted([x for x in self._groups.items()])
+        return [g for _, g in ordered]
 
     def StoreCount(self, val):
         self._count = val[0]
@@ -313,6 +322,54 @@ class NodeAssociations:
     def __str__(self):
         return "\n".join([str(g) for g in self._groups.values()])
 
+
+class NodeCommands:
+
+    def __init__(self):
+        self._version_map = {}
+        self._controls = set()
+
+    def Classes(self):
+        return self._version_map.keys()
+
+    def CommandVersions(self):
+        return sorted([x for x  in self._version_map.items()])
+
+    def HasCommandClass(self, cls):
+        return cls in self._version_map
+
+    def NumCommands(self):
+        return len(self._version_map)
+
+    def HasAlternaticeForBasicCommand(self):
+        return (zwave.SwitchBinary in self._version_map or
+                zwave.SwitchMultilevel in self._version_map)
+
+    def SetVersion(self, cmd, version):
+        self._version_map[cmd] = version
+
+    def InitializeUnversioned(self, cmd, controls, std_cmd, std_controls):
+        self._controls |= set(controls)
+        self._controls |= set(std_controls)
+
+        for k in cmd:
+            if k not in self._version_map:
+                self._version_map[k] = -1
+        for k in controls:
+            if k not in self._version_map:
+                self._version_map[k] = -1
+        for k in std_cmd:
+            if k not in self._version_map:
+                self._version_map[k] = -1
+
+        k = zwave.MultiInstance
+        if k in self._controls and k not in self._version_map:
+            self._version_map[k] = -1
+
+    def __str__(self):
+        return repr([(zwave.CMD_TO_STRING.get(c, "UKNOWN:%d" % c), c, v)
+                     for c, v in self._version_map.items()])
+
 class Node:
 
     """Node represents a single node in a zwave network.
@@ -336,9 +393,8 @@ class Node:
         self.device_type = (0, 0, 0)
         self._protocol_version = 0
 
-        self._commands = {}
-        self._secure_commands = {}
-        self._controls = set()
+        self._commands = NodeCommands()
+        self._secure_commands = NodeCommands()
 
         self._values = {}
         self._events = {}
@@ -411,12 +467,11 @@ class Node:
     def GetAllParameters(self):
         return self._parameters
 
-    def GetAllCommandClasses(self):
+    def GetCommands(self):
         return self._commands
 
     def GetAllValues(self):
         return self._values
-
 
     def __lt__(self, other):
         return self.n < other.n
@@ -461,9 +516,8 @@ class Node:
         out.append("  values:       " + RenderValues(self._values.values()))
         out.append("  events:       " + repr(self._events))
         out.append("  parameters:   " + repr(CompactifyParams(self._parameters)))
-        out.append("  commands:     " +
-                   repr([(zwave.CMD_TO_STRING.get(c, "UKNOWN:%d" % c), c, v)
-                        for c, v in self._commands.items()]))
+        out.append("  commands:")
+        out.append(str(self._commands))
         out.append("  associations:")
         out.append(str(self._associations))
         return "\n".join(out)
@@ -480,10 +534,6 @@ class Node:
             "lib_type": self.LibraryType(),
             "protocol_version": self._protocol_version
         }
-
-    def HasAlternaticeForBasicCommand(self):
-        return (zwave.SwitchBinary in self._commands or
-                zwave.SwitchMultilevel in self._commands)
 
     def RenderLastContact(self):
         if self._last_contact == 0.0:
@@ -508,10 +558,7 @@ class Node:
         """at the very least we should have received a ProcessUpdate(),
         ProcessProtocolInfo()
         """
-        return self.device_type[0] != 0 and self._commands
-
-    def HasCommandClass(self, cls):
-        return cls in self._commands
+        return self.device_type[0] != 0 and self._commands.NumCommands() > 0
 
     def _MaybeChangeState(self, new_state):
         old_state = self._state
@@ -521,7 +568,7 @@ class Node:
             self._state = new_state
             self._shared.event_cb(self.n, command.EVENT_STATE_CHANGE)
         if new_state == command.NODE_STATE_DISCOVERED:
-            if old_state < new_state and self.HasCommandClass(zwave.Security):
+            if old_state < new_state and self._commands.HasCommandClass(zwave.Security):
                 self._InitializeSecurity()
             elif old_state < command.NODE_STATE_INTERVIEWED:
                 self.RefreshStaticValues()
@@ -531,7 +578,7 @@ class Node:
     def _IsSecureCommand(self, cmd, sub_cmd):
         if cmd == zwave.Security:
             return sub_cmd in [zwave.Security_NetworkKeySet, zwave.Security_SupportedGet]
-        return cmd in self._secure_commands
+        return self._secure_commands.HasCommandClass(cmd)
 
     def _InitializeSecurity(self):
         logging.error("[%d] initializing security", self.n)
@@ -560,25 +607,14 @@ class Node:
 
         # self.UpdateIsFailedNode();
 
-    def _InitializeCommands(self, typ, cmd, cntrl):
+    def _InitializeCommands(self, typ, cmd, controls):
         k = typ[1] * 256 + typ[2]
         v = zwave.GENERIC_SPECIFIC_DB.get(k)
         if v is None:
             logging.error("[%d] unknown generic device : ${type}", self.n)
             return
+        self._commands.InitializeUnversioned(cmd, controls, v[1], v[2])
 
-        for k in cmd:
-            if k not in self._commands:
-                self._commands[k] = -1
-        for k in v[1]:
-            if k not in self._commands:
-                self._commands[k] = -1
-
-        self._controls |= set(cntrl)
-        self._controls |= set(v[2])
-        k = zwave.MultiInstance
-        if k in self._controls and k not in self._commands:
-            self._commands[k] = -1
 
     def ProcessNodeInfo(self, m):
         self._shared.event_cb(self.n, command.EVENT_NODE_INFO)
@@ -622,10 +658,6 @@ class Node:
         self._meters[(val.kind, val.unit)] = val
         self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
 
-    def StoreCommandVersion(self, val):
-        self._commands[val[0]] = val[1]
-        self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
-
     def StoreParameter(self, val):
         self._parameters[val[0]] = val[1]
         self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
@@ -634,17 +666,21 @@ class Node:
         self._events[val.kind] = val
         self._shared.event_cb(self.n, val.kind)
 
-    def _OneAction(self, a, actions, value):
-        logging.info(
-            "[%d]  action: %s (%s) value: %s", self.n, a, actions, value)
+    def _OneAction(self, action, value, prefix):
+        logging.info("%s action:%s (%s) value: %s", prefix, action, value)
+        a = action[0]
+        actions = action[1:]
+        assert a in command.ALL_ACTIONS
         if a == command.ACTION_STORE_COMMAND_VERSION:
-            assert len(value) == 2
+            assert len(value) == 2, "%s: bad value: %s" % (prefix, value)
             if value[1] != 0:
-                self.StoreCommandVersion(value)
+                self._commands.SetVersion(value[0], value[1])
+                self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
         elif a == command.ACTION_STORE_SENSOR:
             self.StoreSensor(command.GetValue(actions, value))
         elif a == command.ACTION_STORE_VALUE:
-            self.StoreValue(command.GetValue(actions, value))
+            if len(value) == 1:
+                self.StoreValue(command.GetValue(actions, value))
         elif a == command.ACTION_STORE_MAP:
             val = command.GetValue(actions, value)
             if val.kind not in self._values:
@@ -696,20 +732,27 @@ class Node:
                 # already paired
                 self.SecurityRequestClasses()
         else:
-            logging.error("unexpected: %s %s %s", a, actions, value)
+            logging.error("%s action:%s unexpected: %s %s",
+                          prefix, a, actions, value)
             assert False
+
+    def LogPrefix(self, k):
+        cmd =  zwave.SUBCMD_TO_STRING.get(k[0] * 256 + k[1], "Unknown_" + str(k))
+        return "[%d] %s" % (self.n, cmd)
 
     def ProcessCommand(self, data):
         self._last_contact = time.time()
-        value = command.ParseCommand(data)
         k = (data[0], data[1])
-        actions = command.ACTIONS.get(k)[:]
-        if actions is None:
-            logging.error("[%d] unknown command %s", self.n, Hexify(data))
+        prefix = self.LogPrefix(k)
+        value = command.ParseCommand(data, prefix)
+        state_change = command.STATE_CHANGE.get(k)
+        if state_change:
+            self._OneAction(state_change, value, prefix)
+        action = command.ACTIONS.get(k)
+        if action is None:
+            logging.error("%s unknown command %s", prefix, Hexify(data))
             return
-        while actions:
-            a = actions.pop(0)
-            self._OneAction(a, actions, value)
+        self._OneAction(action, value, prefix)
 
     def _ProcessProtocolInfo(self, m):
         flags = self.flags
@@ -906,10 +949,10 @@ class Node:
             _STATIC_PROPERTY_QUERIES,
             XMIT_OPTIONS)
         self.BatchCommandSubmitFilteredSlow(
-            CommandVersionQueries(self._commands),
+            CommandVersionQueries(self._commands.Classes()),
             XMIT_OPTIONS)
         self.BatchCommandSubmitFilteredSlow(
-            MultiInstanceSupportQueries(self._commands),
+            MultiInstanceSupportQueries(self._commands.Classes()),
             XMIT_OPTIONS)
 
         # This must be last as we use this as an indicator for the
@@ -919,7 +962,7 @@ class Node:
 
     def BatchCommandSubmitFiltered(self, commands, priority, xmit):
         for cmd in commands:
-            if not self.HasCommandClass(cmd[0]):
+            if not self._commands.HasCommandClass(cmd[0]):
                 continue
 
             if self._IsSecureCommand(cmd[0], cmd[1]):
