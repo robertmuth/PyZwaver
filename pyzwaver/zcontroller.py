@@ -63,41 +63,54 @@ def ExtractNodes(bits):
     return r
 
 
-HANDLER_TYPE_ADD_NODE = (
-    zwave.ADD_NODE_STATUS_TO_STRING,
-    # continue
-    set([zwave.ADD_NODE_STATUS_LEARN_READY,
-         zwave.ADD_NODE_STATUS_ADDING_SLAVE,
-         zwave.ADD_NODE_STATUS_ADDING_CONTROLLER,
-         zwave.ADD_NODE_STATUS_NODE_FOUND]),
-    # complete
-    set([zwave.ADD_NODE_STATUS_DONE,
-         zwave.ADD_NODE_STATUS_FAILED,
-         zwave.REMOVE_NODE_STATUS_NOT_INCLUSION_CONTROLLER,
-         zwave.ADD_NODE_STATUS_PROTOCOL_DONE]),
-    # success
-    set([zwave.ADD_NODE_STATUS_DONE,
-         zwave.ADD_NODE_STATUS_PROTOCOL_DONE]))
+PAIRING_ACTION_CONTINUE = 1
+PAIRING_ACTION_DONE = 2
+PAIRING_ACTION_FAILED = 3
+PAIRING_ACTION_DONE_UPDATE = 4
 
 
-HANDLER_TYPE_REMOVE_NODE = (
-    zwave.REMOVE_NODE_STATUS_TO_STRING,
-    # continue
-    set([zwave.REMOVE_NODE_STATUS_LEARN_READY,
-         zwave.REMOVE_NODE_STATUS_REMOVING_SLAVE,
-         zwave.REMOVE_NODE_STATUS_NODE_FOUND]),
-    set([zwave.REMOVE_NODE_STATUS_DONE,
-         zwave.REMOVE_NODE_STATUS_NOT_INCLUSION_CONTROLLER,
-         zwave.REMOVE_NODE_STATUS_FAILED]),
-    set([zwave.REMOVE_NODE_STATUS_DONE]))
+HANDLER_TYPE_ADD_NODE = (zwave.ADD_NODE_STATUS_TO_STRING, {
+    zwave.ADD_NODE_STATUS_LEARN_READY : PAIRING_ACTION_CONTINUE,
+    zwave.ADD_NODE_STATUS_ADDING_SLAVE : PAIRING_ACTION_CONTINUE,
+    zwave.ADD_NODE_STATUS_ADDING_CONTROLLER : PAIRING_ACTION_CONTINUE,
+    zwave.ADD_NODE_STATUS_NODE_FOUND : PAIRING_ACTION_CONTINUE,
+
+    zwave.ADD_NODE_STATUS_FAILED: PAIRING_ACTION_FAILED,
+    zwave.REMOVE_NODE_STATUS_NOT_INCLUSION_CONTROLLER: PAIRING_ACTION_FAILED,
+
+    zwave.ADD_NODE_STATUS_DONE: PAIRING_ACTION_DONE_UPDATE,
+    zwave.ADD_NODE_STATUS_PROTOCOL_DONE: PAIRING_ACTION_DONE_UPDATE,
+})
+
+HANDLER_TYPE_STOP = (zwave.ADD_NODE_STATUS_TO_STRING, {
+    zwave.ADD_NODE_STATUS_LEARN_READY : PAIRING_ACTION_CONTINUE,
+    zwave.ADD_NODE_STATUS_ADDING_SLAVE : PAIRING_ACTION_CONTINUE,
+    zwave.ADD_NODE_STATUS_ADDING_CONTROLLER : PAIRING_ACTION_CONTINUE,
+    zwave.ADD_NODE_STATUS_NODE_FOUND : PAIRING_ACTION_CONTINUE,
+
+    zwave.ADD_NODE_STATUS_FAILED: PAIRING_ACTION_DONE,
+    zwave.REMOVE_NODE_STATUS_NOT_INCLUSION_CONTROLLER: PAIRING_ACTION_DONE,
+
+    zwave.ADD_NODE_STATUS_DONE: PAIRING_ACTION_DONE,
+    zwave.ADD_NODE_STATUS_PROTOCOL_DONE: PAIRING_ACTION_DONE,
+})
 
 
-HANDLER_TYPE_SET_LEARN_MODE = (
-    zwave.LEARN_MODE_STATUS_TO_STRING,
-    set([zwave.LEARN_MODE_STATUS_STARTED]),
-    set([zwave.LEARN_MODE_STATUS_DONE,
-         zwave.LEARN_MODE_STATUS_FAILED]),
-    set([zwave.LEARN_MODE_STATUS_DONE]))
+HANDLER_TYPE_REMOVE_NODE = (zwave.REMOVE_NODE_STATUS_TO_STRING, {
+    zwave.REMOVE_NODE_STATUS_LEARN_READY: PAIRING_ACTION_CONTINUE,
+    zwave.REMOVE_NODE_STATUS_REMOVING_SLAVE: PAIRING_ACTION_CONTINUE,
+    zwave.REMOVE_NODE_STATUS_NODE_FOUND : PAIRING_ACTION_CONTINUE,
+    zwave.REMOVE_NODE_STATUS_NOT_INCLUSION_CONTROLLER: PAIRING_ACTION_FAILED,
+    zwave.REMOVE_NODE_STATUS_FAILED: PAIRING_ACTION_FAILED,
+    zwave.REMOVE_NODE_STATUS_DONE: PAIRING_ACTION_DONE_UPDATE,
+})
+
+
+HANDLER_TYPE_SET_LEARN_MODE = (zwave.LEARN_MODE_STATUS_TO_STRING, {
+    zwave.LEARN_MODE_STATUS_STARTED: PAIRING_ACTION_CONTINUE,
+    zwave.LEARN_MODE_STATUS_FAILED: PAIRING_ACTION_FAILED,
+    zwave.LEARN_MODE_STATUS_DONE: PAIRING_ACTION_DONE_UPDATE,
+})
 
 
 
@@ -321,45 +334,52 @@ class Controller:
     # ============================================================
     # Pairing
     # ============================================================
-    def FancyReceiver(self, activity, receiver_type):
-        self._event_cb(activity, EVENT_PAIRING_STARTED)
-        stringMap, contSet, doneSet, successSet = receiver_type
+    def FancyReceiver(self, activity, receiver_type, event_cb):
+        event_cb(activity, EVENT_PAIRING_STARTED)
+        stringMap, actions = receiver_type
         def Handler(m):
             if m is None:
                 logging.warning("[%s] Aborted", activity)
-                self._event_cb(activity, EVENT_PAIRING_ABORTED)
+                event_cb(activity, EVENT_PAIRING_ABORTED)
                 return True
             status = m[5]
             node = m[6]
             name = stringMap[status]
-            if status in contSet:
+            a = actions[status]
+            if a == PAIRING_ACTION_CONTINUE:
                 logging.warning("[%s] Continue - %s [%d]" % (activity, name, node))
-                self._event_cb(activity, EVENT_PAIRING_CONTINUE)
+                event_cb(activity, EVENT_PAIRING_CONTINUE)
                 return False
-            elif status in successSet:
+            elif a == PAIRING_ACTION_DONE:
+                logging.warning("[%s] Success")
+                event_cb(activity, EVENT_PAIRING_SUCCESS)
+                return True
+
+            elif a == PAIRING_ACTION_DONE_UPDATE:
                 logging.warning("[%s] Success - updating nodes %s [%d]" % (activity, name, node))
-                self._event_cb(activity, EVENT_PAIRING_SUCCESS)
+                event_cb(activity, EVENT_PAIRING_SUCCESS)
                 # This not make much sense for node removals but does not hurt either
                 self.RequestNodeInfo(node)
                 self.Update()
                 return True
-            elif status in doneSet:
+            elif a == PAIRING_ACTION_FAILED:
                 logging.warning("[%s] Failure - %s [%d]" % (activity, name, node))
-                self._event_cb(activity, EVENT_PAIRING_FAILED)
+                event_cb(activity, EVENT_PAIRING_FAILED)
                 return True
             else:
                 logging.error("activity unexpected: ${name}")
                 return False
         return Handler
 
-    def AddNodeToNetwork(self):
+    def AddNodeToNetwork(self, event_cb):
         mode = [zwave.ADD_NODE_ANY]
-        cb = self.FancyReceiver(ACTIVITY_ADD_NODE, HANDLER_TYPE_ADD_NODE)
+        cb = self.FancyReceiver(ACTIVITY_ADD_NODE, HANDLER_TYPE_ADD_NODE, event_cb)
         return self.SendCommandWithId(zwave.API_ZW_ADD_NODE_TO_NETWORK, mode, cb, self._pairing_timeout_sec)
 
-    def StopAddNodeToNetwork(self):
+    def StopAddNodeToNetwork(self, event_cb):
         mode = [zwave.ADD_NODE_STOP]
-        return self.SendCommandWithIdNoResponse(zwave.API_ZW_ADD_NODE_TO_NETWORK, mode)
+        cb = self.FancyReceiver(ACTIVITY_ADD_NODE, HANDLER_TYPE_STOP, event_cb)
+        return self.SendCommandWithId(zwave.API_ZW_ADD_NODE_TO_NETWORK, mode, cb, self._pairing_timeout_sec)
 
     def RemoveNodeFromNetwork(self):
         mode = [zwave.REMOVE_NODE_ANY]
