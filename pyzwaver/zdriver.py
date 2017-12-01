@@ -67,8 +67,9 @@ class History(object):
         cutoff = 0
         with_can = 0
         total_can = 0
-        by_node = collections.Counter()
+        by_node_cnt = collections.Counter()
         by_node_can = collections.Counter()
+        by_node_dur = collections.Counter()
         by_state = collections.Counter()
         sum_duration = 0
         mm = self._history
@@ -81,15 +82,21 @@ class History(object):
                 total_can += m.can
                 by_node_can[m.node] += 1
             by_state[m.state] += 1
-            by_node[m.node] += 1
+            by_node_cnt[m.node] += 1
             if m.end:
-                sum_duration += m.end - m.start
+                duration = int(1000.0 * (m.end - m.start))
+                by_node_dur[m.node] += duration
+                sum_duration += duration
         out = []
         out.append("processed: %d  with-can: %d (total can: %d) avg-time: %dms" %
-                   (count, with_can, total_can, int(1000.0 * sum_duration / count)))
+                   (count, with_can, total_can, sum_duration // count))
         out.append("by state: %s" % by_state)
-        out.append("by state_can: %s" % by_node_can)
-        out.append("by node: %s" % by_node)
+
+        s = ["by node:"]
+        for n in sorted(by_node_cnt.keys()):
+            s.append("  %d: %d (%d) %dms" % (n, by_node_cnt[n], by_node_can[n],
+                       by_node_dur[n] // by_node_cnt[n]))
+        out.append("".join(s))
         return "\n".join(out)
 
 
@@ -185,8 +192,8 @@ class Driver(object):
             elif m[0] == zwave.CAN:
                 inflight = self._mq.GetInFlightMessage()
                 if inflight is not None:
-                    logging.warning("re-sending message after CAN ==== %s",
-                                    zmessage.PrettifyRawMessage(inflight.payload))
+                    logging.error("re-sending message after CAN ==== %s",
+                                  zmessage.PrettifyRawMessage(inflight.payload))
                     inflight.can += 1
                     # TODO: maybe add max
                     # if self._inflight.can > 3:

@@ -70,6 +70,7 @@ HTML = """
 <button class=menu onclick='HandleTab(event)' data-param='tab-all-nodes'>Nodes</button>
 <button class=menu onclick='HandleTab(event)' data-param='tab-status'>Status</button>
 <button class=menu onclick='HandleTab(event)' data-param='tab-logs'>Logs</button>
+<button class=menu onclick='HandleTab(event)' data-param='tab-slow'>Slow</button>
 Simple demo app using the pyzwaver library
 </div>
 <hr>
@@ -82,6 +83,17 @@ Simple demo app using the pyzwaver library
 <div class=tab id=tab-logs>
     <!-- see http://www.listjs.com/ -->
     <div id="driverlog">
+    <table border=1>
+    <!-- IMPORTANT, class="list" have to be at tbody -->
+        <tbody class="list">
+            <tr><td class="t"></td><td class="d"></td><td class="m"></td></tr>
+        </tbody>
+    </table>
+    </div>
+</div>
+<div class=tab id=tab-slow>
+    <!-- see http://www.listjs.com/ -->
+    <div id="driverslow">
     <table border=1>
     <!-- IMPORTANT, class="list" have to be at tbody -->
         <tbody class="list">
@@ -122,6 +134,7 @@ var TAB_ALL_NODES = "tab-all-nodes";
 var TAB_ONE_NODE = "tab-one-node";
 var TAB_STATUS = "tab-status";
 var TAB_LOGS = "tab-logs";
+var TAB_SLOW = "tab-slow";
 var STATUS_FIELD = "status";
 var ACTIVITY_FIELD = "activity"
 var HISTORY_FIELD = "history";
@@ -133,6 +146,7 @@ tabToDisplay[TAB_ALL_NODES] =  function() {return "/display/nodes"; };
 tabToDisplay[TAB_ONE_NODE] = function() {return "/display/node/" + currentNode; };
 tabToDisplay[TAB_STATUS] = function() {return "/display/status"; };
 tabToDisplay[TAB_LOGS] = function() {return "/display/logs"; };
+tabToDisplay[TAB_SLOW] = function() {return "/display/slow"; };
 
 function OpenSocket() {
     var loc = window.location;
@@ -169,6 +183,13 @@ function SocketMessageHandler(e) {
            //item: '<tr><td class="t"><td class="m"></td></td></tr>'
          };
          var lst = new List('driverlog', options, values);
+    } else if (tag == "b") {
+         var values = JSON.parse(val);
+         var options = {
+           valueNames: [ 'd', 't', 'm' ],
+           //item: '<tr><td class="t"><td class="m"></td></td></tr>'
+         };
+         var lst = new List('driverslow', options, values);
     } else if (tag == "a") {
          var tab = document.getElementById(TAB_ALL_NODES);
          tab.innerHTML = val;
@@ -369,7 +390,7 @@ tornado.options.define("tasks",
                        help="size of task pool")
 
 tornado.options.define("node_auto_refresh_secs",
-                       default=120,
+                       default=300,
                        type=int,
                        help="seconds between refreshs")
 
@@ -643,6 +664,21 @@ def DriverLogs():
         out.append({"t": t, "d": d, "m": m })
     return out
 
+def DriverSlow():
+    global DRIVER
+    out = []
+    for m in DRIVER.history._history:
+        if not m.end: continue
+        dur = int(1000.0 * (m.end - m.start))
+        if dur < 300: continue
+        d = "%4d%s" % (dur, "*" if m.aborted else " ")
+        t = m.start
+        ms = ".%03d" % int(1000 * (t - math.floor(t)))
+        t = time.strftime("%H:%M:%S", time.localtime(t)) + ms
+        m = zmessage.PrettifyRawMessage(m.payload)
+        out.append({"d": d, "t": t, "m": m })
+    return out
+
 
 class DisplayHandler(BaseHandler):
     """Misc Display Hanlders - except for node"""
@@ -661,6 +697,8 @@ class DisplayHandler(BaseHandler):
                 SendToSocket("d:" + RenderDriver())
             elif cmd == "logs":
                 SendToSocket("l:" + json.dumps(DriverLogs(), sort_keys=True,  indent=4))
+            elif cmd == "slow":
+                SendToSocket("b:" + json.dumps(DriverSlow(), sort_keys=True,  indent=4))
             elif cmd == "controller":
                 SendToSocket("c:" + RenderController())
             elif cmd == "node":
@@ -879,6 +917,7 @@ class ControllerActionHandler(BaseHandler):
         cmd = token.pop(0)
         try:
             if cmd == "add_node":
+                CONTROLLER.StopAddNodeToNetwork(ControllerEventCallback)
                 CONTROLLER.AddNodeToNetwork(ControllerEventCallback)
                 CONTROLLER.StopAddNodeToNetwork(ControllerEventCallback)
             elif cmd == "stop_add_node":
@@ -889,6 +928,7 @@ class ControllerActionHandler(BaseHandler):
             elif cmd == "stop_add_controller_primary":
                 CONTROLLER.StopChangeController(ChangeController)
             elif cmd == "remove_node":
+                CONTROLLER.StopRemoveNodeFromNetwork(CONTROLLER)
                 CONTROLLER.RemoveNodeFromNetwork(ControllerEventCallback)
                 CONTROLLER.StopRemoveNodeFromNetwork(CONTROLLER)
             elif cmd == "stop_remove_node":
