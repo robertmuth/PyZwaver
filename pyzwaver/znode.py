@@ -668,7 +668,7 @@ class Node:
         self._shared.event_cb(self.n, val.kind)
 
     def _OneAction(self, action, value, prefix):
-        logging.info("%s action:%s (%s) value: %s", prefix, action, value)
+        logging.info("%s action: %s value: %s", prefix, action, value)
         a = action[0]
         actions = action[1:]
         assert a in command.ALL_ACTIONS
@@ -825,6 +825,7 @@ class Node:
             return
 
         def handler(m):
+            logging.warning("[%d] is failed check: %s", self.n, m)
             self._failed = m[4] != 0
             if cb:
                 cb(m)
@@ -917,7 +918,8 @@ class Node:
         self.BatchCommandSubmitFilteredFast(reqs, XMIT_OPTIONS)
 
     def RefreshAssociations(self):
-        c = []
+        c = [[zwave.AssociationGroupInformation,
+              zwave.AssociationGroupInformation_InfoGet, 64, 0]]
         for no in self._associations.GetNumbers():
             c.append([zwave.Association, zwave.Association_Get, no])
             c.append([zwave.AssociationGroupInformation,

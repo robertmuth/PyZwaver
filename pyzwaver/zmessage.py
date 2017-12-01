@@ -358,7 +358,7 @@ class Message:
 
     """
     def __init__(self, payload, priority, callback, node,
-                 timeout=5, action_requ=None, action_resp=None, retries=3):
+                 timeout=1, action_requ=None, action_resp=None, retries=3):
         self.payload = payload
         self.priority = priority
         self.node = node
@@ -368,6 +368,7 @@ class Message:
         self.start = None
         self.end = None
         self.can = 0
+        self.aborted = False
         self.SetState(MESSAGE_STATE_STARTED)
         if payload is None:
             return
@@ -386,7 +387,10 @@ class Message:
         self.state = state
         if state == MESSAGE_STATE_STARTED:
             self.start = time.time()
-        if state == MESSAGE_STATE_COMPLETED or state == MESSAGE_STATE_ABORTED:
+        elif state == MESSAGE_STATE_COMPLETED:
+            self.end = time.time()
+        elif state == MESSAGE_STATE_ABORTED:
+            self.aborted = True
             self.end = time.time()
 
     def __str__(self):
@@ -468,6 +472,8 @@ class MessageQueue:
 
 
     def MaybeCompleteMessageResponse(self, m):
+        """Returns true to indicate a retry"""
+
         if not self._inflight:
             logging.error("unexpected response")
             return False
@@ -496,6 +502,8 @@ class MessageQueue:
                                 self._inflight.retries,
                                 PrettifyRawMessage(self._inflight.payload))
                 if self._inflight.retries > 0:
+                    logging.error("retry required for: %s",
+                                  PrettifyRawMessage(self._inflight.payload))
                     return True
                 else:
                     self._inflight_result.put(m)
