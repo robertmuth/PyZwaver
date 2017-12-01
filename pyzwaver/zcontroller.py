@@ -353,7 +353,7 @@ class Controller:
                 event_cb(activity, EVENT_PAIRING_CONTINUE)
                 return False
             elif a == PAIRING_ACTION_DONE:
-                logging.warning("[%s] Success")
+                logging.warning("[%s] Success", node)
                 event_cb(activity, EVENT_PAIRING_SUCCESS)
                 return True
 
