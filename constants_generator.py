@@ -20,7 +20,7 @@ constants_generator.py constains code for emitting all Z-Wave related constants
 for use with various languages: Python, Dart, HTML (for inspection)
 
 # for constants see:
-# https://github.com/openhab/org.openhab.binding.zwave/tree/master/src/main/java/org/openhab/binding/zwave/internal/protocol/commandclass
+# https://raw.githubusercontent.com/Z-WavePublic/libzwaveip/master/include/ZW_classcmd.h
 """
 
 import collections
