@@ -807,7 +807,8 @@ class Node:
         r = retries - 1
 
         def handler(m):
-            if m[4] != 0:
+            # if we timeout  m will be None
+            if m is not None and m[4] != 0:
                 return  # success
             logging.warning("[%d] RequestNodeInfo failed: %s",
                             self.n, zmessage.PrettifyRawMessage(m))
