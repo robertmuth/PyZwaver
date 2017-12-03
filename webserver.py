@@ -71,6 +71,7 @@ HTML = """
 <button class=menu onclick='HandleTab(event)' data-param='tab-status'>Status</button>
 <button class=menu onclick='HandleTab(event)' data-param='tab-logs'>Logs</button>
 <button class=menu onclick='HandleTab(event)' data-param='tab-slow'>Slow</button>
+<button class=menu onclick='HandleTab(event)' data-param='tab-failed'>Failed</button>
 Simple demo app using the pyzwaver library
 </div>
 <hr>
@@ -94,6 +95,18 @@ Simple demo app using the pyzwaver library
 <div class=tab id=tab-slow>
     <!-- see http://www.listjs.com/ -->
     <div id="driverslow">
+    <table border=1>
+    <!-- IMPORTANT, class="list" have to be at tbody -->
+        <tbody class="list">
+            <tr><td class="t"></td><td class="d"></td><td class="m"></td></tr>
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<div class=tab id=tab-failed>
+    <!-- see http://www.listjs.com/ -->
+    <div id="driverfailed">
     <table border=1>
     <!-- IMPORTANT, class="list" have to be at tbody -->
         <tbody class="list">
@@ -135,6 +148,7 @@ var TAB_ONE_NODE = "tab-one-node";
 var TAB_STATUS = "tab-status";
 var TAB_LOGS = "tab-logs";
 var TAB_SLOW = "tab-slow";
+var TAB_FAILED = "tab-failed";
 var STATUS_FIELD = "status";
 var ACTIVITY_FIELD = "activity"
 var HISTORY_FIELD = "history";
@@ -147,6 +161,7 @@ tabToDisplay[TAB_ONE_NODE] = function() {return "/display/node/" + currentNode; 
 tabToDisplay[TAB_STATUS] = function() {return "/display/status"; };
 tabToDisplay[TAB_LOGS] = function() {return "/display/logs"; };
 tabToDisplay[TAB_SLOW] = function() {return "/display/slow"; };
+tabToDisplay[TAB_FAILED] = function() {return "/display/failed"; };
 
 function OpenSocket() {
     var loc = window.location;
@@ -190,6 +205,13 @@ function SocketMessageHandler(e) {
            //item: '<tr><td class="t"><td class="m"></td></td></tr>'
          };
          var lst = new List('driverslow', options, values);
+    } else if (tag == "f") {
+         var values = JSON.parse(val);
+         var options = {
+           valueNames: [ 'd', 't', 'm' ],
+           //item: '<tr><td class="t"><td class="m"></td></td></tr>'
+         };
+         var lst = new List('driverfailed', options, values);
     } else if (tag == "a") {
          var tab = document.getElementById(TAB_ALL_NODES);
          tab.innerHTML = val;
@@ -679,6 +701,21 @@ def DriverSlow():
         out.append({"d": d, "t": t, "m": m })
     return out
 
+def DriverBad():
+    global DRIVER
+    out = []
+    for m in DRIVER.history._history:
+        if not m.end: continue
+        if not m.aborted: continue
+        dur = int(1000.0 * (m.end - m.start))
+        d = "%4d" % dur
+        t = m.start
+        ms = ".%03d" % int(1000 * (t - math.floor(t)))
+        t = time.strftime("%H:%M:%S", time.localtime(t)) + ms
+        m = zmessage.PrettifyRawMessage(m.payload)
+        out.append({"d": d, "t": t, "m": m })
+    return out
+
 
 class DisplayHandler(BaseHandler):
     """Misc Display Hanlders - except for node"""
@@ -699,6 +736,9 @@ class DisplayHandler(BaseHandler):
                 SendToSocket("l:" + json.dumps(DriverLogs(), sort_keys=True,  indent=4))
             elif cmd == "slow":
                 SendToSocket("b:" + json.dumps(DriverSlow(), sort_keys=True,  indent=4))
+            elif cmd == "failed":
+                SendToSocket("f:" + json.dumps(DriverBad(), sort_keys=True,  indent=4))
+
             elif cmd == "controller":
                 SendToSocket("c:" + RenderController())
             elif cmd == "node":
@@ -1057,6 +1097,7 @@ def main():
                                         ControllerEventCallback,
                                         pairing_timeout_secs=OPTIONS.pairing_timeout_secs)
     CONTROLLER.Initialize()
+    time.sleep(2)
     CONTROLLER.WaitUntilInitialized()
     print(CONTROLLER)
     NODESET = znode.NodeSet(MQ, NodeEventCallback, OPTIONS.node_auto_refresh_secs)
