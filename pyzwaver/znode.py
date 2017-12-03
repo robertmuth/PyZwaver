@@ -213,16 +213,10 @@ def CompactifyParams(params):
     return out
 
 _DEFAULT_PRODUCT = command.Value(
-    command.VALUE_MANFACTURER_SPECIFIC, command.UNIT_NONE, [0, 0, 0])
+    command.VALUE_MANUFACTURER_SPECIFIC, command.UNIT_NONE, [0, 0, 0])
 
 _DEFAULT_VERSION = command.Value(
     command.VALUE_VERSION, command.UNIT_NONE, [-1, 0, 0, 0, 0])
-
-_DEFAULT_METER_SUPPORTED = command.Value(
-    command.VALUE_METER_SUPPORTED, command.UNIT_NONE, [0, 0])
-
-_DEFAULT_SENSOR_SUPPORTED = command.Value(
-    command.VALUE_SENSOR_SUPPORTED, command.UNIT_NONE, 0)
 
 _DEFAULT_MULTILEVEL_SWITCH_SENSOR = command.Value(
     command.SENSOR_KIND_SWITCH_MULTILEVEL, command.UNIT_LEVEL, 0)
@@ -370,6 +364,77 @@ class NodeCommands:
         return repr([(zwave.CMD_TO_STRING.get(c, "UKNOWN:%d" % c), c, v)
                      for c, v in self._version_map.items()])
 
+
+class NodeParameters:
+    def __init__(self):
+        self._parameters = {}
+
+    def Set(self, values):
+        self._parameters[val[0]] = val[1]
+
+    def __str__(self):
+        return repr(CompactifyParams(self._parameters))
+
+class NodeSensors:
+    def __init__(self):
+        self._readings = {}
+        self._supported = set()
+
+    def Readings(self): return self._readings.values()
+
+    def SetSupported(self, value):
+        self._supported = BitsToSetWithOffset(value[0], 1)
+
+    def Supported(self):
+        return self._supported
+
+    def Set(self, val):
+        if val is None: return
+        self._readings[(val.kind, val.unit)] = val
+
+    def HasContent(self):
+        return self._supported or self._readings
+
+    def GetMultilevelSwitchLevel(self):
+        k = (command.SENSOR_KIND_SWITCH_MULTILEVEL, command.UNIT_LEVEL)
+        p = self._readings.get(k, _DEFAULT_MULTILEVEL_SWITCH_SENSOR)
+        return p.value
+
+    def __str__(self):
+        return ("  sensors supp.:" + command.RenderSensorList(self._supported) +
+                "  sensors:      " + RenderValues(self._readings.values()))
+
+class NodeMeters:
+    def __init__(self):
+        self._readings = {}
+        self._flags = 0
+        self._supported = set()
+
+    def Readings(self): return self._readings.values()
+
+    def HasContent(self):
+        return self._supported or self._readings
+
+    def SetSupported(self, value):
+        self._flags = value[0]
+        self._supported = BitsToSetWithOffset(value[1], 0)
+
+    def Supported(self):
+        return self._supported
+
+    def Resetable(self):
+        return (self._flags & 0x80) != 0
+
+    def Set(self, val):
+        if val is None: return
+        self._readings[(val.kind, val.unit)] = val
+
+    def __str__(self):
+        return ("  meters supp.:" + command.RenderMeterList(self._flags & 0x1f, self._supported) +
+                "  meters:      " + RenderValues(self._readings.values()))
+
+
+
 class Node:
 
     """Node represents a single node in a zwave network.
@@ -398,9 +463,9 @@ class Node:
 
         self._values = {}
         self._events = {}
-        self._meters = {}
-        self._sensors = {}
-        self._parameters = {}
+        self._meters = NodeMeters()
+        self._sensors = NodeSensors()
+        self._parameters = NodeParameters()
         self._associations = NodeAssociations()
         #
         self.scenes = {}
@@ -419,7 +484,7 @@ class Node:
 
     def ProductInfo(self):
         p = self._values.get(
-            command.VALUE_MANFACTURER_SPECIFIC, _DEFAULT_PRODUCT)
+            command.VALUE_MANUFACTURER_SPECIFIC, _DEFAULT_PRODUCT)
         return tuple(p.value)
 
     def LibraryType(self):
@@ -434,37 +499,16 @@ class Node:
         p = self._values.get(command.VALUE_VERSION, _DEFAULT_VERSION)
         return (p.value[3], p.value[4])
 
-    def MeterType(self):
-        p = self._values.get(command.VALUE_METER_SUPPORTED, _DEFAULT_METER_SUPPORTED)
-        return p.value[0] & 0x1f
-
-    def GetMultilevelSwitchLevel(self):
-        k = (command.SENSOR_KIND_SWITCH_MULTILEVEL, command.UNIT_LEVEL)
-        p = self._sensors.get(k, _DEFAULT_MULTILEVEL_SWITCH_SENSOR)
-        return p.value
-
-    def MeterResetable(self):
-        p = self._values.get(command.VALUE_METER_SUPPORTED, _DEFAULT_METER_SUPPORTED)
-        return (p.value[0] & 0x80) != 0
-
-    def MeterSupported(self):
-        p = self._values.get(command.VALUE_METER_SUPPORTED, _DEFAULT_METER_SUPPORTED)
-        return BitsToSetWithOffset(p.value[1], 0)
-
-    def SensorSupported(self):
-        p = self._values.get(command.VALUE_SENSOR_SUPPORTED, _DEFAULT_SENSOR_SUPPORTED)
-        return BitsToSetWithOffset(p.value, 1)
-
     def GetAssociations(self):
         return self._associations
 
-    def GetAllSensors(self):
-        return self._sensors.values()
+    def GetSensors(self):
+        return self._sensors
 
-    def GetAllMeters(self):
-        return self._meters.values()
+    def GetMeters(self):
+        return self._meters
 
-    def GetAllParameters(self):
+    def GetParameters(self):
         return self._parameters
 
     def GetCommands(self):
@@ -502,20 +546,14 @@ class Node:
 #         meter = {zwave_cmd.GetMeterUnits(*k): v for k, v in self.meter.items()}
 # sensor = {zwave_cmd.GetSensorUnits(*k): v for k, v in
 # self.sensor.items()}
-        if self.MeterSupported() or self._meters:
-            out.append("  meters supp.: " +
-                       command.RenderMeterList(
-                           self.MeterType(), self.MeterSupported()))
-            out.append(
-                "  meters:       " + RenderValues(self._meters.values()))
-        if self.SensorSupported() or self._sensors:
-            out.append("  sensors supp.:" +
-                       command.RenderSensorList(self.SensorSupported()))
-            out.append(
-                "  sensors:      " + RenderValues(self._sensors.values()))
+        if self._meters.HasContent():
+            out.append(str(self._meters))
+        if self.sensors.HasContent():
+            out.append(str(self._sensors))
         out.append("  values:       " + RenderValues(self._values.values()))
         out.append("  events:       " + repr(self._events))
-        out.append("  parameters:   " + repr(CompactifyParams(self._parameters)))
+        out.append("  parameters:")
+        out.append(str(self._parameters))
         out.append("  commands:")
         out.append(str(self._commands))
         out.append("  associations:")
@@ -645,22 +683,9 @@ class Node:
         self.BatchCommandSubmitFilteredFast(
             [[zwave.Security, zwave.Security_NetworkSetKey, key]], XMIT_OPTIONS_SECURE)
 
-
     def StoreValue(self, val):
-        self._values[val.kind] = val
-        self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
-
-    def StoreSensor(self, val):
-        self._sensors[(val.kind, val.unit)] = val
-        self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
-
-    def StoreMeter(self, val):
         if val is None: return
-        self._meters[(val.kind, val.unit)] = val
-        self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
-
-    def StoreParameter(self, val):
-        self._parameters[val[0]] = val[1]
+        self._values[val.kind] = val
         self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
 
     def StoreEvent(self, val):
@@ -678,10 +703,14 @@ class Node:
                 self._commands.SetVersion(value[0], value[1])
                 self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
         elif a == command.ACTION_STORE_SENSOR:
-            self.StoreSensor(command.GetValue(actions, value, prefix))
+            self._meters.Set(command.GetValue(actions, value, prefix))
+            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
+        elif a == command.ACTION_STORE_SENSOR_SUPPORTED:
+            assert len(value) == 1, "Unexpected value: %s" % repr(value)
+            self._sensors.SetSupported(value)
+            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
         elif a == command.ACTION_STORE_VALUE:
-            if len(value) == 1:
-                self.StoreValue(command.GetValue(actions, value, prefix))
+            self.StoreValue(command.GetValue(actions, value, prefix))
         elif a == command.ACTION_STORE_MAP:
             val = command.GetValue(actions, value, prefix)
             if val.kind not in self._values:
@@ -690,10 +719,16 @@ class Node:
         elif a == command.ACTION_STORE_EVENT:
             self.StoreEvent(command.GetValue(actions, value, prefix))
         elif a == command.ACTION_STORE_METER:
-            self.StoreMeter(command.GetValue(actions, value, prefix))
-        elif a == command.ACTION_STORE_PARAMETER:
+            self._meters.Set(command.GetValue(actions, value, prefix))
+            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
+        elif a == command.ACTION_STORE_METER_SUPPORTED:
             assert len(value) == 2
-            self.StoreParameter(value)
+            self._meters.SetSupported(value)
+            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
+        elif a == command.ACTION_STORE_PARAMETER:
+            assert len(value) == 2, "Unexpected value: %s" % repr(value)
+            self._parameters.Set(value)
+            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
         elif a == command.ACTION_STORE_SCENE:
             if value[0] == 0:
                 # TODO
@@ -735,7 +770,7 @@ class Node:
         else:
             logging.error("%s action:%s unexpected: %s %s",
                           prefix, a, actions, value)
-            assert False
+            assert False, "%s action:%s unexpected: %s %s" % (prefix, a, actions, value)
 
     def LogPrefix(self, k):
         cmd =  zwave.SUBCMD_TO_STRING.get(k[0] * 256 + k[1], "Unknown_" + str(k))
@@ -945,10 +980,10 @@ class Node:
         self.BatchCommandSubmitFilteredSlow(_DYNAMIC_PROPERTY_QUERIES,
                                             XMIT_OPTIONS)
         self.BatchCommandSubmitFilteredSlow(
-            SensorMultiLevelQueries(self.SensorSupported()),
+            SensorMultiLevelQueries(self._sensors.Supported()),
             XMIT_OPTIONS)
         self.BatchCommandSubmitFilteredSlow(
-            MeterQueries(self.MeterSupported()),
+            MeterQueries(self._meters.Supported()),
             XMIT_OPTIONS)
 
     def RefreshStaticValues(self):

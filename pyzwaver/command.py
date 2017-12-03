@@ -62,6 +62,8 @@ ACTION_STORE_EVENT = "StoreEvent"
 ACTION_STORE_MAP = "StoreMap"
 ACTION_STORE_SENSOR = "StoreSensor"
 ACTION_STORE_METER = "StoreMeter"
+ACTION_STORE_SENSOR_SUPPORTED = "StoreSensorSupported"
+ACTION_STORE_METER_SUPPORTED = "StoreMeterSupported"
 ACTION_STORE_SCENE = "StoreScene"
 ACTION_STORE_COMMAND_VERSION = "StoreCommandVersion"
 ACTION_STORE_PARAMETER = "StoreParameter"
@@ -77,7 +79,9 @@ ALL_ACTIONS = set([
     ACTION_STORE_EVENT,
     ACTION_STORE_MAP,
     ACTION_STORE_SENSOR,
+    ACTION_STORE_SENSOR_SUPPORTED,
     ACTION_STORE_METER,
+    ACTION_STORE_METER_SUPPORTED,
     ACTION_STORE_SCENE,
     ACTION_STORE_COMMAND_VERSION,
     ACTION_STORE_PARAMETER,
@@ -128,18 +132,12 @@ def GetValueName(k):
     return name
 
 # Special Values which are more than just informational
-VALUE_ASSOCIATIONS =  GetValueName(
-    (zwave.Association, zwave.Association_GroupingsReport))
 VALUE_ACTIVE_SCENE = GetValueName(
     (zwave.SceneActivation, zwave.SceneActivation_Set))
 VALUE_VERSION = GetValueName(
     (zwave.Version, zwave.Version_Report))
-VALUE_MANFACTURER_SPECIFIC = GetValueName(
+VALUE_MANUFACTURER_SPECIFIC = GetValueName(
     (zwave.ManufacturerSpecific, zwave.ManufacturerSpecific_Report))
-VALUE_METER_SUPPORTED = GetValueName(
-    (zwave.Meter, zwave.Meter_SupportedReport))
-VALUE_SENSOR_SUPPORTED = GetValueName(
-    (zwave.SensorMultilevel, zwave.SensorMultilevel_SupportedReport))
 
 # ======================================================================
 METER_TYPES = [
@@ -607,7 +605,6 @@ _STORE_VALUE_SCALAR_ACTIONS = {
     # set - a few requests may actually be sent to the controller
     (zwave.Basic, zwave.Basic_Set) : None,
     (zwave.SceneActivation, zwave.SceneActivation_Set) : None,
-    (zwave.SensorMultilevel, zwave.SensorMultilevel_SupportedReport): None,
     (zwave.Clock, zwave.Clock_Report): None,
 }
 
@@ -625,7 +622,6 @@ _STORE_VALUE_LIST_ACTIONS = {
     (zwave.ZwavePlusInfo, zwave.ZwavePlusInfo_Report) : None,
     (zwave.Version, zwave.Version_Report): None,
     (zwave.ManufacturerSpecific, zwave.ManufacturerSpecific_Report): None,
-    (zwave.Meter, zwave.Meter_SupportedReport): None,
     (zwave.ColorSwitch, zwave.ColorSwitch_SupportedReport): None,
     (zwave.Firmware, zwave.Firmware_MetadataReport): None,
 }
@@ -646,16 +642,22 @@ _STORE_SENSOR_ACTIONS = {
     [SENSOR_KIND_BASIC, UNIT_LEVEL],
 }
 
-
 ACTIONS = {
     (zwave.SceneActuatorConf, zwave.SceneActuatorConf_Report):
     [ACTION_STORE_SCENE],
     (zwave.Version, zwave.Version_CommandClassReport):
     [ACTION_STORE_COMMAND_VERSION],
+    #
     (zwave.SensorMultilevel, zwave.SensorMultilevel_Report):
     [ACTION_STORE_SENSOR, VALUE_TYPE_SENSOR_NORMAL],
+    (zwave.SensorMultilevel, zwave.SensorMultilevel_SupportedReport):
+    [ACTION_STORE_SENSOR_SUPPORTED],
+    #
     (zwave.Meter, zwave.Meter_Report):
     [ACTION_STORE_METER, VALUE_TYPE_METER_NORMAL],
+    (zwave.Meter, zwave.Meter_SupportedReport):
+    [ACTION_STORE_METER_SUPPORTED],
+    #
     (zwave.Configuration, zwave.Configuration_Report):
     [ACTION_STORE_PARAMETER],
     #
@@ -691,6 +693,7 @@ STATE_CHANGE = {
 }
 
 def PatchUpActions():
+    global ACTIONS
     logging.info("PatchUpActions")
     for k, v in _STORE_VALUE_SCALAR_ACTIONS.items():
         ACTIONS[k] = [ACTION_STORE_VALUE, VALUE_TYPE_SCALAR, GetValueName(k)]
@@ -757,7 +760,7 @@ class Value:
 def GetValue(action, value, prefix):
     t = action.pop(0)
     if t == VALUE_TYPE_SCALAR:
-        assert len(value) == 1
+        if len(value) != 1: return None
         assert type(value[0]) != list
         kind = action.pop(0)
         return Value(kind, UNIT_NONE, value[0])
@@ -805,7 +808,8 @@ def GetValue(action, value, prefix):
         assert unit is not None
         return Value(info[0], unit, val[2], val[3], val[4])
     else:
-        assert False
+        logging.error("unknown value type: %s for action %s", value, action)
+        return None
 
 
 def RenderSensorList(values):

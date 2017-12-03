@@ -541,7 +541,7 @@ def MakeControllerButton(action, label):
 def MakeNodeRange(node, action, lo, hi):
    s = ("<input onchange='HandleChange(event)' data-param='/node/%d/%s/' class='multilevel' "
         "type=range min=%f max=%f value='%f'>")
-   return s % (node.n, action, lo, hi, node.GetMultilevelSwitchLevel())
+   return s % (node.n, action, lo, hi, node.GetSensors().GetMultilevelSwitchLevel())
 
 def RenderReading(value):
     v = value.value
@@ -595,7 +595,8 @@ def ClassSpecificNodeButtons(node):
 
 def MakeTableRowForNode(node, status_only, is_failed):
     global DB
-    readings = RenderAllReadings(node.GetAllSensors(), node.GetAllMeters())
+    readings = RenderAllReadings(node.GetSensors().Readings(),
+                                 node.GetMeters().Readings())
     buttons = []
     if not status_only:
         if not node.IsSelf():
@@ -805,7 +806,7 @@ def RenderNodeAssociations(node: znode.Node):
 
 
 def RenderNodeParameters(node: znode.Node):
-    compact = znode.CompactifyParams(node.GetAllParameters())
+    compact = znode.CompactifyParams(node.GetParameters()._parameters)
     out = ["<h2>Configuration</h2>",
            MakeNodeButton(node, "refresh_parameters", "Probe"),
            "<br>",
@@ -854,7 +855,7 @@ def RenderNode(node):
         "<input type=text value='%s'>" % DB.GetNodeName(node.n),
         "<h2>Readings</h2>",
     ]
-    out += RenderAllReadings(node.GetAllSensors(), node.GetAllMeters())
+    out += RenderAllReadings(node.GetSensors().Readings(), node.GetMeters().Readings())
     out += ["<p>"]
     out += ClassSpecificNodeButtons(node)
 
