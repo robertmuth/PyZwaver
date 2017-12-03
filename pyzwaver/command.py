@@ -672,6 +672,8 @@ ACTIONS = {
     #
     (zwave.Alarm, zwave.Alarm_Report):
     [ACTION_STORE_EVENT, VALUE_TYPE_LIST, EVENT_ALARM],
+    (zwave.Alarm, zwave.Alarm_Set):
+    [ACTION_STORE_EVENT, VALUE_TYPE_LIST, EVENT_ALARM],
     (zwave.WakeUp, zwave.WakeUp_Notification):
     [ACTION_STORE_EVENT, VALUE_TYPE_CONST, EVENT_WAKE_UP, 1],
     #

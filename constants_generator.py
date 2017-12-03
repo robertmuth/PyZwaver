@@ -632,6 +632,7 @@ C("Configuration", 0x70,
 C("Alarm", 0x71,
   Get=(0x4, ""),
   Report=(0x5, "B{type},B{level}"),
+  Set=(0x6, "B{type},B{level}"),
   SupportedGet=(0x7, ""),
   SupportedReport=(0x8, ""),
 )
