@@ -24,37 +24,74 @@ import logging
 import queue
 import threading
 import time
+import collections
 
 from pyzwaver import zwave
 
 # ==================================================
 # Priorities for outgoing messages
 # ==================================================
-_COUNTER = 0
 
 
 def ControllerPriority():
-    global _COUNTER
-    _COUNTER += 1
-    return (1, _COUNTER, 0)
+    return (1, 0, 0)
 
 
 def NodePriorityHi(node):
-    global _COUNTER
-    _COUNTER += 1
-    return (2, _COUNTER, node)
+    return (2, 0, node)
 
 
 def NodePriorityLo(node):
-    global _COUNTER
-    _COUNTER += 1
-    return (3, _COUNTER, node)
+    return (3, 0, node)
 
 def LowestPriority():
-    global _COUNTER
-    _COUNTER += 1
-    return (1000, _COUNTER, 0)
+    return (1000, 0, 0)
 
+
+class MessageQueueOut:
+
+    def __init__(self):
+        self._q = queue.PriorityQueue()
+        self._lo_counts = collections.defaultdict(int)
+        self._hi_counts = collections.defaultdict(int)
+        self._lo_min = 0
+        self._hi_min = 0
+        self._counter = 0
+
+    def qsize(self):
+        return self._q.qsize()
+
+    def put(self, priority, message):
+        if self._q.empty():
+            self._lo_counts = collections.defaultdict(int)
+            self._hi_counts = collections.defaultdict(int)
+            self._lo_min = 0
+            self._hi_min = 0
+
+
+        level, count , node = priority
+        if level == 2:
+            count = self._hi_counts[node]
+            count = max(count + 1, self._hi_min)
+            self._hi_counts[node] = count
+        elif level == 3:
+            count = self._lo_counts[node]
+            count = max(count + 1, self._lo_min)
+            self._lo_counts[node] = count
+        else:
+            counter = self._counter
+            self._counter += 1
+        self._q.put(((level, count, node), message))
+
+
+    def get(self):
+         priority, message = self._q.get()
+         level = priority[0]
+         if level == 2:
+             self._hi_min = priority[1]
+         elif level == 2:
+             self._lo_min = priority[1]
+         return message
 
 # ==================================================
 # Raw Messages
@@ -358,7 +395,7 @@ class Message:
 
     """
     def __init__(self, payload, priority, callback, node,
-                 timeout=1, action_requ=None, action_resp=None, retries=3):
+                 timeout=1, action_requ=None, action_resp=None, retries=1):
         self.payload = payload
         self.priority = priority
         self.node = node
@@ -427,7 +464,7 @@ class MessageQueue:
     """
     def __init__(self):
         # outgoing message
-        self._out_queue = queue.PriorityQueue()
+        self._out_queue = MessageQueueOut()
         # currently in-fligth message
         self._inflight = None
         #  incoming - raw messages related to _inflight
@@ -445,7 +482,7 @@ class MessageQueue:
         return self._inflight
 
     def EnqueueMessage(self, m):
-        self._out_queue.put((m.priority, m))
+        self._out_queue.put(m.priority, m)
 
     def GetIncommingRawMessage(self):
         return self._in_queue.get()
@@ -454,7 +491,7 @@ class MessageQueue:
         self._in_queue.put(rm)
 
     def DequeueMessage(self):
-        _, mesg = self._out_queue.get()
+        mesg = self._out_queue.get()
         if mesg.payload is None:
             mesg.callback(None)
             return None
@@ -488,7 +525,7 @@ class MessageQueue:
         elif action[0] == ACTION_REPORT_NE:
             assert len(m) == 6
             # we expect a message of the form:
-            # SOF <len> RES  <func> <status> <checksum?
+            # SOF <len> RES  <func> <status> <checksum>
             if action[1] == m[4]:
                 # we got the expected status everything is dandy
                 # but still need to wait for the matching req
@@ -496,14 +533,13 @@ class MessageQueue:
                 # as we have not seen failure modes requiring it.
                 logging.debug("delivered to stack")
             else:
-                self._inflight.retries -= 1
-                logging.warning("delivery failed: %s ==== retries left: %d ==== %s",
-                                PrettifyRawMessage(m),
-                                self._inflight.retries,
-                                PrettifyRawMessage(self._inflight.payload))
-                if self._inflight.retries > 0:
-                    logging.error("retry required for: %s",
-                                  PrettifyRawMessage(self._inflight.payload))
+                inflight = self._inflight
+                inflight.retries -= 1
+                logging.error("unexpected resp status is %d wanted %d ==== retries left: %d ==== %s",
+                                m[4], action[1], inflight.retries,
+                                PrettifyRawMessage(inflight.payload))
+                time.sleep(0.1)
+                if inflight.retries > 0:
                     return True
                 else:
                     self._inflight_result.put(m)
@@ -559,6 +595,7 @@ class MessageQueue:
             try:
                 # note the _inflight_result is populated exclusively by
                 # the MaybeXXX functions above
+                # this raise queue.Empty if the timeout expires
                 res = self._inflight_result.get(timeout=1.0)
                 if res is None:
                     logging.warning("message was force aborted: %s",

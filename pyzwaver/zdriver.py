@@ -134,10 +134,12 @@ class Driver(object):
         logging.info("Driver terminated")
 
     def SendRaw(self, payload):
-        if len(payload) >= 5:
-            if self._last == payload[4]:
-                time.sleep(SEND_DELAY_LARGE)
-            self._last = payload[4]
+        time.sleep(SEND_DELAY_LARGE)
+        #if len(payload) >= 5:
+        #    if self._last == payload[4]:
+        #        time.sleep(SEND_DELAY_LARGE)
+        #    self._last = payload[4]
+
         # logging.info("sending: %s", zmessage.PrettifyRawMessage(payload))
         self.history.LogSent(payload)
         self._device.write(payload)
