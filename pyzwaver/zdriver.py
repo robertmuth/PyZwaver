@@ -30,7 +30,8 @@ from pyzwaver import zmessage
 
 
 # TODO: why the heck to we need this silly delay?
-SEND_DELAY = 0.02
+SEND_DELAY_LARGE = 0.05
+SEND_DELAY_SMALL = 0.01
 
 
 def MakeSerialDevice(port="/dev/ttyUSB0"):
@@ -120,6 +121,7 @@ class Driver(object):
         self._rx_thread = threading.Thread(target=self._DriverReceivingThread,
                                            name="DriverReceive")
         self._rx_thread.start()
+        self._last = None
 
     def __str__(self):
         out = [str(self._mq),
@@ -132,7 +134,10 @@ class Driver(object):
         logging.info("Driver terminated")
 
     def SendRaw(self, payload):
-        time.sleep(SEND_DELAY)
+        if len(payload) >= 5:
+            if self._last == payload[4]:
+                time.sleep(SEND_DELAY_LARGE)
+            self._last = payload[4]
         # logging.info("sending: %s", zmessage.PrettifyRawMessage(payload))
         self.history.LogSent(payload)
         self._device.write(payload)
