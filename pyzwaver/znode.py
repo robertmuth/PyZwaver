@@ -549,7 +549,7 @@ class Node:
 # self.sensor.items()}
         if self._meters.HasContent():
             out.append(str(self._meters))
-        if self.sensors.HasContent():
+        if self._sensors.HasContent():
             out.append(str(self._sensors))
         out.append("  values:       " + RenderValues(self._values.values()))
         out.append("  events:       " + repr(self._events))

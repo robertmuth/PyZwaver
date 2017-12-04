@@ -61,12 +61,13 @@ hex:  [1, 20, 0, 4, 0, 9, 14, 50, 2, 33, 116, 0, 0, 168, 167, 0, 83, 0, 2, 96, 1
 NODE: 9  state: 3_Interviewed  last: 0 sec ago  protocol_version: 0  lib_type: 3  sdk_version: 2:78  app_version: 1:43  
 device: 4:16:1  (Binary Power Switch)  product: 0086:0003:0006  
 flags:        set()
-  meters supp.: ['kWh', 'W']
-  meters:       ['43.175[Electric, W]', '155.666[Electric, kWh]']
-  sensors supp.:[]
-  sensors:      ['255[Basic, level]', '43.175[Power, W]', '255[SwitchBinary, level]']
-  values:       ['1[Association_Groupings]', '[134, 3, 6][ManufacturerSpecific]', '[129, 5][Meter_Supported]', '255[SwitchAll]', '[3, 2, 78, 1, 43][Version]']
+  meters supp.:['kWh', 'W']  meters:      ['43.175[Electric, W]', '155.666[Electric, kWh]']
+  sensors supp.:[]  sensors:      ['255[Basic, level]', '43.175[Power, W]', '255[SwitchBinary, level]']
+  values:       ['[134, 3, 6][ManufacturerSpecific]', '255[SwitchAll]', '[3, 2, 78, 1, 43][Version]']
   events:       {}
-  associations: {}
-  parameters:   []
-  commands:     [('Configuration', 112, 1), ('SensorMultilevel', 49, 3), ('Meter', 50, 2), ('Basic', 32, 1), ('SwitchBinary', 37, 1), ('Version', 134, 1), ('SwitchAll', 39, 1), ('ManufacturerSpecific', 114, 1), ('Association', 133, 1)]
+  parameters:
+[]
+  commands:
+[('Configuration', 112, 1), ('SensorMultilevel', 49, 3), ('Meter', 50, 2), ('Basic', 32, 1), ('SwitchBinary', 37, 1), ('Version', 134, 1), ('SwitchAll', 39, 1), ('Hail', 130, -1), ('ManufacturerSpecific', 114, 1), ('Association', 133, 1)]
+  associations:
+

@@ -70,10 +70,12 @@ hex:  [1, 12, 0, 4, 0, 16, 6, 49, 5, 1, 58, 1, 3, 236]
 NODE: 16  state: 3_Interviewed  last: 0 sec ago  protocol_version: 0  lib_type: 6  sdk_version: 3:28  app_version: 1:18  
 device: 4:32:1  (Routing Binary Sensor)  product: 0086:0002:0005  
 flags:        set()
-  sensors supp.:['Temperature', 'Luminance', 'Relative Humidity']
-  sensors:      ['100[Battery, level]', '1.0[Luminance, lux]', '40.0[Relative Humidity, %]', '0[SwitchBinary, level]', '25.9[Temperature, C]']
-  values:       ['1[Association_Groupings]', '[134, 2, 5][ManufacturerSpecific]', '21[SensorMultilevel_Supported]', '[6, 3, 28, 1, 18][Version]']
+  sensors supp.:['Temperature', 'Luminance', 'Relative Humidity']  sensors:      ['100[Battery, level]', '1.0[Luminance, lux]', '40.0[Relative Humidity, %]', '0[SwitchBinary, level]', '25.9[Temperature, C]']
+  values:       ['[134, 2, 5][ManufacturerSpecific]', '[6, 3, 28, 1, 18][Version]']
   events:       {}
-  associations: {}
-  parameters:   []
-  commands:     [('SensorBinary', 48, 1), ('SensorMultilevel', 49, 5), ('ManufacturerSpecific', 114, 1), ('WakeUp', 132, 2), ('Association', 133, 1), ('Version', 134, 1), ('Configuration', 112, 1), ('Battery', 128, 1)]
+  parameters:
+[]
+  commands:
+[('SensorBinary', 48, 1), ('SensorMultilevel', 49, 5), ('ManufacturerSpecific', 114, 1), ('WakeUp', 132, 2), ('Association', 133, 1), ('Version', 134, 1), ('Configuration', 112, 1), ('Battery', 128, 1)]
+  associations:
+
