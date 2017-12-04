@@ -1098,9 +1098,11 @@ def main():
                                         ControllerEventCallback,
                                         pairing_timeout_secs=OPTIONS.pairing_timeout_secs)
     CONTROLLER.Initialize()
-    time.sleep(2)
     CONTROLLER.WaitUntilInitialized()
+    CONTROLLER.UpdateRoutingInfo()
+    time.sleep(2)
     print(CONTROLLER)
+
     NODESET = znode.NodeSet(MQ, NodeEventCallback, OPTIONS.node_auto_refresh_secs)
     n = NODESET.GetNode(CONTROLLER.GetNodeId())
     n.InitializeExternally(CONTROLLER.props.product, CONTROLLER.props.library_type, True)

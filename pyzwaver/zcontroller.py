@@ -194,8 +194,6 @@ class ControllerProperties:
         out.append("attrs: %s" % repr(self.attrs))
         return "\n".join(out)
 
-
-
 class Controller:
     """Represents the controller node in a Zwave network
     The message_queue is used to send messages to the physical controller and
@@ -210,12 +208,25 @@ class Controller:
         self.nodes = set()
         self.failed_nodes = set()
         self.props = ControllerProperties()
+        self.routes= {}
 
     def __str__(self):
         out = []
         out.append(str(self.props))
         out.append("nodes: %s" % repr(self.nodes))
         out.append("failed_nodes: %s" % repr(self.failed_nodes))
+        out.append("")
+        nodes = sorted(self.nodes)
+        for n in nodes:
+            line = "%2d: " % n
+            routes = self.routes.get(n, set())
+            for m in nodes:
+                if m in routes:
+                    line += "#"
+                else:
+                    line += " "
+            out.append(line)
+
         out.append("")
         return "\n".join(out)
 
@@ -298,7 +309,7 @@ class Controller:
 
     def GetRoutingInfo(self, node, rem_bad, rem_non_repeaters, cb):
         def handler(data):
-            cb(ExtractNodes(data[4:-1]))
+            cb(node, ExtractNodes(data[4:-1]))
 
         self.SendCommand(zwave.API_ZW_GET_ROUTING_INFO,
                          [node, rem_bad, rem_non_repeaters, 3],
@@ -331,6 +342,16 @@ class Controller:
                 return cb(m[5])
         self.SendCommandWithId(
             zwave.API_ZW_REMOVE_FAILED_NODE_ID, [node], handler)
+
+    # ============================================================
+    # Routing
+    # ============================================================
+    def UpdateRoutingInfo(self):
+        def handler(node, neighbors):
+            self.routes[node] = set(neighbors)
+
+        for n in self.nodes:
+            self.GetRoutingInfo(n, False, False, handler)
 
     # ============================================================
     # Pairing
