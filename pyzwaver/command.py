@@ -44,17 +44,6 @@ SENSOR_KIND_GAS = "Gas"
 SENSOR_KIND_WATER = "Water"
 SENSOR_KIND_TEMPERTATURE = "Temperature"
 
-
-# Value Types
-VALUE_TYPE_LIST = "ItemList"
-VALUE_TYPE_SCALAR = "ItemScalar"
-VALUE_TYPE_MAP_LIST = "ItemMapList"
-VALUE_TYPE_MAP_SCALAR = "ItemMapScalar"
-VALUE_TYPE_SENSOR_NORMAL = "ItemSensorNormal"
-VALUE_TYPE_SENSOR_VALUE = "ItemSensorValue"
-VALUE_TYPE_METER_NORMAL = "ItemMeterNormal"
-
-
 #
 SECURITY_SET_CLASS = "SecuritySetClass"
 SECURITY_SCHEME = "SecurityScheme"
@@ -547,7 +536,55 @@ def AssembleCommand(raw_cmd):
 
     return data
 
+# ======================================================================
+class Value:
+    def __init__(self, kind, unit, value, meter_time_delta=0, meter_prev=0.0):
+        self.kind = kind
+        self.unit = unit
+        self.value = value
+        self.meter_prev = meter_prev
+        self.meter_time_delta = meter_time_delta
 
+    def __lt__(self, other):
+        if self.kind != other.kind:
+            return self.kind < other.kind
+        if self.unit != other.unit:
+            return self.unit < other.unit
+        return False
+
+    def __str__(self):
+        if self.unit == UNIT_NONE:
+            return "%s[%s]" % (self.value,self.kind)
+        else:
+            return "%s[%s, %s]" % (self.value,self.kind, self.unit)
+
+
+def ValueSensorNormal(value, prefix):
+    kind = value[0]
+    info = SENSOR_TYPES[kind]
+    assert len(value[1]) == 2
+    scale, reading = value[1]
+    unit = info[1][scale]
+    if unit is None:
+        logging.error("%s bad sensor reading [%d, %d]: %s",
+                          prefix, kind, scale, info)
+    assert unit is not None
+    return Value(info[0], unit, reading)
+
+def ValueMeterNormal(value, prefix):
+    val = value[0]
+    if len(val) != 5:
+        logging.error("%s bad meter normal %s %s",
+                      prefix, action, value)
+        return None
+    kind = val[0]
+    scale =  val[1]
+    info = METER_TYPES[kind]
+    unit = info[1][scale]
+    assert unit is not None
+    return Value(info[0], unit, val[2], val[3], val[4])
+
+# ======================================================================
 _STORE_VALUE_SCALAR_ACTIONS= [
     (zwave.SwitchAll, zwave.SwitchAll_Report),
     (zwave.Protection, zwave.Protection_Report),
@@ -586,6 +623,9 @@ _STORE_VALUE_LIST_ACTIONS = [
     (zwave.Firmware, zwave.Firmware_MetadataReport),
 ]
 
+# ======================================================================
+# This is the main dispatch table for incoming "commands", e.g. reports
+# ======================================================================
 ACTIONS = {
     (zwave.SceneActuatorConf, zwave.SceneActuatorConf_Report):
     (lambda n, v, k, p: None, -1, EVENT_VALUE_CHANGE),
@@ -598,40 +638,32 @@ ACTIONS = {
     # SENSOR
     #
     (zwave.SensorMultilevel, zwave.SensorMultilevel_Report):
-    (lambda n, v, k, p: n._sensors.Set(GetValue([VALUE_TYPE_SENSOR_NORMAL], v, p)),
-     -1, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n._sensors.Set(ValueSensorNormal(v, p)), 2, EVENT_VALUE_CHANGE),
     (zwave.SensorMultilevel, zwave.SensorMultilevel_SupportedReport):
     (lambda n, v, k, p: n._sensors.SetSupported(v), 1, EVENT_VALUE_CHANGE),
     (zwave.SwitchBinary, zwave.SwitchBinary_Report):
-    (lambda n, v, k, p: n._sensors.Set(GetValue(
-        [VALUE_TYPE_SENSOR_VALUE, SENSOR_KIND_SWITCH_BINARY, UNIT_LEVEL], v, p)),
-     -1, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n._sensors.Set(
+        Value(SENSOR_KIND_SWITCH_BINARY, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
     (zwave.Battery, zwave.Battery_Report):
-    (lambda n, v, k, p: n._sensors.Set(GetValue(
-        [VALUE_TYPE_SENSOR_VALUE, SENSOR_KIND_BATTERY, UNIT_LEVEL], v, p)),
-     -1, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n._sensors.Set(
+        Value(SENSOR_KIND_BATTERY, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
     (zwave.SensorBinary, zwave.SensorBinary_Report):
-    (lambda n, v, k, p: n._sensors.Set(GetValue(
-        [VALUE_TYPE_SENSOR_VALUE, SENSOR_KIND_SWITCH_BINARY, UNIT_LEVEL], v, p)),
-     -1, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n._sensors.Set(
+        Value(SENSOR_KIND_SWITCH_BINARY, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
     (zwave.SwitchToggleBinary, zwave.SwitchToggleBinary_Report):
-    (lambda n, v, k, p: n._sensors.Set(GetValue(
-        [VALUE_TYPE_SENSOR_VALUE, SENSOR_KIND_SWITCH_TOGGLE, UNIT_LEVEL], v, p)),
-     -1, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n._sensors.Set(
+        Value(SENSOR_KIND_SWITCH_TOGGLE, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
     (zwave.SwitchMultilevel, zwave.SwitchMultilevel_Report):
-    (lambda n, v, k, p: n._sensors.Set(GetValue(
-        [VALUE_TYPE_SENSOR_VALUE, SENSOR_KIND_SWITCH_MULTILEVEL, UNIT_LEVEL], v, p)),
-     -1, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n._sensors.Set(
+        Value(SENSOR_KIND_SWITCH_MULTILEVEL, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
     (zwave.Basic, zwave.Basic_Report):
-    (lambda n, v, k, p: n._sensors.Set(GetValue(
-        [VALUE_TYPE_SENSOR_VALUE, SENSOR_KIND_BASIC, UNIT_LEVEL], v, p)),
-     -1, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n._sensors.Set(
+        Value(SENSOR_KIND_BASIC, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
     #
     # METER
     #
     (zwave.Meter, zwave.Meter_Report):
-    (lambda n, v, k, p: n._meters.Set(GetValue([VALUE_TYPE_METER_NORMAL], v, p)),
-     -1, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n._meters.Set(ValueMeterNormal(v, p)), 1, EVENT_VALUE_CHANGE),
     (zwave.Meter, zwave.Meter_SupportedReport):
     (lambda n, v, k, p: n._meters.SetSupported(v), 2, EVENT_VALUE_CHANGE),
     #
@@ -656,41 +688,23 @@ ACTIONS = {
     # EVENTS
     #
     (zwave.Alarm, zwave.Alarm_Report):
-    (lambda n, v, k, p: n.StoreEvent(GetValue(
-        [VALUE_TYPE_LIST, EVENT_ALARM], v, p)), -1, None),
+    (lambda n, v, k, p: n.StoreEvent(
+        Value(EVENT_ALARM, UNIT_NONE, v)), -1, None),
     (zwave.Alarm, zwave.Alarm_Set):
-    (lambda n, v, k, p: n.StoreEvent(GetValue(
-        [VALUE_TYPE_LIST, EVENT_ALARM], v, p)), -1, None),
+    (lambda n, v, k, p: n.StoreEvent(
+        Value(EVENT_ALARM, UNIT_NONE, v)), -1, None),
     (zwave.WakeUp, zwave.WakeUp_Notification):
     (lambda n, v, k, p: n.StoreEvent(Value(EVENT_WAKE_UP, UNIT_NONE, 1)),
      -1, None),
-#
+    #
+    # These need a lot more work
+    #
     (zwave.Security, zwave.Security_SchemeReport): [SECURITY_SCHEME],
     (zwave.Security, zwave.Security_NonceReport): [SECURITY_NONCE_RECEIVED],
     (zwave.Security, zwave.Security_NonceGet): [SECURITY_NONCE_REQUESTED],
     (zwave.Security, zwave.Security_SupportedReport): [SECURITY_SET_CLASS],
     (zwave.Security, zwave.Security_MessageEncap): [SECURITY_UNWRAP],
     (zwave.Security, zwave.Security_NetworkKeyVerify): [SECURITY_KEY_VERIFY],
-}
-
-STATE_CHANGE = {
-    (zwave.ManufacturerSpecific, zwave.ManufacturerSpecific_Report):
-    (lambda n, v, k, p: n._MaybeChangeState(NODE_STATE_INTERVIEWED), -1, None),
-}
-
-def PatchUpActions():
-    global ACTIONS
-    logging.info("PatchUpActions")
-    for key in _STORE_VALUE_SCALAR_ACTIONS:
-       ACTIONS[key] =  (lambda n, v, k, p: n.StoreValue(GetValue(
-           [VALUE_TYPE_SCALAR, GetValueName(k)],v, p)), -1, EVENT_VALUE_CHANGE)
-
-    for key in _STORE_VALUE_LIST_ACTIONS:
-        ACTIONS[key] =  (lambda n, v, k, p: n.StoreValue(GetValue(
-           [VALUE_TYPE_LIST, GetValueName(k)],v, p)), -1, EVENT_VALUE_CHANGE)
-
-PatchUpActions()
-
 
 # maps incoming API_APPLICATION_COMMAND messages to action we want to take
 # Most of the time we deal with "reports" and the action will be to
@@ -717,80 +731,26 @@ PatchUpActions()
 #     # ZWAVE+
 #     # SECURITY
 #     #
-# }
 
+}
 
-class Value:
-    def __init__(self, kind, unit, value, meter_time_delta=0, meter_prev=0.0):
-        self.kind = kind
-        self.unit = unit
-        self.value = value
-        self.meter_prev = meter_prev
-        self.meter_time_delta = meter_time_delta
+STATE_CHANGE = {
+    (zwave.ManufacturerSpecific, zwave.ManufacturerSpecific_Report):
+    (lambda n, v, k, p: n._MaybeChangeState(NODE_STATE_INTERVIEWED), -1, None),
+}
 
-    def __lt__(self, other):
-        if self.kind != other.kind:
-            return self.kind < other.kind
-        if self.unit != other.unit:
-            return self.unit < other.unit
-        return False
+def PatchUpActions():
+    global ACTIONS
+    logging.info("PatchUpActions")
+    for key in _STORE_VALUE_SCALAR_ACTIONS:
+       ACTIONS[key] =  (lambda n, v, k, p: n.StoreValue(
+           Value(GetValueName(k), UNIT_NONE, v[0])), 1, EVENT_VALUE_CHANGE)
 
-    def __str__(self):
-        if self.unit == UNIT_NONE:
-            return "%s[%s]" % (self.value,self.kind)
-        else:
-            return "%s[%s, %s]" % (self.value,self.kind, self.unit)
+    for key in _STORE_VALUE_LIST_ACTIONS:
+        ACTIONS[key] =  (lambda n, v, k, p: n.StoreValue(
+            Value(GetValueName(k), UNIT_NONE, v)), -1, EVENT_VALUE_CHANGE)
 
-
-def GetValue(action, value, prefix):
-    t = action.pop(0)
-    if t == VALUE_TYPE_SCALAR:
-        if len(value) != 1: return None
-        assert type(value[0]) != list
-        kind = action.pop(0)
-        return Value(kind, UNIT_NONE, value[0])
-    elif t == VALUE_TYPE_LIST:
-        assert type(value) == list, "expected list value"
-        kind = action.pop(0)
-        return Value(kind, UNIT_NONE, value)
-    elif t == VALUE_TYPE_SENSOR_VALUE:
-        kind = action.pop(0)
-        unit = action.pop(0)
-        assert len(value) == 1
-        return Value(kind, unit, value[0])
-    elif t == VALUE_TYPE_SENSOR_NORMAL:
-        assert len(value) == 2
-        kind = value[0]
-        info = SENSOR_TYPES[kind]
-        assert len(value[1]) == 2
-        scale, reading = value[1]
-        unit = info[1][scale]
-        if unit is None:
-            logging.error("%s bad sensor reading [%d, %d]: %s",
-                          prefix, kind, scale, info)
-        assert unit is not None
-        return Value(info[0], unit, reading)
-    elif t == VALUE_TYPE_MAP_LIST:
-        kind = action.pop(0)
-        return Value(value[0], action[2], value[1:])
-    elif t == VALUE_TYPE_MAP_SCALAR:
-        return Value(value[0], action[2], value[1])
-    elif t == VALUE_TYPE_METER_NORMAL:
-        assert len(value) == 1
-        val = value[0]
-        if len(val) != 5:
-            logging.error("%s bad meter normal %s %s",
-                          prefix, action, value)
-            return None
-        kind = val[0]
-        scale =  val[1]
-        info = METER_TYPES[kind]
-        unit = info[1][scale]
-        assert unit is not None
-        return Value(info[0], unit, val[2], val[3], val[4])
-    else:
-        logging.error("unknown value type: %s for action %s", value, action)
-        return None
+PatchUpActions()
 
 
 def RenderSensorList(values):
