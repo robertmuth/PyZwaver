@@ -38,6 +38,38 @@ TRANSLATE = {
     "RESP": zwave.RESPONSE,
 }
 
+class FakeMulti:
+    def _init__(self):
+        pass
+
+    def StoreCount(self, v):
+        print ("StoreCount: ", v)
+
+    def Set(self, v):
+        print ("Set: ", v)
+
+    def SetVersion(self, v):
+        print ("SetVersion: ", v)
+
+    def SetSupported(self, v):
+        print ("SetSupported: ", v)
+
+    def StoreNodes(self, v):
+        print ("StoreNodes: ", v)
+
+
+class FakeNode:
+    def __init__(self):
+        self._sensors = FakeMulti()
+        self._meters = FakeMulti()
+        self._associations = FakeMulti()
+        self._commands = FakeMulti()
+        self._parameters = FakeMulti()
+
+    def StoreValue(self, v):
+        print ("StoreValue: ", v)
+
+
 def ParseToken(t):
     if t in TRANSLATE:
         return TRANSLATE[t]
@@ -50,15 +82,6 @@ def Hexify(t):
     return ["%02x" % i for i in t]
 
 
-def DoAction(a, actions, value):
-    if a in [command.ACTION_STORE_SENSOR,
-             command.ACTION_STORE_METER,
-             command.ACTION_STORE_VALUE]:
-        val = command.GetValue(actions, value)
-        print (a, val)
-    else:
-        print (a, actions, value)
-        actions.clear()
 
 def ProcessApplicationData(data):
     print ("application data: ", Hexify(data))
@@ -66,13 +89,13 @@ def ProcessApplicationData(data):
     if new_data != data:
         print ("REWRITE")
         data = new_data
-    value = command.ParseCommand(data)
+    value = command.ParseCommand(data, "")
     k = (data[0], data[1])
+    node = FakeNode()
     if k in command.ACTIONS:
-        actions = command.ACTIONS.get(k, [])[:]
-        while actions:
-            a = actions.pop(0)
-            DoAction(a, actions, value)
+        func, num_val, event = command.ACTIONS.get(k)
+        func(node, value, k, "")
+
     else:
         print("ERROR", k)
         sys.exit(1)

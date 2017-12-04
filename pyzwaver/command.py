@@ -633,7 +633,7 @@ ACTIONS = {
     # COMMAND
     #
     (zwave.Version, zwave.Version_CommandClassReport):
-    (lambda n, v, k, p: n._commands.SetVersion(*v), 2, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n._commands.SetVersion(v), 2, EVENT_VALUE_CHANGE),
     #
     # SENSOR
     #
@@ -672,7 +672,7 @@ ACTIONS = {
     (zwave.Configuration, zwave.Configuration_Report):
     (lambda n, v, k, p: n._parameters.Set(v), 2, EVENT_VALUE_CHANGE),
     #
-    # GROUPS
+    # ASSOCIATIONS
     #
     (zwave.Association, zwave.Association_GroupingsReport) :
     (lambda n, v, k, p: n._associations.StoreCount(v), 1, EVENT_VALUE_CHANGE),

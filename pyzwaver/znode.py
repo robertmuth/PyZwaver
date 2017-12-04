@@ -339,9 +339,10 @@ class NodeCommands:
         return (zwave.SwitchBinary in self._version_map or
                 zwave.SwitchMultilevel in self._version_map)
 
-    def SetVersion(self, cmd, version):
+    def SetVersion(self, value):
+        version = value[1]
         if version == 0: return
-        self._version_map[cmd] = version
+        self._version_map[value[0]] = version
 
     def InitializeUnversioned(self, cmd, controls, std_cmd, std_controls):
         self._controls |= set(controls)
