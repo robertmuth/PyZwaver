@@ -340,6 +340,7 @@ class NodeCommands:
                 zwave.SwitchMultilevel in self._version_map)
 
     def SetVersion(self, cmd, version):
+        if version == 0: return
         self._version_map[cmd] = version
 
     def InitializeUnversioned(self, cmd, controls, std_cmd, std_controls):
@@ -692,85 +693,37 @@ class Node:
         self._events[val.kind] = val
         self._shared.event_cb(self.n, val.kind)
 
-    def _OneAction(self, action, value, prefix):
+    def _OneAction(self, action, value, key, prefix):
         logging.info("%s action: %s value: %s", prefix, action, value)
-        a = action[0]
-        actions = action[1:]
-        assert a in command.ALL_ACTIONS
-        if a == command.ACTION_STORE_COMMAND_VERSION:
-            assert len(value) == 2, "%s: bad value: %s" % (prefix, value)
-            if value[1] != 0:
-                self._commands.SetVersion(value[0], value[1])
-                self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
-        elif a == command.ACTION_STORE_SENSOR:
-            self._meters.Set(command.GetValue(actions, value, prefix))
-            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
-        elif a == command.ACTION_STORE_SENSOR_SUPPORTED:
-            assert len(value) == 1, "Unexpected value: %s" % repr(value)
-            self._sensors.SetSupported(value)
-            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
-        elif a == command.ACTION_STORE_VALUE:
-            self.StoreValue(command.GetValue(actions, value, prefix))
-        elif a == command.ACTION_STORE_MAP:
-            val = command.GetValue(actions, value, prefix)
-            if val.kind not in self._values:
-                self._values[val.kind] = {}
-            self._values[val.kind][val.unit] = val
-        elif a == command.ACTION_STORE_EVENT:
-            self.StoreEvent(command.GetValue(actions, value, prefix))
-        elif a == command.ACTION_STORE_METER:
-            self._meters.Set(command.GetValue(actions, value, prefix))
-            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
-        elif a == command.ACTION_STORE_METER_SUPPORTED:
-            assert len(value) == 2
-            self._meters.SetSupported(value)
-            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
-        elif a == command.ACTION_STORE_PARAMETER:
-            assert len(value) == 2, "Unexpected value: %s" % repr(value)
-            self._parameters.Set(value)
-            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
-        elif a == command.ACTION_STORE_SCENE:
-            if value[0] == 0:
-                # TODO
-                #self._values[command.VALUE_ACTIVE_SCENE] = -1
-                pass
-            else:
-                self.scenes[value[0]] = value[1:]
-        elif a == command.ACTION_STORE_ASSOCIATION_GROUP_COUNT:
-            assert len(value) == 1
-            self._associations.StoreCount(value)
-            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
-        elif a == command.ACTION_STORE_ASSOCIATION_GROUP_NODES:
-            assert len(value) == 4
-            self._associations.StoreNodes(value)
-            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
-        elif a == command.ACTION_STORE_ASSOCIATION_GROUP_NAME:
-            assert len(value) == 2
-            self._associations.StoreName(value)
-            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
-        elif a == command.ACTION_STORE_ASSOCIATION_GROUP_META:
-            assert len(value) == 1
-            self._associations.StoreMeta(value)
-            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
-        elif a == command.ACTION_STORE_ASSOCIATION_GROUP_COMMANDS:
-            assert len(value) == 2
-            self._associations.StoreCommands(value)
-            self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
-        elif a == command.ACTION_CHANGE_STATE:
-            state = actions.pop(0)
-            self._MaybeChangeState(state)
-        elif a == command.SECURITY_SCHEME:
-            assert len(value) == 1
-            if value[0] == 0:
-                # not paired yet start key exchange
-                self.SecurityChangeKey(self._shared,security_key)
-            else:
-                # already paired
-                self.SecurityRequestClasses()
-        else:
-            logging.error("%s action:%s unexpected: %s %s",
-                          prefix, a, actions, value)
-            assert False, "%s action:%s unexpected: %s %s" % (prefix, a, actions, value)
+        func, num_val, event = action
+        if num_val != -1 and num_val != len(value):
+            logging.error("%s unexpected value length: %s [want: %d]",
+                          prefix, value, num_val)
+            assert False
+        if func:
+            func(self, value, key, prefix)
+        self._shared.event_cb(self.n, event)
+
+        #elif a == command.ACTION_STORE_MAP:
+        #    val = command.GetValue(actions, value, prefix)
+        #    if val.kind not in self._values:
+        #        self._values[val.kind] = {}
+        #    self._values[val.kind][val.unit] = val
+        #elif a == command.ACTION_STORE_SCENE:
+        #    if value[0] == 0:
+        #        # TODO
+        #        #self._values[command.VALUE_ACTIVE_SCENE] = -1
+        #        pass
+        #    else:
+        #        self.scenes[value[0]] = value[1:]
+        # elif a == command.SECURITY_SCHEME:
+        #    assert len(value) == 1
+        #    if value[0] == 0:
+        #        # not paired yet start key exchange
+        #        self.SecurityChangeKey(self._shared,security_key)
+        #    else:
+        #        # already paired
+        #        self.SecurityRequestClasses()
 
     def LogPrefix(self, k):
         cmd =  zwave.SUBCMD_TO_STRING.get(k[0] * 256 + k[1], "Unknown_" + str(k))
@@ -778,21 +731,21 @@ class Node:
 
     def ProcessCommand(self, data):
         self._last_contact = time.time()
-        k = (data[0], data[1])
-        prefix = self.LogPrefix(k)
+        key = (data[0], data[1])
+        prefix = self.LogPrefix(key)
         value = command.ParseCommand(data, prefix)
         if value is None:
             logging.error("%s parsing failed for %s", prefix, Hexify(data))
             return
 
-        state_change = command.STATE_CHANGE.get(k)
+        state_change = command.STATE_CHANGE.get(key)
         if state_change:
-            self._OneAction(state_change, value, prefix)
-        action = command.ACTIONS.get(k)
+            self._OneAction(state_change, value, key, prefix)
+        action = command.ACTIONS.get(key)
         if action is None:
             logging.error("%s unknown command %s", prefix, Hexify(data))
             return
-        self._OneAction(action, value, prefix)
+        self._OneAction(action, value, key, prefix)
 
     def _ProcessProtocolInfo(self, m):
         flags = self.flags

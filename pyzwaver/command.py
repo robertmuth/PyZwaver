@@ -48,50 +48,12 @@ SENSOR_KIND_TEMPERTATURE = "Temperature"
 # Value Types
 VALUE_TYPE_LIST = "ItemList"
 VALUE_TYPE_SCALAR = "ItemScalar"
-VALUE_TYPE_CONST = "ItemConst"
 VALUE_TYPE_MAP_LIST = "ItemMapList"
 VALUE_TYPE_MAP_SCALAR = "ItemMapScalar"
 VALUE_TYPE_SENSOR_NORMAL = "ItemSensorNormal"
 VALUE_TYPE_SENSOR_VALUE = "ItemSensorValue"
 VALUE_TYPE_METER_NORMAL = "ItemMeterNormal"
 
-
-# Store Actions
-ACTION_STORE_VALUE = "StoreValue"
-ACTION_STORE_EVENT = "StoreEvent"
-ACTION_STORE_MAP = "StoreMap"
-ACTION_STORE_SENSOR = "StoreSensor"
-ACTION_STORE_METER = "StoreMeter"
-ACTION_STORE_SENSOR_SUPPORTED = "StoreSensorSupported"
-ACTION_STORE_METER_SUPPORTED = "StoreMeterSupported"
-ACTION_STORE_SCENE = "StoreScene"
-ACTION_STORE_COMMAND_VERSION = "StoreCommandVersion"
-ACTION_STORE_PARAMETER = "StoreParameter"
-ACTION_CHANGE_STATE = "CHANGE_STATE"
-ACTION_STORE_ASSOCIATION_GROUP_NODES = "StoreAssociationGroupNodes"
-ACTION_STORE_ASSOCIATION_GROUP_NAME = "StoreAssociationGroupName"
-ACTION_STORE_ASSOCIATION_GROUP_META = "StoreAssociationGroupMeta"
-ACTION_STORE_ASSOCIATION_GROUP_COUNT = "StoreAssociationGroupCount"
-ACTION_STORE_ASSOCIATION_GROUP_COMMANDS = "StoreAssociationGroupCommands"
-
-ALL_ACTIONS = set([
-    ACTION_STORE_VALUE,
-    ACTION_STORE_EVENT,
-    ACTION_STORE_MAP,
-    ACTION_STORE_SENSOR,
-    ACTION_STORE_SENSOR_SUPPORTED,
-    ACTION_STORE_METER,
-    ACTION_STORE_METER_SUPPORTED,
-    ACTION_STORE_SCENE,
-    ACTION_STORE_COMMAND_VERSION,
-    ACTION_STORE_PARAMETER,
-    ACTION_CHANGE_STATE,
-    ACTION_STORE_ASSOCIATION_GROUP_NODES,
-    ACTION_STORE_ASSOCIATION_GROUP_NAME,
-    ACTION_STORE_ASSOCIATION_GROUP_META,
-    ACTION_STORE_ASSOCIATION_GROUP_COUNT,
-    ACTION_STORE_ASSOCIATION_GROUP_COMMANDS
-])
 
 #
 SECURITY_SET_CLASS = "SecuritySetClass"
@@ -586,99 +548,123 @@ def AssembleCommand(raw_cmd):
     return data
 
 
-
-_STORE_VALUE_SCALAR_ACTIONS = {
-    # report scalar
-    (zwave.SwitchAll, zwave.SwitchAll_Report) : None,
-    (zwave.Protection, zwave.Protection_Report) : None,
-    (zwave.NodeNaming, zwave.NodeNaming_Report) : None,
-    (zwave.NodeNaming, zwave.NodeNaming_LocationReport) : None,
-    (zwave.TimeParameters, zwave.TimeParameters_Report) : None,
-    (zwave.Lock, zwave.Lock_Report) : None,
-    (zwave.Indicator, zwave.Indicator_Report) : None,
-    (zwave.SwitchMultilevel, zwave.SwitchMultilevel_StopLevelChange) : None,
-    (zwave.WakeUp, zwave.WakeUp_IntervalCapabilitiesReport) : None,
-    (zwave.SwitchMultilevel, zwave.SwitchMultilevel_SupportedReport) : None,
-    (zwave.DoorLock, zwave.DoorLock_Report) : None,
-    (zwave.DoorLockLogging, zwave.DoorLockLogging_SupportedReport) : None,
-    (zwave.UserCode, zwave.UserCode_NumberReport) : None,
+_STORE_VALUE_SCALAR_ACTIONS= [
+    (zwave.SwitchAll, zwave.SwitchAll_Report),
+    (zwave.Protection, zwave.Protection_Report),
+    (zwave.NodeNaming, zwave.NodeNaming_Report),
+    (zwave.NodeNaming, zwave.NodeNaming_LocationReport),
+    (zwave.TimeParameters, zwave.TimeParameters_Report),
+    (zwave.Lock, zwave.Lock_Report),
+    (zwave.Indicator, zwave.Indicator_Report),
+    (zwave.SwitchMultilevel, zwave.SwitchMultilevel_StopLevelChange),
+    (zwave.WakeUp, zwave.WakeUp_IntervalCapabilitiesReport),
+    (zwave.SwitchMultilevel, zwave.SwitchMultilevel_SupportedReport),
+    (zwave.DoorLock, zwave.DoorLock_Report),
+    (zwave.DoorLockLogging, zwave.DoorLockLogging_SupportedReport),
+    (zwave.UserCode, zwave.UserCode_NumberReport),
     # set - a few requests may actually be sent to the controller
-    (zwave.Basic, zwave.Basic_Set) : None,
-    (zwave.SceneActivation, zwave.SceneActivation_Set) : None,
-    (zwave.Clock, zwave.Clock_Report): None,
-}
+    (zwave.Basic, zwave.Basic_Set),
+    (zwave.SceneActivation, zwave.SceneActivation_Set),
+    (zwave.Clock, zwave.Clock_Report),
+]
 
-_STORE_VALUE_LIST_ACTIONS = {
-    (zwave.Alarm, zwave.Alarm_SupportedReport) : None,
-    (zwave.Powerlevel, zwave.Powerlevel_Report) : None,
-    (zwave.SensorAlarm, zwave.SensorAlarm_SupportedReport) : None,
-    (zwave.ThermostatMode, zwave.ThermostatMode_Report) : None,
+_STORE_VALUE_LIST_ACTIONS = [
+    (zwave.Alarm, zwave.Alarm_SupportedReport),
+    (zwave.Powerlevel, zwave.Powerlevel_Report),
+    (zwave.SensorAlarm, zwave.SensorAlarm_SupportedReport),
+    (zwave.ThermostatMode, zwave.ThermostatMode_Report),
     # needs work
-    (zwave.ManufacturerSpecific, zwave.ManufacturerSpecific_DeviceSpecificReport) : None,
-    (zwave.ApplicationStatus, zwave.ApplicationStatus_Busy) : None,
-    (zwave.MultiInstance, zwave.MultiInstance_ChannelEndPointReport) : None,
-    (zwave.SwitchMultilevel, zwave.SwitchMultilevel_StartLevelChange) : None,
-    (zwave.DoorLock, zwave.DoorLock_ConfigurationReport) : None,
-    (zwave.ZwavePlusInfo, zwave.ZwavePlusInfo_Report) : None,
-    (zwave.Version, zwave.Version_Report): None,
-    (zwave.ManufacturerSpecific, zwave.ManufacturerSpecific_Report): None,
-    (zwave.ColorSwitch, zwave.ColorSwitch_SupportedReport): None,
-    (zwave.Firmware, zwave.Firmware_MetadataReport): None,
-}
-
-
-_STORE_SENSOR_ACTIONS = {
-    (zwave.SwitchBinary, zwave.SwitchBinary_Report):
-    [SENSOR_KIND_SWITCH_BINARY, UNIT_LEVEL],
-    (zwave.Battery, zwave.Battery_Report):
-    [SENSOR_KIND_BATTERY, UNIT_LEVEL],
-    (zwave.SensorBinary, zwave.SensorBinary_Report):
-    [SENSOR_KIND_SWITCH_BINARY, UNIT_LEVEL],
-    (zwave.SwitchToggleBinary, zwave.SwitchToggleBinary_Report):
-    [SENSOR_KIND_SWITCH_TOGGLE, UNIT_LEVEL],
-    (zwave.SwitchMultilevel, zwave.SwitchMultilevel_Report):
-    [SENSOR_KIND_SWITCH_MULTILEVEL, UNIT_LEVEL],
-    (zwave.Basic, zwave.Basic_Report):
-    [SENSOR_KIND_BASIC, UNIT_LEVEL],
-}
+    (zwave.ManufacturerSpecific, zwave.ManufacturerSpecific_DeviceSpecificReport),
+    (zwave.ApplicationStatus, zwave.ApplicationStatus_Busy),
+    (zwave.MultiInstance, zwave.MultiInstance_ChannelEndPointReport),
+    (zwave.SwitchMultilevel, zwave.SwitchMultilevel_StartLevelChange),
+    (zwave.DoorLock, zwave.DoorLock_ConfigurationReport),
+    (zwave.ZwavePlusInfo, zwave.ZwavePlusInfo_Report),
+    (zwave.Version, zwave.Version_Report),
+    (zwave.ManufacturerSpecific, zwave.ManufacturerSpecific_Report),
+    (zwave.ColorSwitch, zwave.ColorSwitch_SupportedReport),
+    (zwave.Firmware, zwave.Firmware_MetadataReport),
+]
 
 ACTIONS = {
     (zwave.SceneActuatorConf, zwave.SceneActuatorConf_Report):
-    [ACTION_STORE_SCENE],
+    (lambda n, v, k, p: None, -1, EVENT_VALUE_CHANGE),
+    #
+    # COMMAND
+    #
     (zwave.Version, zwave.Version_CommandClassReport):
-    [ACTION_STORE_COMMAND_VERSION],
+    (lambda n, v, k, p: n._commands.SetVersion(*v), 2, EVENT_VALUE_CHANGE),
+    #
+    # SENSOR
     #
     (zwave.SensorMultilevel, zwave.SensorMultilevel_Report):
-    [ACTION_STORE_SENSOR, VALUE_TYPE_SENSOR_NORMAL],
+    (lambda n, v, k, p: n._sensors.Set(GetValue([VALUE_TYPE_SENSOR_NORMAL], v, p)),
+     -1, EVENT_VALUE_CHANGE),
     (zwave.SensorMultilevel, zwave.SensorMultilevel_SupportedReport):
-    [ACTION_STORE_SENSOR_SUPPORTED],
+    (lambda n, v, k, p: n._sensors.SetSupported(v), 1, EVENT_VALUE_CHANGE),
+    (zwave.SwitchBinary, zwave.SwitchBinary_Report):
+    (lambda n, v, k, p: n._sensors.Set(GetValue(
+        [VALUE_TYPE_SENSOR_VALUE, SENSOR_KIND_SWITCH_BINARY, UNIT_LEVEL], v, p)),
+     -1, EVENT_VALUE_CHANGE),
+    (zwave.Battery, zwave.Battery_Report):
+    (lambda n, v, k, p: n._sensors.Set(GetValue(
+        [VALUE_TYPE_SENSOR_VALUE, SENSOR_KIND_BATTERY, UNIT_LEVEL], v, p)),
+     -1, EVENT_VALUE_CHANGE),
+    (zwave.SensorBinary, zwave.SensorBinary_Report):
+    (lambda n, v, k, p: n._sensors.Set(GetValue(
+        [VALUE_TYPE_SENSOR_VALUE, SENSOR_KIND_SWITCH_BINARY, UNIT_LEVEL], v, p)),
+     -1, EVENT_VALUE_CHANGE),
+    (zwave.SwitchToggleBinary, zwave.SwitchToggleBinary_Report):
+    (lambda n, v, k, p: n._sensors.Set(GetValue(
+        [VALUE_TYPE_SENSOR_VALUE, SENSOR_KIND_SWITCH_TOGGLE, UNIT_LEVEL], v, p)),
+     -1, EVENT_VALUE_CHANGE),
+    (zwave.SwitchMultilevel, zwave.SwitchMultilevel_Report):
+    (lambda n, v, k, p: n._sensors.Set(GetValue(
+        [VALUE_TYPE_SENSOR_VALUE, SENSOR_KIND_SWITCH_MULTILEVEL, UNIT_LEVEL], v, p)),
+     -1, EVENT_VALUE_CHANGE),
+    (zwave.Basic, zwave.Basic_Report):
+    (lambda n, v, k, p: n._sensors.Set(GetValue(
+        [VALUE_TYPE_SENSOR_VALUE, SENSOR_KIND_BASIC, UNIT_LEVEL], v, p)),
+     -1, EVENT_VALUE_CHANGE),
+    #
+    # METER
     #
     (zwave.Meter, zwave.Meter_Report):
-    [ACTION_STORE_METER, VALUE_TYPE_METER_NORMAL],
+    (lambda n, v, k, p: n._meters.Set(GetValue([VALUE_TYPE_METER_NORMAL], v, p)),
+     -1, EVENT_VALUE_CHANGE),
     (zwave.Meter, zwave.Meter_SupportedReport):
-    [ACTION_STORE_METER_SUPPORTED],
+    (lambda n, v, k, p: n._meters.SetSupported(v), 2, EVENT_VALUE_CHANGE),
+    #
+    # PARAMETER
     #
     (zwave.Configuration, zwave.Configuration_Report):
-    [ACTION_STORE_PARAMETER],
+    (lambda n, v, k, p: n._parameters.Set(v), 2, EVENT_VALUE_CHANGE),
+    #
+    # GROUPS
     #
     (zwave.Association, zwave.Association_GroupingsReport) :
-    [ACTION_STORE_ASSOCIATION_GROUP_COUNT],
+    (lambda n, v, k, p: n._associations.StoreCount(v), 1, EVENT_VALUE_CHANGE),
     (zwave.Association, zwave.Association_Report):
-    [ACTION_STORE_ASSOCIATION_GROUP_NODES],
+    (lambda n, v, k, p: n._associations.StoreNodes(v), 4, EVENT_VALUE_CHANGE),
     (zwave.AssociationGroupInformation, zwave.AssociationGroupInformation_NameReport):
-    [ACTION_STORE_ASSOCIATION_GROUP_NAME],
+    (lambda n, v, k, p: n._associations.StoreName(v), 2, EVENT_VALUE_CHANGE),
     (zwave.AssociationGroupInformation, zwave.AssociationGroupInformation_InfoReport):
-    [ACTION_STORE_ASSOCIATION_GROUP_META],
+    (lambda n, v, k, p: n._associations.StoreMeta(v), -1, EVENT_VALUE_CHANGE),
     (zwave.AssociationGroupInformation, zwave.AssociationGroupInformation_ListReport):
-    [ACTION_STORE_ASSOCIATION_GROUP_COMMANDS],
+    (lambda n, v, k, p: n._associations.StoreCommands(v), 2, EVENT_VALUE_CHANGE),
+    #
+    # EVENTS
     #
     (zwave.Alarm, zwave.Alarm_Report):
-    [ACTION_STORE_EVENT, VALUE_TYPE_LIST, EVENT_ALARM],
+    (lambda n, v, k, p: n.StoreEvent(GetValue(
+        [VALUE_TYPE_LIST, EVENT_ALARM], v, p)), -1, None),
     (zwave.Alarm, zwave.Alarm_Set):
-    [ACTION_STORE_EVENT, VALUE_TYPE_LIST, EVENT_ALARM],
+    (lambda n, v, k, p: n.StoreEvent(GetValue(
+        [VALUE_TYPE_LIST, EVENT_ALARM], v, p)), -1, None),
     (zwave.WakeUp, zwave.WakeUp_Notification):
-    [ACTION_STORE_EVENT, VALUE_TYPE_CONST, EVENT_WAKE_UP, 1],
-    #
+    (lambda n, v, k, p: n.StoreEvent(Value(EVENT_WAKE_UP, UNIT_NONE, 1)),
+     -1, None),
+#
     (zwave.Security, zwave.Security_SchemeReport): [SECURITY_SCHEME],
     (zwave.Security, zwave.Security_NonceReport): [SECURITY_NONCE_RECEIVED],
     (zwave.Security, zwave.Security_NonceGet): [SECURITY_NONCE_REQUESTED],
@@ -689,20 +675,19 @@ ACTIONS = {
 
 STATE_CHANGE = {
     (zwave.ManufacturerSpecific, zwave.ManufacturerSpecific_Report):
-    [ACTION_CHANGE_STATE, NODE_STATE_INTERVIEWED],
+    (lambda n, v, k, p: n._MaybeChangeState(NODE_STATE_INTERVIEWED), -1, None),
 }
 
 def PatchUpActions():
     global ACTIONS
     logging.info("PatchUpActions")
-    for k, v in _STORE_VALUE_SCALAR_ACTIONS.items():
-        ACTIONS[k] = [ACTION_STORE_VALUE, VALUE_TYPE_SCALAR, GetValueName(k)]
+    for key in _STORE_VALUE_SCALAR_ACTIONS:
+       ACTIONS[key] =  (lambda n, v, k, p: n.StoreValue(GetValue(
+           [VALUE_TYPE_SCALAR, GetValueName(k)],v, p)), -1, EVENT_VALUE_CHANGE)
 
-    for k, v in _STORE_VALUE_LIST_ACTIONS.items():
-        ACTIONS[k] = [ACTION_STORE_VALUE, VALUE_TYPE_LIST, GetValueName(k)]
-
-    for k, v in _STORE_SENSOR_ACTIONS.items():
-        ACTIONS[k] = [ACTION_STORE_SENSOR, VALUE_TYPE_SENSOR_VALUE] + v
+    for key in _STORE_VALUE_LIST_ACTIONS:
+        ACTIONS[key] =  (lambda n, v, k, p: n.StoreValue(GetValue(
+           [VALUE_TYPE_LIST, GetValueName(k)],v, p)), -1, EVENT_VALUE_CHANGE)
 
 PatchUpActions()
 
@@ -710,29 +695,29 @@ PatchUpActions()
 # maps incoming API_APPLICATION_COMMAND messages to action we want to take
 # Most of the time we deal with "reports" and the action will be to
 # store some value inside the message for later use.
-NODE_ACTION_TO_BE_REVISITED = {
-    #
-    (zwave.MultiInstance, zwave.MultiInstance_Report):
-    [ACTION_STORE_MAP, VALUE_TYPE_MAP_SCALAR, "multi_instance"],
-    (zwave.SceneControllerConf, zwave.SceneControllerConf_Report):
-    [ACTION_STORE_MAP, VALUE_TYPE_MAP_LIST, "button"],
-    (zwave.ApplicationStatus, zwave.ApplicationStatus_RejectedRequest):
-    [ACTION_STORE_EVENT, VALUE_TYPE_CONST, "rejected_request", 1],
-    #
-    (zwave.Basic, zwave.Basic_Get):
-    [ACTION_STORE_EVENT, VALUE_TYPE_CONST, "BASIC_GET", 1],
-    #
-    (zwave.UserCode, zwave.UserCode_Report):
-    [ACTION_STORE_MAP, VALUE_TYPE_MAP_LIST, "user_code"],
-    (zwave.DoorLockLogging, zwave.DoorLockLogging_Report):
-    [ACTION_STORE_MAP, VALUE_TYPE_MAP_LIST, "lock_log"],
-    #
-    (zwave.Hail, zwave.Hail_Hail):
-    [ACTION_STORE_EVENT, VALUE_TYPE_CONST, "HAIL", 1],
-    # ZWAVE+
-    # SECURITY
-    #
-}
+# NODE_ACTION_TO_BE_REVISITED = {
+#     #
+#     (zwave.MultiInstance, zwave.MultiInstance_Report):
+#     [ACTION_STORE_MAP, VALUE_TYPE_MAP_SCALAR, "multi_instance"],
+#     (zwave.SceneControllerConf, zwave.SceneControllerConf_Report):
+#     [ACTION_STORE_MAP, VALUE_TYPE_MAP_LIST, "button"],
+#     (zwave.ApplicationStatus, zwave.ApplicationStatus_RejectedRequest):
+#     [ACTION_STORE_EVENT, VALUE_TYPE_CONST, "rejected_request", 1],
+#     #
+#     (zwave.Basic, zwave.Basic_Get):
+#     [ACTION_STORE_EVENT, VALUE_TYPE_CONST, "BASIC_GET", 1],
+#     #
+#     (zwave.UserCode, zwave.UserCode_Report):
+#     [ACTION_STORE_MAP, VALUE_TYPE_MAP_LIST, "user_code"],
+#     (zwave.DoorLockLogging, zwave.DoorLockLogging_Report):
+#     [ACTION_STORE_MAP, VALUE_TYPE_MAP_LIST, "lock_log"],
+#     #
+#     (zwave.Hail, zwave.Hail_Hail):
+#     [ACTION_STORE_EVENT, VALUE_TYPE_CONST, "HAIL", 1],
+#     # ZWAVE+
+#     # SECURITY
+#     #
+# }
 
 
 class Value:
@@ -768,10 +753,6 @@ def GetValue(action, value, prefix):
         assert type(value) == list, "expected list value"
         kind = action.pop(0)
         return Value(kind, UNIT_NONE, value)
-    elif t == VALUE_TYPE_CONST:
-        kind = action.pop(0)
-        val = action.pop(0)
-        return Value(kind, UNIT_NONE, val)
     elif t == VALUE_TYPE_SENSOR_VALUE:
         kind = action.pop(0)
         unit = action.pop(0)
