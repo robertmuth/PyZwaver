@@ -1094,6 +1094,7 @@ def main():
     device = zdriver.MakeSerialDevice(OPTIONS.serial_port)
 
     DRIVER = zdriver.Driver(device, MQ)
+    NODESET = znode.NodeSet(MQ, NodeEventCallback, OPTIONS.node_auto_refresh_secs)
     CONTROLLER = zcontroller.Controller(MQ,
                                         ControllerEventCallback,
                                         pairing_timeout_secs=OPTIONS.pairing_timeout_secs)
@@ -1103,7 +1104,6 @@ def main():
     time.sleep(2)
     print(CONTROLLER)
 
-    NODESET = znode.NodeSet(MQ, NodeEventCallback, OPTIONS.node_auto_refresh_secs)
     n = NODESET.GetNode(CONTROLLER.GetNodeId())
     n.InitializeExternally(CONTROLLER.props.product, CONTROLLER.props.library_type, True)
 
