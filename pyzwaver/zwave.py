@@ -936,14 +936,14 @@ SUBCMD_TO_PARSE_TABLE = {
     0x3201 : ['Y{scale}'],                                    # Get (1)
     0x3202 : ['M{meter}'],                                    # Report (2)
     0x3203 : [],                                              # SupportedGet (3)
-    0x3204 : ['B{type}', 'B{scales}'],                        # SupportedReport (4)
+    0x3204 : ['B{type}', 'B{scale}'],                         # SupportedReport (4)
     0x3205 : [],                                              # Reset (5)
 
 # ColorSwitch (0x33 = 51)
     0x3301 : [],                                              # SupportedGet (1)
-    0x3302 : ['B{type}', 'B{type}'],                          # SupportedReport (2)
+    0x3302 : ['U{bits}'],                                     # SupportedReport (2)
     0x3303 : ['B{group}'],                                    # Get (3)
-    0x3304 : ['B{group}', 'B{type}'],                         # Report (4)
+    0x3304 : ['B{group}', 'B{level}'],                        # Report (4)
 
 # ThermostatMode (0x40 = 64)
     0x4001 : ['B{thermo}'],                                   # Set (1)
