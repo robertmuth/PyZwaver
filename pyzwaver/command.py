@@ -82,13 +82,6 @@ def GetValueName(k):
         name = re.sub(a, b, name)
     return name
 
-# Special Values which are more than just informational
-VALUE_ACTIVE_SCENE = GetValueName(
-    (zwave.SceneActivation, zwave.SceneActivation_Set))
-VALUE_VERSION = GetValueName(
-    (zwave.Version, zwave.Version_Report))
-VALUE_MANUFACTURER_SPECIFIC = GetValueName(
-    (zwave.ManufacturerSpecific, zwave.ManufacturerSpecific_Report))
 
 # ======================================================================
 METER_TYPES = [
@@ -344,7 +337,7 @@ def _ParseBitVector(m, index):
 
 def _ParseBitVectorRest(m, index):
     size = len(m) - index
-    return index + size, _ExtractBitVector(m[index:], 0)
+    return len(m), _ExtractBitVector(m[index:], 0)
 
 
 def _ParseNonce(m, index):
@@ -584,9 +577,13 @@ def ValueMeterNormal(value, prefix):
     assert unit is not None
     return Value(info[0], unit, val[2], val[3], val[4])
 
+def ValueBare(k, value):
+    return Value(GetValueName(k), UNIT_NONE, value)
+
 # ======================================================================
 _STORE_VALUE_SCALAR_ACTIONS= [
     (zwave.SwitchAll, zwave.SwitchAll_Report),
+    (zwave.ColorSwitch, zwave.ColorSwitch_SupportedReport),
     (zwave.Protection, zwave.Protection_Report),
     (zwave.NodeNaming, zwave.NodeNaming_Report),
     (zwave.NodeNaming, zwave.NodeNaming_LocationReport),
@@ -619,7 +616,6 @@ _STORE_VALUE_LIST_ACTIONS = [
     (zwave.ZwavePlusInfo, zwave.ZwavePlusInfo_Report),
     (zwave.Version, zwave.Version_Report),
     (zwave.ManufacturerSpecific, zwave.ManufacturerSpecific_Report),
-    (zwave.ColorSwitch, zwave.ColorSwitch_SupportedReport),
     (zwave.Firmware, zwave.Firmware_MetadataReport),
 ]
 
@@ -743,12 +739,12 @@ def PatchUpActions():
     global ACTIONS
     logging.info("PatchUpActions")
     for key in _STORE_VALUE_SCALAR_ACTIONS:
-       ACTIONS[key] =  (lambda n, v, k, p: n.StoreValue(
-           Value(GetValueName(k), UNIT_NONE, v[0])), 1, EVENT_VALUE_CHANGE)
+       ACTIONS[key] =  (lambda n, v, k, p: n._values.Set(k, ValueBare(k, v[0])),
+                        1, EVENT_VALUE_CHANGE)
 
     for key in _STORE_VALUE_LIST_ACTIONS:
-        ACTIONS[key] =  (lambda n, v, k, p: n.StoreValue(
-            Value(GetValueName(k), UNIT_NONE, v)), -1, EVENT_VALUE_CHANGE)
+        ACTIONS[key] =  (lambda n, v, k, p: n._values.Set(k, ValueBare(k, v)),
+                         -1, EVENT_VALUE_CHANGE)
 
 PatchUpActions()
 

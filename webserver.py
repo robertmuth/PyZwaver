@@ -833,7 +833,7 @@ def RenderMiscValues(node):
     out = ["<h2>Misc Values</h2>",
             "<table>",
     ]
-    for _, v in sorted(node.GetAllValues().items()):
+    for _, _, v in node.GetValues().GetAllTuples():
         out += ["<tr><td>", v.kind, "</td><td>", repr(v.value), "</td></tr>"]
     out += ["</table>",
             "<p>",
@@ -1068,7 +1068,7 @@ def main():
     global DRIVER, CONTROLLER, NODESET, DB
     # note: this makes sure we have at least one handler
     # logging.basicConfig(level=logging.WARNING)
-    # logging.basicConfig(level=logging.DEBUG)
+    #logging.basicConfig(level=logging.ERROR)
 
     tornado.options.parse_command_line()
     logger = logging.getLogger()

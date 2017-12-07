@@ -130,6 +130,8 @@ _STATIC_PROPERTY_QUERIES = [
     [zwave.AssociationGroupInformation, zwave.AssociationGroupInformation_InfoGet, 64, 0],
 ]
 
+def ColorQueries(groups):
+    return []
 
 def CommandVersionQueries(classes):
     return [[zwave.Version, zwave.Version_CommandClassGet, c] for c in classes]
@@ -194,9 +196,6 @@ def MaybePatchCommand(m):
     return m
 
 
-DEFAULT_PRODUCT = [0, 0, 0]
-
-
 def RenderValues(values):
     return str([str(v) for v in sorted(values)])
 
@@ -211,18 +210,6 @@ def CompactifyParams(params):
         else:
             last[1] = k  # increment range end
     return out
-
-_DEFAULT_PRODUCT = command.Value(
-    command.VALUE_MANUFACTURER_SPECIFIC, command.UNIT_NONE, [0, 0, 0])
-
-_DEFAULT_VERSION = command.Value(
-    command.VALUE_VERSION, command.UNIT_NONE, [-1, 0, 0, 0, 0])
-
-_DEFAULT_MULTILEVEL_SWITCH_SENSOR = command.Value(
-    command.SENSOR_KIND_SWITCH_MULTILEVEL, command.UNIT_LEVEL, 0)
-
-_DEFAULT_MULTILEVEL_SWITCH_SENSOR = command.Value(
-    command.SENSOR_KIND_SWITCH_MULTILEVEL, command.UNIT_LEVEL, 0)
 
 
 class _SharedNodeState:
@@ -372,14 +359,18 @@ class NodeParameters:
         self._parameters = {}
 
     def Set(self, values):
-        self._parameters[val[0]] = val[1]
+        self._parameters[values[0]] = values[1]
 
     def __str__(self):
         return repr(CompactifyParams(self._parameters))
 
 class NodeSensors:
     def __init__(self):
-        self._readings = {}
+        self._readings = {
+            (command.SENSOR_KIND_SWITCH_MULTILEVEL, command.UNIT_LEVEL):
+            command.Value(
+                command.SENSOR_KIND_SWITCH_MULTILEVEL, command.UNIT_LEVEL, 0),
+        }
         self._supported = set()
 
     def Readings(self): return self._readings.values()
@@ -399,7 +390,7 @@ class NodeSensors:
 
     def GetMultilevelSwitchLevel(self):
         k = (command.SENSOR_KIND_SWITCH_MULTILEVEL, command.UNIT_LEVEL)
-        p = self._readings.get(k, _DEFAULT_MULTILEVEL_SWITCH_SENSOR)
+        p = self._readings.get(k)
         return p.value
 
     def __str__(self):
@@ -436,6 +427,39 @@ class NodeMeters:
                 "  meters:      " + RenderValues(self._readings.values()))
 
 
+KEY_VERSION = (zwave.Version, zwave.Version_Report)
+KEY_MANUFACTURER_SPECIFIC = (zwave.ManufacturerSpecific, zwave.ManufacturerSpecific_Report)
+KEY_COLOR_SWITCH_SUPPORTED = (zwave.ColorSwitch, zwave.ColorSwitch_SupportedReport)
+
+class NodeValues:
+    def __init__(self):
+        self._values = {
+            KEY_VERSION:
+            (None, command.ValueBare(KEY_VERSION, [-1, 0, 0, 0, 0])),
+            KEY_MANUFACTURER_SPECIFIC:
+            (None, command.ValueBare(KEY_MANUFACTURER_SPECIFIC, [0, 0, 0])),
+            KEY_COLOR_SWITCH_SUPPORTED:
+            (None, command.ValueBare(KEY_COLOR_SWITCH_SUPPORTED, set())),
+        }
+
+    def HasValue(self, key):
+        return key in self._values
+
+    def Set(self, key, value):
+        if value is None: return
+        self._values[key] = (time.time(), value)
+
+    def Get(self, key):
+        v = self._values.get(key)
+        if v is not None:
+            return v[1]
+        return None
+
+    def GetAllTuples(self):
+        return sorted([(k, v[0], v[1]) for k, v in self._values.items() if v[0]])
+
+    def __str__(self):
+        return RenderValues(self._values.values())
 
 class Node:
 
@@ -463,7 +487,7 @@ class Node:
         self._commands = NodeCommands()
         self._secure_commands = NodeCommands()
 
-        self._values = {}
+        self._values =NodeValues()
         self._events = {}
         self._meters = NodeMeters()
         self._sensors = NodeSensors()
@@ -485,20 +509,19 @@ class Node:
         return self._is_self
 
     def ProductInfo(self):
-        p = self._values.get(
-            command.VALUE_MANUFACTURER_SPECIFIC, _DEFAULT_PRODUCT)
+        p = self._values.Get(KEY_MANUFACTURER_SPECIFIC)
         return tuple(p.value)
 
     def LibraryType(self):
-        p = self._values.get(command.VALUE_VERSION, _DEFAULT_VERSION)
+        p = self._values.Get(KEY_VERSION)
         return p.value[0]
 
     def SDKVersion(self):
-        p = self._values.get(command.VALUE_VERSION, _DEFAULT_VERSION)
+        p = self._values.Get(KEY_VERSION)
         return (p.value[1], p.value[2])
 
     def ApplicationVersion(self):
-        p = self._values.get(command.VALUE_VERSION, _DEFAULT_VERSION)
+        p = self._values.Get(KEY_VERSION)
         return (p.value[3], p.value[4])
 
     def GetAssociations(self):
@@ -516,7 +539,7 @@ class Node:
     def GetCommands(self):
         return self._commands
 
-    def GetAllValues(self):
+    def GetValues(self):
         return self._values
 
     def __lt__(self, other):
@@ -552,7 +575,8 @@ class Node:
             out.append(str(self._meters))
         if self._sensors.HasContent():
             out.append(str(self._sensors))
-        out.append("  values:       " + RenderValues(self._values.values()))
+        out.append("  values:")
+        out.append(str(self.values))
         out.append("  events:       " + repr(self._events))
         out.append("  parameters:")
         out.append(str(self._parameters))
@@ -584,15 +608,6 @@ class Node:
         return "%d min ago" % (int(d) // 60)
 
 
-    def SetValue(self, key, value):
-        self._values[key] = (time.time(), value)
-
-    def GetValue(self, key, default=None):
-        v = self._values.get(key, [None, default])
-        return v[1]
-
-    def HasValue(self, key):
-        return key in self._values
 
     def IsIntialized(self):
         """at the very least we should have received a ProcessUpdate(),
@@ -684,11 +699,6 @@ class Node:
         logging.warning("SecurityChangeKey")
         self.BatchCommandSubmitFilteredFast(
             [[zwave.Security, zwave.Security_NetworkSetKey, key]], XMIT_OPTIONS_SECURE)
-
-    def StoreValue(self, val):
-        if val is None: return
-        self._values[val.kind] = val
-        self._shared.event_cb(self.n, command.EVENT_VALUE_CHANGE)
 
     def StoreEvent(self, val):
         self._events[val.kind] = val
@@ -933,11 +943,18 @@ class Node:
         logging.warning("[%d] RefreshDynamic", self.n)
         self.BatchCommandSubmitFilteredSlow(_DYNAMIC_PROPERTY_QUERIES,
                                             XMIT_OPTIONS)
+
         self.BatchCommandSubmitFilteredSlow(
             SensorMultiLevelQueries(self._sensors.Supported()),
             XMIT_OPTIONS)
+
         self.BatchCommandSubmitFilteredSlow(
             MeterQueries(self._meters.Supported()),
+            XMIT_OPTIONS)
+
+        k = (zwave.ColorSwitch, zwave.ColorSwitch_SupportedGet)
+        self.BatchCommandSubmitFilteredSlow(
+            ColorQueries(self._values.Get(k)),
             XMIT_OPTIONS)
 
     def RefreshStaticValues(self):
@@ -1092,21 +1109,23 @@ class NodeSet(object):
 
     def _NodesetRefresherThread(self):
         logging.warning("_NodesetRefresherThread started")
-        time.sleep(self._refresh_interval)
+        #time.sleep(self._refresh_interval)
+        time.sleep(10)
         while not self._terminate:
-            time.sleep(5)
+            time.sleep(10)
             now = time.time()
-
             def slow(node):
                 if not node._last_contact:
                     return False
                 if node.IsSelf():
                     return False
                 return now - node._last_contact > self._refresh_interval
+
             candidates = [node for node in self.nodes.values() if slow(node)]
             if candidates:
                 node = random.choice(candidates)
                 logging.warning("refreshing: [%d] %s", node.n, node.name)
+                logging.error("@@@ Refrehser %s", candidates)
                 node.RefreshDynamicValues()
 
             def unknown(node):
