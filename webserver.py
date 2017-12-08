@@ -142,17 +142,17 @@ var gEventHistory = ["", "", "", "", "", ""];
 
 var gDebug = 0;
 // "enums" for tabs
-var TAB_CONTROLLER = "tab-controller";
-var TAB_ALL_NODES = "tab-all-nodes";
-var TAB_ONE_NODE = "tab-one-node";
-var TAB_STATUS = "tab-status";
-var TAB_LOGS = "tab-logs";
-var TAB_SLOW = "tab-slow";
-var TAB_FAILED = "tab-failed";
-var STATUS_FIELD = "status";
-var ACTIVITY_FIELD = "activity"
-var HISTORY_FIELD = "history";
-var DRIVE_FIELD = "driver";
+const TAB_CONTROLLER = "tab-controller";
+const TAB_ALL_NODES = "tab-all-nodes";
+const TAB_ONE_NODE = "tab-one-node";
+const TAB_STATUS = "tab-status";
+const TAB_LOGS = "tab-logs";
+const TAB_SLOW = "tab-slow";
+const TAB_FAILED = "tab-failed";
+const STATUS_FIELD = "status";
+const ACTIVITY_FIELD = "activity"
+const HISTORY_FIELD = "history";
+const DRIVE_FIELD = "driver";
 // Is there a literal notation for this?
 var tabToDisplay = {};
 tabToDisplay[TAB_CONTROLLER] = function() {return "/display/controller"; };
@@ -162,6 +162,11 @@ tabToDisplay[TAB_STATUS] = function() {return "/display/status"; };
 tabToDisplay[TAB_LOGS] = function() {return "/display/logs"; };
 tabToDisplay[TAB_SLOW] = function() {return "/display/slow"; };
 tabToDisplay[TAB_FAILED] = function() {return "/display/failed"; };
+
+const listLog = new List('driverlog', {valueNames: [ 't', 'd', 'm' ]});
+const listSlow = new List('driverslow', {valueNames: [ 'd', 't', 'm' ]});
+const listFailed = new List('driverfailed', {valueNames: [ 'd', 't', 'm' ]});
+
 
 function OpenSocket() {
     var loc = window.location;
@@ -193,25 +198,16 @@ function SocketMessageHandler(e) {
          tab.innerHTML = val;
     } else if (tag == "l") {
          var values = JSON.parse(val);
-         var options = {
-           valueNames: [ 't', 'd', 'm' ],
-           //item: '<tr><td class="t"><td class="m"></td></td></tr>'
-         };
-         var lst = new List('driverlog', options, values);
+         listLog.clear();
+         listLog.add(values);
     } else if (tag == "b") {
          var values = JSON.parse(val);
-         var options = {
-           valueNames: [ 'd', 't', 'm' ],
-           //item: '<tr><td class="t"><td class="m"></td></td></tr>'
-         };
-         var lst = new List('driverslow', options, values);
+         listSlow.clear();
+         listSlow.add(values);
     } else if (tag == "f") {
          var values = JSON.parse(val);
-         var options = {
-           valueNames: [ 'd', 't', 'm' ],
-           //item: '<tr><td class="t"><td class="m"></td></td></tr>'
-         };
-         var lst = new List('driverfailed', options, values);
+         listFailed.clear();
+         listFailed.add(values);
     } else if (tag == "a") {
          var tab = document.getElementById(TAB_ALL_NODES);
          tab.innerHTML = val;
@@ -541,7 +537,7 @@ def MakeControllerButton(action, label):
 def MakeNodeRange(node, action, lo, hi):
    s = ("<input onchange='HandleChange(event)' data-param='/node/%d/%s/' class='multilevel' "
         "type=range min=%f max=%f value='%f'>")
-   return s % (node.n, action, lo, hi, node.GetSensors().GetMultilevelSwitchLevel())
+   return s % (node.n, action, lo, hi, node.sensors.GetMultilevelSwitchLevel())
 
 def RenderReading(value):
     v = value.value
@@ -581,22 +577,21 @@ def RenderAllReadings(values1, values2):
     return out
 
 def ClassSpecificNodeButtons(node):
-    commands = node.GetCommands()
     out = []
-    if commands.HasCommandClass(zwave.SwitchBinary):
+    if node.commands.HasCommandClass(zwave.SwitchBinary):
         out.append(MakeNodeButton(node, "binary_switch/0", "Off"))
         out.append(MakeNodeButton(node, "binary_switch/255", "On"))
-    if commands.HasCommandClass(zwave.SwitchMultilevel):
+    if node.commands.HasCommandClass(zwave.SwitchMultilevel):
         out.append(MakeNodeRange(node, "multilevel_switch", 0, 100)),
-    if commands.HasCommandClass(zwave.Meter):
+    if node.commands.HasCommandClass(zwave.Meter):
         # reset
         pass
     return out
 
 def MakeTableRowForNode(node, status_only, is_failed):
     global DB
-    readings = RenderAllReadings(node.GetSensors().Readings(),
-                                 node.GetMeters().Readings())
+    readings = RenderAllReadings(node.sensors.Readings(),
+                                 node.meters.Readings())
     buttons = []
     if not status_only:
         if not node.IsSelf():
@@ -785,8 +780,7 @@ def RenderNodeCommandClasses(node):
            "<p>",
            "<table>",
     ]
-    commands = node.GetCommands()
-    for cls, version in commands.CommandVersions():
+    for cls, version in node.commands.CommandVersions():
         name =  "%s [%d]" % (zwave.CMD_TO_STRING.get(cls, "UKNOWN:%d" % cls), cls)
         out += ["<tr><td>", name, "</td><td>", str(version), "</td></tr>"]
     out += ["</table>"]
@@ -798,15 +792,14 @@ def RenderNodeAssociations(node: znode.Node):
            "<p>",
            "<table>",
     ]
-    associations = node.GetAssociations()
-    for group in associations.Groups():
+    for group in node.associations.Groups():
         out.append(RenderAssociationGroup(node, group))
     out += ["</table>"]
     return out
 
 
 def RenderNodeParameters(node: znode.Node):
-    compact = znode.CompactifyParams(node.GetParameters()._parameters)
+    compact = znode.CompactifyParams(node.parameters._parameters)
     out = ["<h2>Configuration</h2>",
            MakeNodeButton(node, "refresh_parameters", "Probe"),
            "<br>",
@@ -833,7 +826,7 @@ def RenderMiscValues(node):
     out = ["<h2>Misc Values</h2>",
             "<table>",
     ]
-    for _, _, v in node.GetValues().GetAllTuples():
+    for _, _, v in node.values.GetAllTuples():
         out += ["<tr><td>", v.kind, "</td><td>", repr(v.value), "</td></tr>"]
     out += ["</table>",
             "<p>",
@@ -855,7 +848,7 @@ def RenderNode(node):
         "<input type=text value='%s'>" % DB.GetNodeName(node.n),
         "<h2>Readings</h2>",
     ]
-    out += RenderAllReadings(node.GetSensors().Readings(), node.GetMeters().Readings())
+    out += RenderAllReadings(node.sensors.Readings(), node.meters.Readings())
     out += ["<p>"]
     out += ClassSpecificNodeButtons(node)
 
@@ -1074,7 +1067,7 @@ def main():
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     logger.setLevel(logging.WARNING)
-    logger.setLevel(logging.ERROR)
+    #logger.setLevel(logging.ERROR)
     for h in logger.handlers:
         h.setFormatter(MyFormatter())
 
