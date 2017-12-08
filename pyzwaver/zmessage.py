@@ -351,7 +351,7 @@ _COMMANDS_WITH_SIMPLE_RESPONSE_AND_REQUEST = {
 }
 
 for x, y in _COMMANDS_WITH_SIMPLE_RESPONSE_AND_REQUEST.items():
-    _RESPONSE_ACTION[x] = [ACTION_REPORT_NE, 1]
+    _RESPONSE_ACTION[x] = [ACTION_REPORT_EQ, 1]
     _REQUEST_ACTION[x] =  [ACTION_MATCH_CBID] + y
 
 
@@ -397,12 +397,11 @@ class Message:
 
     """
     def __init__(self, payload, priority, callback, node,
-                 timeout=1, action_requ=None, action_resp=None, retries=1):
+                 timeout=1, action_requ=None, action_resp=None):
         self.payload = payload
         self.priority = priority
         self.node = node
         self.callback = callback
-        self.retries = retries
         self.timeout = timeout
         self.start = None
         self.end = None
@@ -534,7 +533,7 @@ class MessageQueue:
         if action[0] == ACTION_REPORT:
             self._inflight_result.put(m)
             return False
-        elif action[0] == ACTION_REPORT_NE:
+        elif action[0] == ACTION_REPORT_EQ:
             assert len(m) == 6
             # we expect a message of the form:
             # SOF <len> RES  <func> <status> <checksum>
@@ -546,15 +545,11 @@ class MessageQueue:
                 logging.debug("delivered to stack")
             else:
                 inflight = self._inflight
-                inflight.retries -= 1
-                logging.error("unexpected resp status is %d wanted %d ==== retries left: %d ==== %s",
-                                m[4], action[1], inflight.retries,
+                logging.warning("unexpected resp status is %d wanted %d ==== %s",
+                                m[4], action[1],
                                 PrettifyRawMessage(inflight.payload))
                 time.sleep(0.1)
-                if inflight.retries > 0:
-                    return True
-                else:
-                    self._inflight_result.put(m)
+                self._inflight_result.put(m)
             return False
 
         else:
@@ -571,7 +566,8 @@ class MessageQueue:
 
     def MaybeCompleteMessageRequest(self, m):
         if not self._inflight:
-            logging.error("unexpected request")
+            logging.error("nothing inflight unexpected request %s",
+                          PrettifyRawMessage(m))
             return
         func = self._inflight.payload[3]
         cbid = self._inflight.payload[-2]
@@ -595,6 +591,8 @@ class MessageQueue:
             assert False
 
     def MaybeCompleteMessage(self, m):
+        if m == None:
+            return
         if m[0] == zwave.ACK:
             if (self._inflight.action_requ[0] == ACTION_NONE and
                 self._inflight.action_resp[0] == ACTION_NONE):

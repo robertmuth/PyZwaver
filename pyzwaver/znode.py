@@ -1117,7 +1117,6 @@ class NodeSet(object):
             if candidates:
                 node = random.choice(candidates)
                 logging.warning("refreshing: [%d] %s", node.n, node.name)
-                logging.error("@@@ Refrehser %s", candidates)
                 node.RefreshDynamicValues()
 
             def unknown(node):

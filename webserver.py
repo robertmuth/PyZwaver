@@ -1067,7 +1067,7 @@ def main():
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     logger.setLevel(logging.WARNING)
-    #logger.setLevel(logging.ERROR)
+    logger.setLevel(logging.ERROR)
     for h in logger.handlers:
         h.setFormatter(MyFormatter())
 
