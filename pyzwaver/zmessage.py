@@ -594,6 +594,21 @@ class MessageQueue:
                           action[0], PrettifyRawMessage(self._inflight.payload))
             assert False
 
+    def MaybeCompleteMessage(self, m):
+        if m[0] == zwave.ACK:
+            if (self._inflight.action_requ[0] == ACTION_NONE and
+                self._inflight.action_resp[0] == ACTION_NONE):
+                self._inflight.Complete(None)
+                return True
+            else:
+                return False
+        elif m[2] == zwave.REQUEST:
+            return self.MaybeCompleteMessageRequest(m)
+        elif m[2] == zwave.RESPONSE:
+            return self.MaybeCompleteMessageResponse(m)
+        else:
+            assert False
+
     def WaitForInFlightMessageCompletion(self):
         """processes messages related to the current inflight message
 

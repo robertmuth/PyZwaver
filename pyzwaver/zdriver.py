@@ -208,20 +208,20 @@ class Driver(object):
                 else:
                     logging.error("nothing to re-send after CAN")
             elif m[0] == zwave.ACK:
-                self._mq.MaybeCompleteMessageAck(m)
+                self._mq.MaybeCompleteMessage(m)
 
             elif m[0] == zwave.SOF:
                 if zmessage.Checksum(m) == zwave.SOF:
                     self.SendControl(zmessage.RAW_MESSAGE_ACK)
                     if m[2] == zwave.RESPONSE:
-                        self._mq.MaybeCompleteMessageResponse(m)
+                        self._mq.MaybeCompleteMessage(m)
                     elif m[2] == zwave.REQUEST:
                         if (m[3] == zwave.API_ZW_APPLICATION_UPDATE or
                                 m[3] == zwave.API_APPLICATION_COMMAND_HANDLER):
                             self._mq.PutIncommingRawMessage(m)
                         else:
                             # we never need to retry here
-                            self._mq.MaybeCompleteMessageRequest(m)
+                            self._mq.MaybeCompleteMessage(m)
                     else:
                         logging.error(
                             "message is neither request nor response")
