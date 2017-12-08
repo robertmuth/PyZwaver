@@ -406,7 +406,7 @@ class Message:
         self.end = None
         self.can = 0
         self.aborted = False
-        self.SetState(MESSAGE_STATE_STARTED)
+        self.state = MESSAGE_STATE_CREATED
         if payload is None:
             return
         func = payload[3]
@@ -420,15 +420,25 @@ class Message:
         else:
             self.action_resp = action_resp
 
-    def SetState(self, state):
-        self.state = state
-        if state == MESSAGE_STATE_STARTED:
-            self.start = time.time()
-        elif state == MESSAGE_STATE_COMPLETED:
-            self.end = time.time()
-        elif state == MESSAGE_STATE_ABORTED:
-            self.aborted = True
-            self.end = time.time()
+    def Start(self):
+        self.state = MESSAGE_STATE_STARTED
+        self.start = time.time()
+
+    def Abort(self, m):
+        self.state = MESSAGE_STATE_ABORTED
+        self.aborted = True
+        self.end = time.time()
+        if self.callback: self.callback(m)
+        logging.warning("ABORT: %s", PrettifyRawMessage(self.payload))
+
+    def CompleteNoMessage(self):
+        self.state = MESSAGE_STATE_COMPLETED
+        self.end = time.time()
+        logging.warning("COMPLETE: %s", PrettifyRawMessage(self.payload))
+
+    def Complete(self, m):
+        if self.callback: self.callback(m)
+        self.CompleteNoMessage()
 
     def __str__(self):
         out = [PrettifyRawMessage(self.payload), ]
@@ -496,7 +506,7 @@ class MessageQueue:
             mesg.callback(None)
             return None
         self._inflight = mesg
-        mesg.SetState(MESSAGE_STATE_STARTED)
+        mesg.Start()
         return mesg
 
     def MaybeCompleteMessageAck(self, m):
@@ -600,28 +610,25 @@ class MessageQueue:
                 if res is None:
                     logging.warning("message was force aborted: %s",
                                     PrettifyRawMessage(mesg.payload))
-                    if mesg.callback:
-                        mesg.callback(None)
-                    mesg.SetState(MESSAGE_STATE_ABORTED)
+                    mesg.Abort(None)
                     break
                 # So we got a not None message, usually that means we are done
                 # in case of "multi-reply" expecations we also need to check the result
                 # of the call back
                 if not mesg.callback:
+                    mesg.CompleteNoMessage()
                     break
                 r = mesg.callback(res)
                 if r or self._inflight.action_requ[0] != ACTION_MATCH_CBID_MULTI:
+                    mesg.CompleteNoMessage()
                     break
             except queue.Empty:
                 if mesg.start + mesg.timeout > time.time():
                     continue
-                if mesg.callback:
-                    mesg.callback(None)
                 logging.error(
                     "timeout (%d) for %s", mesg.timeout, PrettifyRawMessage(mesg.payload))
-                mesg.SetState(MESSAGE_STATE_ABORTED)
+                mesg.Abort(None)
                 break
-        mesg.SetState(MESSAGE_STATE_COMPLETED)
         self._inflight = None
 
     def WaitUntilAllPreviousMessagesHaveBeenHandled(self):
