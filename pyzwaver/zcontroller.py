@@ -327,8 +327,7 @@ class Controller:
         logging.warning("requesting node info for %d", node)
 
         def handler(data):
-            if cb:
-                cb(data[4])
+            if cb: cb(data[4])
 
         self.SendCommand(zwave.API_ZW_REQUEST_NODE_INFO, [node], handler)
 

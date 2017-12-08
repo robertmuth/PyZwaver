@@ -913,7 +913,7 @@ class Node:
     def RefreshAssociations(self):
         c = [[zwave.AssociationGroupInformation,
               zwave.AssociationGroupInformation_InfoGet, 64, 0]]
-        for no in self._associations.GetNumbers():
+        for no in self.associations.GetNumbers():
             c.append([zwave.Association, zwave.Association_Get, no])
             c.append([zwave.AssociationGroupInformation,
                       zwave.AssociationGroupInformation_NameGet, no])

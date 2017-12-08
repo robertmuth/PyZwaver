@@ -214,9 +214,7 @@ class Driver(object):
                 if zmessage.Checksum(m) == zwave.SOF:
                     self.SendControl(zmessage.RAW_MESSAGE_ACK)
                     if m[2] == zwave.RESPONSE:
-                        if self._mq.MaybeCompleteMessageResponse(m):
-                            # we need to retry
-                            self.SendRaw(self._mq.GetInFlightMessage().payload)
+                        self._mq.MaybeCompleteMessageResponse(m)
                     elif m[2] == zwave.REQUEST:
                         if (m[3] == zwave.API_ZW_APPLICATION_UPDATE or
                                 m[3] == zwave.API_APPLICATION_COMMAND_HANDLER):

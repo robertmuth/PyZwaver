@@ -119,6 +119,8 @@ def Hexify(t):
 
 
 def PrettifyRawMessage(m):
+    if m is None: return "None"
+
     out = Hexify(m)
     out[0] = zwave.FIRST_TO_STRING.get(m[0], "??")
     if m[0] != zwave.SOF:
