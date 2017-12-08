@@ -79,19 +79,19 @@ class MessageQueueOut:
             count = max(count + 1, self._lo_min)
             self._lo_counts[node] = count
         else:
-            counter = self._counter
+            count = self._counter
             self._counter += 1
         self._q.put(((level, count, node), message))
 
 
     def get(self):
-         priority, message = self._q.get()
-         level = priority[0]
-         if level == 2:
-             self._hi_min = priority[1]
-         elif level == 2:
-             self._lo_min = priority[1]
-         return message
+        priority, message = self._q.get()
+        level = priority[0]
+        if level == 2:
+            self._hi_min = priority[1]
+        elif level == 2:
+            self._lo_min = priority[1]
+        return message
 
 # ==================================================
 # Raw Messages
@@ -290,7 +290,7 @@ ACTION_REPORT = 6
 ACTION_MATCH_CBID_MULTI = 7
 ACTION_MATCH_CBID = 8
 ACTION_NO_REPORT = 9
-
+ACTION_REPORT_EQ = 10
 
 
 
