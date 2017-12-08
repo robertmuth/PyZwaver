@@ -996,7 +996,8 @@ def DumpDartConstants(format, string_maps=True):
     DumpConstAndMap("SERIAL_CAP", SERIAL_CAP_TO_STRING)
     DumpConstAndMap("UPDATE_STATE", UPDATE_STATE_TO_STRING)
     DumpConstAndMap("TRANSMIT_OPTION", TRANSMIT_OPTION_TO_STRING)
-
+    DumpConstAndMap("TRANSMIT_COMPLETE", TRANSMIT_COMPLETE_TO_STRING)
+    
     DumpConstAndMap("ADD_NODE_STATUS", ADD_NODE_STATUS_TO_STRING)
     DumpConstAndMap("ADD_NODE", ADD_NODE_TO_STRING)
 
