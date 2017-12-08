@@ -629,57 +629,64 @@ ACTIONS = {
     # COMMAND
     #
     (zwave.Version, zwave.Version_CommandClassReport):
-    (lambda n, v, k, p: n._commands.SetVersion(v), 2, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n.commands.SetVersion(v), 2, EVENT_VALUE_CHANGE),
     #
     # SENSOR
     #
     (zwave.SensorMultilevel, zwave.SensorMultilevel_Report):
-    (lambda n, v, k, p: n._sensors.Set(ValueSensorNormal(v, p)), 2, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n.sensors.Set(ValueSensorNormal(v, p)), 2, EVENT_VALUE_CHANGE),
     (zwave.SensorMultilevel, zwave.SensorMultilevel_SupportedReport):
-    (lambda n, v, k, p: n._sensors.SetSupported(v), 1, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n.sensors.SetSupported(v), 1, EVENT_VALUE_CHANGE),
     (zwave.SwitchBinary, zwave.SwitchBinary_Report):
-    (lambda n, v, k, p: n._sensors.Set(
+    (lambda n, v, k, p: n.sensors.Set(
         Value(SENSOR_KIND_SWITCH_BINARY, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
     (zwave.Battery, zwave.Battery_Report):
-    (lambda n, v, k, p: n._sensors.Set(
+    (lambda n, v, k, p: n.sensors.Set(
         Value(SENSOR_KIND_BATTERY, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
     (zwave.SensorBinary, zwave.SensorBinary_Report):
-    (lambda n, v, k, p: n._sensors.Set(
+    (lambda n, v, k, p: n.sensors.Set(
         Value(SENSOR_KIND_SWITCH_BINARY, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
     (zwave.SwitchToggleBinary, zwave.SwitchToggleBinary_Report):
-    (lambda n, v, k, p: n._sensors.Set(
+    (lambda n, v, k, p: n.sensors.Set(
         Value(SENSOR_KIND_SWITCH_TOGGLE, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
     (zwave.SwitchMultilevel, zwave.SwitchMultilevel_Report):
-    (lambda n, v, k, p: n._sensors.Set(
+    (lambda n, v, k, p: n.sensors.Set(
         Value(SENSOR_KIND_SWITCH_MULTILEVEL, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
     (zwave.Basic, zwave.Basic_Report):
-    (lambda n, v, k, p: n._sensors.Set(
+    (lambda n, v, k, p: n.sensors.Set(
         Value(SENSOR_KIND_BASIC, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
     #
     # METER
     #
     (zwave.Meter, zwave.Meter_Report):
-    (lambda n, v, k, p: n._meters.Set(ValueMeterNormal(v, p)), 1, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n.meters.Set(ValueMeterNormal(v, p)), 1, EVENT_VALUE_CHANGE),
     (zwave.Meter, zwave.Meter_SupportedReport):
-    (lambda n, v, k, p: n._meters.SetSupported(v), 2, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n.meters.SetSupported(v), 2, EVENT_VALUE_CHANGE),
     #
     # PARAMETER
     #
     (zwave.Configuration, zwave.Configuration_Report):
-    (lambda n, v, k, p: n._parameters.Set(v), 2, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n.parameters.Set(v), 2, EVENT_VALUE_CHANGE),
     #
     # ASSOCIATIONS
     #
     (zwave.Association, zwave.Association_GroupingsReport) :
-    (lambda n, v, k, p: n._associations.StoreCount(v), 1, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n.associations.StoreCount(v), 1, EVENT_VALUE_CHANGE),
     (zwave.Association, zwave.Association_Report):
-    (lambda n, v, k, p: n._associations.StoreNodes(v), 4, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n.associations.StoreNodes(v), 4, EVENT_VALUE_CHANGE),
     (zwave.AssociationGroupInformation, zwave.AssociationGroupInformation_NameReport):
-    (lambda n, v, k, p: n._associations.StoreName(v), 2, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n.associations.StoreName(v), 2, EVENT_VALUE_CHANGE),
     (zwave.AssociationGroupInformation, zwave.AssociationGroupInformation_InfoReport):
-    (lambda n, v, k, p: n._associations.StoreMeta(v), -1, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n.associations.StoreMeta(v), -1, EVENT_VALUE_CHANGE),
     (zwave.AssociationGroupInformation, zwave.AssociationGroupInformation_ListReport):
-    (lambda n, v, k, p: n._associations.StoreCommands(v), 2, EVENT_VALUE_CHANGE),
+    (lambda n, v, k, p: n.associations.StoreCommands(v), 2, EVENT_VALUE_CHANGE),
+    #
+    # MAP VALUES
+    (zwave.ColorSwitch, zwave.ColorSwitch_Report):
+    (lambda n, v, k, p: n.values.SetMap(k, ValueBare(k, {v[0]: v[1]})),
+                        2, EVENT_VALUE_CHANGE),
+
+    #
     #
     # EVENTS
     #
@@ -739,11 +746,11 @@ def PatchUpActions():
     global ACTIONS
     logging.info("PatchUpActions")
     for key in _STORE_VALUE_SCALAR_ACTIONS:
-       ACTIONS[key] =  (lambda n, v, k, p: n._values.Set(k, ValueBare(k, v[0])),
+       ACTIONS[key] =  (lambda n, v, k, p: n.values.Set(k, ValueBare(k, v[0])),
                         1, EVENT_VALUE_CHANGE)
 
     for key in _STORE_VALUE_LIST_ACTIONS:
-        ACTIONS[key] =  (lambda n, v, k, p: n._values.Set(k, ValueBare(k, v)),
+        ACTIONS[key] =  (lambda n, v, k, p: n.values.Set(k, ValueBare(k, v)),
                          -1, EVENT_VALUE_CHANGE)
 
 PatchUpActions()

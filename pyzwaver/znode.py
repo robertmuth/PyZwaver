@@ -131,7 +131,7 @@ _STATIC_PROPERTY_QUERIES = [
 ]
 
 def ColorQueries(groups):
-    return []
+    return [[zwave.ColorSwitch, zwave.ColorSwitch_Get, g] for g  in groups]
 
 def CommandVersionQueries(classes):
     return [[zwave.Version, zwave.Version_CommandClassGet, c] for c in classes]
@@ -449,6 +449,15 @@ class NodeValues:
         if value is None: return
         self._values[key] = (time.time(), value)
 
+    def SetMap(self, key, value):
+        if value is None: return
+        _, v = self._values.get(key, (None, None))
+        if v is None:
+            v = value
+        else:
+            v.value.update(value.value)
+        self._values[key] = (time.time(), v)
+
     def Get(self, key):
         v = self._values.get(key)
         if v is not None:
@@ -484,15 +493,16 @@ class Node:
         self.device_type = (0, 0, 0)
         self._protocol_version = 0
 
-        self._commands = NodeCommands()
+        self.commands = NodeCommands()
         self._secure_commands = NodeCommands()
 
-        self._values =NodeValues()
+        self.values = NodeValues()
+        self.meters = NodeMeters()
+        self.sensors = NodeSensors()
+        self.parameters = NodeParameters()
+        self.associations = NodeAssociations()
+
         self._events = {}
-        self._meters = NodeMeters()
-        self._sensors = NodeSensors()
-        self._parameters = NodeParameters()
-        self._associations = NodeAssociations()
         #
         self.scenes = {}
         #
@@ -509,38 +519,21 @@ class Node:
         return self._is_self
 
     def ProductInfo(self):
-        p = self._values.Get(KEY_MANUFACTURER_SPECIFIC)
+        p = self.values.Get(KEY_MANUFACTURER_SPECIFIC)
         return tuple(p.value)
 
     def LibraryType(self):
-        p = self._values.Get(KEY_VERSION)
+        p = self.values.Get(KEY_VERSION)
         return p.value[0]
 
     def SDKVersion(self):
-        p = self._values.Get(KEY_VERSION)
+        p = self.values.Get(KEY_VERSION)
         return (p.value[1], p.value[2])
 
     def ApplicationVersion(self):
-        p = self._values.Get(KEY_VERSION)
+        p = self.values.Get(KEY_VERSION)
         return (p.value[3], p.value[4])
 
-    def GetAssociations(self):
-        return self._associations
-
-    def GetSensors(self):
-        return self._sensors
-
-    def GetMeters(self):
-        return self._meters
-
-    def GetParameters(self):
-        return self._parameters
-
-    def GetCommands(self):
-        return self._commands
-
-    def GetValues(self):
-        return self._values
 
     def __lt__(self, other):
         return self.n < other.n
@@ -571,19 +564,19 @@ class Node:
 #         meter = {zwave_cmd.GetMeterUnits(*k): v for k, v in self.meter.items()}
 # sensor = {zwave_cmd.GetSensorUnits(*k): v for k, v in
 # self.sensor.items()}
-        if self._meters.HasContent():
-            out.append(str(self._meters))
-        if self._sensors.HasContent():
-            out.append(str(self._sensors))
+        if self.meters.HasContent():
+            out.append(str(self.meters))
+        if self.sensors.HasContent():
+            out.append(str(self.sensors))
         out.append("  values:")
         out.append(str(self.values))
         out.append("  events:       " + repr(self._events))
         out.append("  parameters:")
-        out.append(str(self._parameters))
+        out.append(str(self.parameters))
         out.append("  commands:")
-        out.append(str(self._commands))
+        out.append(str(self.commands))
         out.append("  associations:")
-        out.append(str(self._associations))
+        out.append(str(self.associations))
         return "\n".join(out)
 
     def BasicInfo(self):
@@ -613,7 +606,7 @@ class Node:
         """at the very least we should have received a ProcessUpdate(),
         ProcessProtocolInfo()
         """
-        return self.device_type[0] != 0 and self._commands.NumCommands() > 0
+        return self.device_type[0] != 0 and self.commands.NumCommands() > 0
 
     def _MaybeChangeState(self, new_state):
         old_state = self._state
@@ -623,7 +616,7 @@ class Node:
             self._state = new_state
             self._shared.event_cb(self.n, command.EVENT_STATE_CHANGE)
         if new_state == command.NODE_STATE_DISCOVERED:
-            if old_state < new_state and self._commands.HasCommandClass(zwave.Security):
+            if old_state < new_state and self.commands.HasCommandClass(zwave.Security):
                 self._InitializeSecurity()
             elif old_state < command.NODE_STATE_INTERVIEWED:
                 self.RefreshStaticValues()
@@ -668,7 +661,7 @@ class Node:
         if v is None:
             logging.error("[%d] unknown generic device : ${type}", self.n)
             return
-        self._commands.InitializeUnversioned(cmd, controls, v[1], v[2])
+        self.commands.InitializeUnversioned(cmd, controls, v[1], v[2])
 
 
     def ProcessNodeInfo(self, m):
@@ -825,10 +818,10 @@ class Node:
             return
 
         def handler(m):
-            logging.warning("[%d] is failed check: %s", self.n, m)
+            logging.info("[%d] is failed check: %d, %s", self.n,
+                            m[4], zmessage.PrettifyRawMessage(m))
             self._failed = m[4] != 0
-            if cb:
-                cb(m)
+            if cb: cb(m)
         self.SendCommand(zwave.API_ZW_IS_FAILED_NODE_ID, [self.n], handler)
 
     def Ping(self, retries, force):
@@ -945,16 +938,15 @@ class Node:
                                             XMIT_OPTIONS)
 
         self.BatchCommandSubmitFilteredSlow(
-            SensorMultiLevelQueries(self._sensors.Supported()),
+            SensorMultiLevelQueries(self.sensors.Supported()),
             XMIT_OPTIONS)
 
         self.BatchCommandSubmitFilteredSlow(
-            MeterQueries(self._meters.Supported()),
+            MeterQueries(self.meters.Supported()),
             XMIT_OPTIONS)
 
-        k = (zwave.ColorSwitch, zwave.ColorSwitch_SupportedGet)
         self.BatchCommandSubmitFilteredSlow(
-            ColorQueries(self._values.Get(k)),
+            ColorQueries(self.values.Get(KEY_COLOR_SWITCH_SUPPORTED).value),
             XMIT_OPTIONS)
 
     def RefreshStaticValues(self):
@@ -963,10 +955,10 @@ class Node:
             _STATIC_PROPERTY_QUERIES,
             XMIT_OPTIONS)
         self.BatchCommandSubmitFilteredSlow(
-            CommandVersionQueries(self._commands.Classes()),
+            CommandVersionQueries(self.commands.Classes()),
             XMIT_OPTIONS)
         self.BatchCommandSubmitFilteredSlow(
-            MultiInstanceSupportQueries(self._commands.Classes()),
+            MultiInstanceSupportQueries(self.commands.Classes()),
             XMIT_OPTIONS)
 
         # This must be last as we use this as an indicator for the
@@ -976,7 +968,7 @@ class Node:
 
     def BatchCommandSubmitFiltered(self, commands, priority, xmit):
         for cmd in commands:
-            if not self._commands.HasCommandClass(cmd[0]):
+            if not self.commands.HasCommandClass(cmd[0]):
                 continue
 
             if self._IsSecureCommand(cmd[0], cmd[1]):
@@ -1084,9 +1076,9 @@ class NodeSet(object):
             info = {}
             info["last_contact"] = node._last_contact
             info["state"] = node._state
-            meters = [list(k) + list(v) for (k, v) in node._meters.items()]
+            meters = [list(k) + list(v) for (k, v) in node.meters.items()]
             info["meters"] = meters
-            sensors = [list(k) + [v] for (k, v) in node._sensors.items()]
+            sensors = [list(k) + [v] for (k, v) in node.sensors.items()]
 
             info["sensors"] = sensors
             summary[no] = info
@@ -1100,10 +1092,10 @@ class NodeSet(object):
             last = time.strftime(
                 "%Y/%m/%d %H:%M:%S", time.localtime(node._last_contact))
             state = node._state
-            for (k, v) in node._meters.items():
+            for (k, v) in node.meters.items():
                 out.append(
                     [date, last, no, name, state, k[0], k[1], v[0], v[1]])
-            for (k, v) in node._sensors.items():
+            for (k, v) in node.sensors.items():
                 out.append([date, last, no, name, state, k[0], k[1], v, 0])
         return out
 
