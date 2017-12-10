@@ -71,6 +71,7 @@ class History(object):
         by_node_cnt = collections.Counter()
         by_node_can = collections.Counter()
         by_node_dur = collections.Counter()
+        by_node_bad = collections.Counter()
         by_state = collections.Counter()
         sum_duration = 0
         mm = self._history
@@ -78,26 +79,31 @@ class History(object):
             mm = mm[-cutoff:]
         count = len(mm)
         for m in mm:
+            node = m.node
             if m.can > 0:
                 with_can += 1
                 total_can += m.can
-                by_node_can[m.node] += 1
+                by_node_can[node] += 1
             by_state[m.state] += 1
-            by_node_cnt[m.node] += 1
+            by_node_cnt[node] += 1
+            if m.aborted:
+                by_node_bad[node] += 1
             if m.end:
                 duration = int(1000.0 * (m.end - m.start))
-                by_node_dur[m.node] += duration
+                by_node_dur[node] += duration
                 sum_duration += duration
         out = []
         out.append("processed: %d  with-can: %d (total can: %d) avg-time: %dms" %
                    (count, with_can, total_can, sum_duration // count))
-        out.append("by state: %s" % by_state)
+        out.append("by state:")
+        for n in sorted(by_state.keys()):
+            out.append(" %-20s: %4d" % (n, by_state[n]))
 
-        s = ["by node:"]
+        out.append("by node:")
         for n in sorted(by_node_cnt.keys()):
-            s.append("  %d: %d (%d) %dms" % (n, by_node_cnt[n], by_node_can[n],
-                       by_node_dur[n] // by_node_cnt[n]))
-        out.append("".join(s))
+            out.append(" %2d: %4d (%3d) %4dms (%3d)" % (
+                n, by_node_cnt[n], by_node_can[n],
+                by_node_dur[n] // by_node_cnt[n], by_node_bad[n]))
         return "\n".join(out)
 
 
@@ -164,9 +170,11 @@ class Driver(object):
         logging.warning("_DriverSendingThread started")
         lock = threading.Lock()
         while not self._terminate:
-            self._inflight = self._mq.DequeueMessage(lock)
-            if self._inflight is None:
-                continue
+            self._inflight = self._mq.DequeueMessage()
+            if self._inflight.payload is None:
+                self._inflight.callback(None)
+                contain
+            self._inflight.Start(lock)
             self.history.Append(self._inflight)
             self.SendRaw(self._inflight.payload, "")
             lock.acquire()

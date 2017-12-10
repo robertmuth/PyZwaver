@@ -34,7 +34,7 @@ from pyzwaver import zwave
 
 
 def ControllerPriority():
-    return (1, 0, 0)
+    return (1, 0, -1)
 
 
 def NodePriorityHi(node):
@@ -45,7 +45,7 @@ def NodePriorityLo(node):
     return (3, 0, node)
 
 def LowestPriority():
-    return (1000, 0, 0)
+    return (1000, 0, -1)
 
 
 class MessageQueueOut:
@@ -57,6 +57,7 @@ class MessageQueueOut:
         self._lo_min = 0
         self._hi_min = 0
         self._counter = 0
+        self._per_node_size = collections.defaultdict(int)
 
     def qsize(self):
         return self._q.qsize()
@@ -81,6 +82,7 @@ class MessageQueueOut:
         else:
             count = self._counter
             self._counter += 1
+        self._per_node_size[node] += 1
         self._q.put(((level, count, node), message))
 
 
@@ -91,7 +93,12 @@ class MessageQueueOut:
             self._hi_min = priority[1]
         elif level == 2:
             self._lo_min = priority[1]
+        self._per_node_size[priority[2]] -= 1
         return message
+
+    def __str__(self):
+        return str(self._per_node_size)
+
 
 # ==================================================
 # Raw Messages
@@ -280,6 +287,8 @@ MESSAGE_STATE_CREATED = "Created"
 MESSAGE_STATE_STARTED = "Started"
 MESSAGE_STATE_COMPLETED = "Completed"
 MESSAGE_STATE_ABORTED = "Aborted"
+MESSAGE_STATE_TIMEOUT = "Timeout"
+MESSAGE_STATE_NOT_READY = "NotReady"
 
 # TODO: explain these in detail
 ACTION_INVALID = 0
@@ -423,7 +432,7 @@ class Message:
 
     def _Timeout(self):
         if self.inflight_lock is None: return
-        self.Abort(None)
+        self.Complete(None, MESSAGE_STATE_TIMEOUT)
 
     def Start(self, lock):
         self.state = MESSAGE_STATE_STARTED
@@ -432,40 +441,28 @@ class Message:
         self.inflight_lock.acquire()
         threading.Timer(self.timeout, self._Timeout).start()
 
-    def Abort(self, m):
-        if self.inflight_lock is None:
-            logging.warning("message already completed [%s] %s",
-                            self.state, PrettifyRawMessage(self.payload))
-            return
-        self.state = MESSAGE_STATE_ABORTED
-        self.aborted = True
-        self.end = time.time()
-        if self.callback: self.callback(m)
-        logging.warning("ABORT: %s", PrettifyRawMessage(self.payload))
-        self.inflight_lock.release()
-        self.inflight_lock = None
-        return "abort"
-
-    def _CompleteNoMessage(self):
+    def _CompleteNoMessage(self, state):
         if self.inflight_lock is None:
             logging.warning("message already completed: ", self.state)
             return
-        self.state = MESSAGE_STATE_COMPLETED
+        if state != MESSAGE_STATE_COMPLETED:
+            self.aborted = True
+        self.state = state
         self.end = time.time()
-        logging.warning("COMPLETE: %s", PrettifyRawMessage(self.payload))
+        logging.warning("%s: %s", state, PrettifyRawMessage(self.payload))
         self.inflight_lock.release()
         self.inflight_lock = None
-        return "complete"
+        return state
 
-    def _Complete(self, m):
+    def Complete(self, m, state):
         if self.callback: self.callback(m)
-        return self._CompleteNoMessage()
+        return self._CompleteNoMessage(state)
 
 
     def _MaybeCompleteAck(self, m):
         if (self.action_requ[0] == ACTION_NONE and
             self.action_resp[0] == ACTION_NONE):
-            self._Complete(m)
+            self.Complete(m, MESSAGE_STATE_COMPLETED)
         else:
             return ""
 
@@ -479,13 +476,13 @@ class Message:
             assert self.callback is not None
             if not self.callback(m):
                 return "continue"
-            return self._CompleteNoMessage()
+            return self.CompleteNoMessage(MESSAGE_STATE_COMPLETED)
         elif self.action_requ[0] == ACTION_MATCH_CBID:
             if m[4] != cbid:
                 logging.error("unexpected call back id: %s",
                               PrettifyRawMessage(m))
                 return "unexpected"
-            return self._Complete(m)
+            return self.Complete(m, MESSAGE_STATE_COMPLETED)
 
         else:
             logging.error("unexpected action: %s for %s",
@@ -494,7 +491,7 @@ class Message:
 
     def _MaybeCompleteResponse(self, m):
         if self.action_resp[0] == ACTION_REPORT:
-            return self._Complete(m)
+            return self.Complete(m, MESSAGE_STATE_COMPLETED)
         elif self.action_resp[0] == ACTION_REPORT_EQ:
             assert len(m) == 6
             # we expect a message of the form:
@@ -511,7 +508,7 @@ class Message:
                 logging.warning("unexpected resp status is %d wanted %d ==== %s",
                                 m[4], self.action_resp[1],
                                 PrettifyRawMessage(self.payload))
-                return self.Abort(m)
+                return self.Complete(m, MESSAGE_STATE_NOT_READY)
             return False
 
         else:
@@ -577,8 +574,8 @@ class MessageQueue:
         self._in_queue = queue.Queue()
 
     def __str__(self):
-        out = ["inflight: %s" % self._inflight,
-               "queue length: %d" % self._out_queue.qsize()]
+        out = ["queue length: %d" % self._out_queue.qsize(),
+               "by node: %s" % str(self._out_queue)]
         return "\n".join(out)
 
 
@@ -591,14 +588,8 @@ class MessageQueue:
     def PutIncommingRawMessage(self, rm):
         self._in_queue.put(rm)
 
-    def DequeueMessage(self, lock):
-        mesg = self._out_queue.get()
-        if mesg.payload is None:
-            mesg.callback(None)
-            return None
-        self._inflight = mesg
-        mesg.Start(lock)
-        return mesg
+    def DequeueMessage(self):
+        return self._out_queue.get()
 
     def MaybeCancelLearningOperation(self):
         if not self._inflight:
