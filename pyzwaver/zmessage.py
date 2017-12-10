@@ -593,17 +593,21 @@ class MessageQueue:
     def MaybeCompleteMessage(self, m):
         if m == None:
             return
+        if not self._inflight:
+            return
         if m[0] == zwave.ACK:
             if (self._inflight.action_requ[0] == ACTION_NONE and
                 self._inflight.action_resp[0] == ACTION_NONE):
                 self._inflight.Complete(None)
-                return True
+                return "complete"
             else:
-                return False
+                return ""
         elif m[2] == zwave.REQUEST:
-            return self.MaybeCompleteMessageRequest(m)
+            self.MaybeCompleteMessageRequest(m)
+            return ""
         elif m[2] == zwave.RESPONSE:
-            return self.MaybeCompleteMessageResponse(m)
+            self.MaybeCompleteMessageResponse(m)
+            return ""
         else:
             assert False
 

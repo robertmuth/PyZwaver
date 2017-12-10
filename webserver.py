@@ -87,7 +87,7 @@ Simple demo app using the pyzwaver library
     <table border=1>
     <!-- IMPORTANT, class="list" have to be at tbody -->
         <tbody class="list">
-            <tr><td class="t"></td><td class="d"></td><td class="m"></td></tr>
+            <tr><td class="t"></td><td class="c"></td><td class="d"></td><td class="m"></td></tr>
         </tbody>
     </table>
     </div>
@@ -163,7 +163,7 @@ tabToDisplay[TAB_LOGS] = function() {return "/display/logs"; };
 tabToDisplay[TAB_SLOW] = function() {return "/display/slow"; };
 tabToDisplay[TAB_FAILED] = function() {return "/display/failed"; };
 
-const listLog = new List('driverlog', {valueNames: [ 't', 'd', 'm' ]});
+const listLog = new List('driverlog', {valueNames: [ 't', 'c', 'd', 'm' ]});
 const listSlow = new List('driverslow', {valueNames: [ 'd', 't', 'm' ]});
 const listFailed = new List('driverfailed', {valueNames: [ 'd', 't', 'm' ]});
 
@@ -674,12 +674,12 @@ def RenderDriver():
 def DriverLogs():
     global DRIVER
     out = []
-    for t, sent, m in DRIVER.history._raw_history:
+    for t, sent, m, comment in DRIVER.history._raw_history:
         ms = ".%03d" % int(1000 * (t - math.floor(t)))
         t = time.strftime("%H:%M:%S", time.localtime(t)) + ms
         d = sent and "=>" or "<="
         m = zmessage.PrettifyRawMessage(m)
-        out.append({"t": t, "d": d, "m": m })
+        out.append({"t": t, "c": comment, "d": d, "m": m })
     return out
 
 def DriverSlow():

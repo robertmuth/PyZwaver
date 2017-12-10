@@ -53,13 +53,13 @@ class History(object):
         self._raw_history = []
         self._history = []
 
-    def LogSent(self, m):
-        self._raw_history.append((time.time(), True, m))
+    def LogSent(self, ts, m, comment):
+        self._raw_history.append((ts, True, m, comment))
         logging.warning("sent: %s", zmessage.PrettifyRawMessage(m))
 
-    def LogReceived(self, m):
+    def LogReceived(self, ts, m, comment):
         logging.warning("recv: %s", zmessage.PrettifyRawMessage(m))
-        self._raw_history.append((time.time(), False, m))
+        self._raw_history.append((ts, False, m, comment))
 
     def Append(self, m):
         self._history.append(m)
@@ -133,7 +133,7 @@ class Driver(object):
         self._mq.EnqueueMessage(zmessage.Message(None, zmessage.LowestPriority(), lambda _: None, None))
         logging.info("Driver terminated")
 
-    def SendRaw(self, payload):
+    def SendRaw(self, payload, comment):
         time.sleep(SEND_DELAY_LARGE)
         #if len(payload) >= 5:
         #    if self._last == payload[4]:
@@ -141,7 +141,7 @@ class Driver(object):
         #    self._last = payload[4]
 
         # logging.info("sending: %s", zmessage.PrettifyRawMessage(payload))
-        self.history.LogSent(payload)
+        self.history.LogSent(time.time(), payload, comment)
         self._device.write(payload)
         self._device.flush()
 
@@ -149,10 +149,9 @@ class Driver(object):
     def SendControl(self, payload):
         assert len(payload) == 1
         # logging.info("sending: %s", zmessage.PrettifyRawMessage(payload))
-        self.history.LogSent(payload)
+        self.history.LogSent(time.time(), payload, "")
         self._device.write(payload)
         self._device.flush()
-
 
     def _DriverSendingThread(self):
         """
@@ -164,7 +163,7 @@ class Driver(object):
             if mesg is None:
                 continue
             self.history.Append(mesg)
-            self.SendRaw(mesg.payload)
+            self.SendRaw(mesg.payload, "")
             self._mq.WaitForInFlightMessageCompletion()
         logging.warning("_DriverSendingThread terminated")
 
@@ -175,6 +174,47 @@ class Driver(object):
         self._device.flush()
         self._device.flushInput()
         self._device.flushOutput()
+
+
+    def _ProcessReceivedMessage(self, m):
+        # logging.debug("rx buffer: %s", buf)
+        if m[0] == zwave.NAK:
+            return False, ""
+        elif m[0] == zwave.CAN:
+            inflight = self._mq.GetInFlightMessage()
+            if inflight is not None:
+                logging.error("re-sending message after CAN ==== %s",
+                              zmessage.PrettifyRawMessage(inflight.payload))
+                inflight.can += 1
+                # TODO: maybe add max
+                # if self._inflight.can > 3:
+                self.SendRaw(inflight.payload, "re-try")
+                return False, ""
+            else:
+                logging.error("nothing to re-send after CAN")
+                return False, "stray"
+        elif m[0] == zwave.ACK:
+            return False, self._mq.MaybeCompleteMessage(m)
+        elif m[0] == zwave.SOF:
+            if zmessage.Checksum(m) != zwave.SOF:
+                # maybe send a CAN?
+                logging.error("bad checksum")
+                return False, "bad"
+            if m[2] == zwave.RESPONSE:
+                return True, self._mq.MaybeCompleteMessage(m)
+            elif m[2] == zwave.REQUEST:
+                if (m[3] == zwave.API_ZW_APPLICATION_UPDATE or
+                    m[3] == zwave.API_APPLICATION_COMMAND_HANDLER):
+                    self._mq.PutIncommingRawMessage(m)
+                    return True, ""
+                else:
+                    return True, self._mq.MaybeCompleteMessage(m)
+            else:
+                logging.error("message is neither request nor response")
+                return False, "bad"
+        else:
+            logging.error("received unknown start byte: %s", m[0])
+            return False, "bad"
 
     def _DriverReceivingThread(self):
         logging.warning("_DriverReceivingThread started")
@@ -191,43 +231,11 @@ class Driver(object):
                 if not m:
                     continue
             buf = buf[len(m):]
-            self.history.LogReceived(m)
+            ts = time.time()
+            must_ack, comment = self._ProcessReceivedMessage(m)
+            self.history.LogReceived(ts, m, comment)
+            if must_ack:
+                self.SendControl(zmessage.RAW_MESSAGE_ACK)
 
-            # logging.debug("rx buffer: %s", buf)
-            if m[0] == zwave.NAK:
-                pass
-            elif m[0] == zwave.CAN:
-                inflight = self._mq.GetInFlightMessage()
-                if inflight is not None:
-                    logging.error("re-sending message after CAN ==== %s",
-                                  zmessage.PrettifyRawMessage(inflight.payload))
-                    inflight.can += 1
-                    # TODO: maybe add max
-                    # if self._inflight.can > 3:
-                    self.SendRaw(inflight.payload)
-                else:
-                    logging.error("nothing to re-send after CAN")
-            elif m[0] == zwave.ACK:
-                self._mq.MaybeCompleteMessage(m)
 
-            elif m[0] == zwave.SOF:
-                if zmessage.Checksum(m) == zwave.SOF:
-                    self.SendControl(zmessage.RAW_MESSAGE_ACK)
-                    if m[2] == zwave.RESPONSE:
-                        self._mq.MaybeCompleteMessage(m)
-                    elif m[2] == zwave.REQUEST:
-                        if (m[3] == zwave.API_ZW_APPLICATION_UPDATE or
-                                m[3] == zwave.API_APPLICATION_COMMAND_HANDLER):
-                            self._mq.PutIncommingRawMessage(m)
-                        else:
-                            # we never need to retry here
-                            self._mq.MaybeCompleteMessage(m)
-                    else:
-                        logging.error(
-                            "message is neither request nor response")
-                else:
-                    # maybe send a CAN?
-                    logging.error("bad checksum")
-            else:
-                logging.error("received unknown start byte: %s", m[0])
         logging.warning("_DriverReceivingThread terminated")
