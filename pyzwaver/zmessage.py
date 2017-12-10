@@ -201,7 +201,6 @@ def RawMessageDstNode(data):
         return data[4]
     return -1
 
-
 def RawMessageIsRequest(data):
     if len(data) < 5:
         return -1
@@ -397,7 +396,7 @@ class Message:
 
     """
     def __init__(self, payload, priority, callback, node,
-                 timeout=1, action_requ=None, action_resp=None):
+                 timeout=1.0, action_requ=None, action_resp=None):
         self.payload = payload
         self.priority = priority
         self.node = node
@@ -408,6 +407,7 @@ class Message:
         self.can = 0
         self.aborted = False
         self.state = MESSAGE_STATE_CREATED
+        self.inflight_lock = None
         if payload is None:
             return
         func = payload[3]
@@ -421,25 +421,121 @@ class Message:
         else:
             self.action_resp = action_resp
 
-    def Start(self):
+    def _Timeout(self):
+        if self.inflight_lock is None: return
+        self.Abort(None)
+
+    def Start(self, lock):
         self.state = MESSAGE_STATE_STARTED
         self.start = time.time()
+        self.inflight_lock = lock
+        self.inflight_lock.acquire()
+        threading.Timer(self.timeout, self._Timeout).start()
 
     def Abort(self, m):
+        if self.inflight_lock is None:
+            logging.warning("message already completed [%s] %s",
+                            self.state, PrettifyRawMessage(self.payload))
+            return
         self.state = MESSAGE_STATE_ABORTED
         self.aborted = True
         self.end = time.time()
         if self.callback: self.callback(m)
         logging.warning("ABORT: %s", PrettifyRawMessage(self.payload))
+        self.inflight_lock.release()
+        self.inflight_lock = None
+        return "abort"
 
-    def CompleteNoMessage(self):
+    def _CompleteNoMessage(self):
+        if self.inflight_lock is None:
+            logging.warning("message already completed: ", self.state)
+            return
         self.state = MESSAGE_STATE_COMPLETED
         self.end = time.time()
         logging.warning("COMPLETE: %s", PrettifyRawMessage(self.payload))
+        self.inflight_lock.release()
+        self.inflight_lock = None
+        return "complete"
 
-    def Complete(self, m):
+    def _Complete(self, m):
         if self.callback: self.callback(m)
-        self.CompleteNoMessage()
+        return self._CompleteNoMessage()
+
+
+    def _MaybeCompleteAck(self, m):
+        if (self.action_requ[0] == ACTION_NONE and
+            self.action_resp[0] == ACTION_NONE):
+            self._Complete(m)
+        else:
+            return ""
+
+    def _MaybeCompleteRequest(self, m):
+        cbid = self.payload[-2]
+        if self.action_requ[0] == ACTION_MATCH_CBID_MULTI:
+            if m[4] != cbid:
+                logging.error("unexpected call back id: %s",
+                              PrettifyRawMessage(m))
+                return "unexpected"
+            assert self.callback is not None
+            if not self.callback(m):
+                return "continue"
+            return self._CompleteNoMessage()
+        elif self.action_requ[0] == ACTION_MATCH_CBID:
+            if m[4] != cbid:
+                logging.error("unexpected call back id: %s",
+                              PrettifyRawMessage(m))
+                return "unexpected"
+            return self._Complete(m)
+
+        else:
+            logging.error("unexpected action: %s for %s",
+                          self.action_requ[0], PrettifyRawMessage(self.payload))
+            assert False
+
+    def _MaybeCompleteResponse(self, m):
+        if self.action_resp[0] == ACTION_REPORT:
+            return self._Complete(m)
+        elif self.action_resp[0] == ACTION_REPORT_EQ:
+            assert len(m) == 6
+            # we expect a message of the form:
+            # SOF <len> RES  <func> <status> <checksum>
+            if self.action_resp[1] == m[4]:
+                # we got the expected status everything is dandy
+                # but still need to wait for the matching req
+                # Note, we currently do not record having received m
+                # as we have not seen failure modes requiring it.
+                logging.debug("delivered to stack")
+                if self.callback: self.callback(m)
+                return "continue"
+            else:
+                logging.warning("unexpected resp status is %d wanted %d ==== %s",
+                                m[4], self.action_resp[1],
+                                PrettifyRawMessage(self.payload))
+                return self.Abort(m)
+            return False
+
+        else:
+            assert False
+
+
+    def MaybeComplete(self, m):
+        if m[0] == zwave.ACK:
+            return self._MaybeCompleteAck(m)
+
+        if m[0] != zwave.SOF:
+            assert False
+
+        func = self.payload[3]
+        if m[3] != func:
+            logging.error("unexpected request/response: ")
+            return "unexpected"
+
+        if m[2] == zwave.RESPONSE:
+            return self._MaybeCompleteResponse(m)
+        elif m[2] == zwave.REQUEST:
+            return self._MaybeCompleteRequest(m)
+        else:
+            assert False
 
     def __str__(self):
         out = [PrettifyRawMessage(self.payload), ]
@@ -476,10 +572,6 @@ class MessageQueue:
     def __init__(self):
         # outgoing message
         self._out_queue = MessageQueueOut()
-        # currently in-fligth message
-        self._inflight = None
-        #  incoming - raw messages related to _inflight
-        self._inflight_result = queue.Queue()
         # unsolicited incoming - raw messages
         # TODO: should this be its own class?
         self._in_queue = queue.Queue()
@@ -489,8 +581,6 @@ class MessageQueue:
                "queue length: %d" % self._out_queue.qsize()]
         return "\n".join(out)
 
-    def GetInFlightMessage(self):
-        return self._inflight
 
     def EnqueueMessage(self, m):
         self._out_queue.put(m.priority, m)
@@ -501,61 +591,14 @@ class MessageQueue:
     def PutIncommingRawMessage(self, rm):
         self._in_queue.put(rm)
 
-    def DequeueMessage(self):
+    def DequeueMessage(self, lock):
         mesg = self._out_queue.get()
         if mesg.payload is None:
             mesg.callback(None)
             return None
         self._inflight = mesg
-        mesg.Start()
+        mesg.Start(lock)
         return mesg
-
-    def MaybeCompleteMessageAck(self, m):
-        if self._inflight is None:
-            return
-        if (self._inflight.action_requ[0] == ACTION_NONE and
-            self._inflight.action_resp[0] == ACTION_NONE):
-            logging.info("no response done")
-            self._inflight_result.put(m)
-
-
-    def MaybeCompleteMessageResponse(self, m):
-        """Returns true to indicate a retry"""
-
-        if not self._inflight:
-            logging.error("unexpected response")
-            return False
-        func = self._inflight.payload[3]
-        if m[3] != func:
-            logging.error("unexpected response: ")
-            return False
-        action = self._inflight.action_resp
-        if action[0] == ACTION_REPORT:
-            self._inflight_result.put(m)
-            return False
-        elif action[0] == ACTION_REPORT_EQ:
-            assert len(m) == 6
-            # we expect a message of the form:
-            # SOF <len> RES  <func> <status> <checksum>
-            if action[1] == m[4]:
-                # we got the expected status everything is dandy
-                # but still need to wait for the matching req
-                # Note, we currently do not record having received m
-                # as we have not seen failure modes requiring it.
-                logging.debug("delivered to stack")
-            else:
-                inflight = self._inflight
-                logging.warning("unexpected resp status is %d wanted %d ==== %s",
-                                m[4], action[1],
-                                PrettifyRawMessage(inflight.payload))
-                time.sleep(0.1)
-                self._inflight_result.put(m)
-            return False
-
-        else:
-            logging.error("unexpected action: %s", action)
-            assert False
-            return False
 
     def MaybeCancelLearningOperation(self):
         if not self._inflight:
@@ -564,91 +607,6 @@ class MessageQueue:
         if func in [zwave.API_ZW_ADD_NODE_TO_NETWORK, zwave.API_ZW_REMOVE_NODE_FROM_NETWORK]:
             self._inflight_result.put(None)
 
-    def MaybeCompleteMessageRequest(self, m):
-        if not self._inflight:
-            logging.error("nothing inflight unexpected request %s",
-                          PrettifyRawMessage(m))
-            return
-        func = self._inflight.payload[3]
-        cbid = self._inflight.payload[-2]
-        if m[3] != func:
-            logging.error("unexpected request")
-            return
-        action = self._inflight.action_requ
-        if action[0] == ACTION_MATCH_CBID_MULTI:
-            if m[4] == cbid:
-                self._inflight_result.put(m)
-            else:
-                logging.warning("unexpected call back id: %s", m)
-        elif action[0] == ACTION_MATCH_CBID:
-            if m[4] == cbid:
-                self._inflight_result.put(m)
-            else:
-                logging.warning("unexpected call back id: %s", m)
-        else:
-            logging.error("unexpected action: %s for %s",
-                          action[0], PrettifyRawMessage(self._inflight.payload))
-            assert False
-
-    def MaybeCompleteMessage(self, m):
-        if m == None:
-            return
-        if not self._inflight:
-            return
-        if m[0] == zwave.ACK:
-            if (self._inflight.action_requ[0] == ACTION_NONE and
-                self._inflight.action_resp[0] == ACTION_NONE):
-                self._inflight.Complete(None)
-                return "complete"
-            else:
-                return ""
-        elif m[2] == zwave.REQUEST:
-            self.MaybeCompleteMessageRequest(m)
-            return ""
-        elif m[2] == zwave.RESPONSE:
-            self.MaybeCompleteMessageResponse(m)
-            return ""
-        else:
-            assert False
-
-    def WaitForInFlightMessageCompletion(self):
-        """processes messages related to the current inflight message
-
-        This is the only place which calls the callback
-        does not return until the current inflight message is complete
-        or aborted.
-        """
-        mesg = self._inflight
-        assert mesg is not None
-        while True:
-            try:
-                # note the _inflight_result is populated exclusively by
-                # the MaybeXXX functions above
-                # this raise queue.Empty if the timeout expires
-                res = self._inflight_result.get(timeout=1.0)
-                if res is None:
-                    logging.warning("message was force aborted: %s",
-                                    PrettifyRawMessage(mesg.payload))
-                    mesg.Abort(None)
-                    break
-                # So we got a not None message, usually that means we are done
-                # in case of "multi-reply" expecations we also need to check the result
-                # of the call back
-                if not mesg.callback:
-                    mesg.CompleteNoMessage()
-                    break
-                r = mesg.callback(res)
-                if r or self._inflight.action_requ[0] != ACTION_MATCH_CBID_MULTI:
-                    mesg.CompleteNoMessage()
-                    break
-            except queue.Empty:
-                if mesg.start + mesg.timeout > time.time():
-                    continue
-                logging.error(
-                    "timeout (%d) for %s", mesg.timeout, PrettifyRawMessage(mesg.payload))
-                mesg.Abort(None)
-                break
-        self._inflight = None
 
     def WaitUntilAllPreviousMessagesHaveBeenHandled(self):
         semaphore = threading.Semaphore()

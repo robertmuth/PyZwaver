@@ -443,7 +443,7 @@ class Controller:
     def ApplNodeInformation(self):
         """Advertise/change the features of this node"""
         def handler(_):
-            logging.warn("controller is now initialized")
+            logging.warning("controller is now initialized")
             self._state = CONTROLLER_STATE_INITIALIZED
         self.SendCommand(zwave.API_SERIAL_API_APPL_NODE_INFORMATION,
                          [_APPLICATION_NODEINFO_LISTENING,
@@ -508,7 +508,8 @@ class Controller:
 
     def WaitUntilInitialized(self):
         while self._state != CONTROLLER_STATE_INITIALIZED:
-            time.sleep(.5)
+            logging.warning("wait - current Controller state is: %s", self._state)
+            time.sleep(0.5)
 
     def TriggerNodesUpdate(self):
         logging.info("trigger nodes update")

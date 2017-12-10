@@ -122,11 +122,15 @@ class Driver(object):
                                            name="DriverReceive")
         self._rx_thread.start()
         self._last = None
+        self._inflight = None
 
     def __str__(self):
         out = [str(self._mq),
                str(self.history)]
         return "\n".join(out)
+
+    def GetInFlightMessage(self):
+        return self._inflight
 
     def Terminate(self):
         self._terminate = True
@@ -158,13 +162,17 @@ class Driver(object):
         Forwards message from _mq to device
         """
         logging.warning("_DriverSendingThread started")
+        lock = threading.Lock()
         while not self._terminate:
-            mesg = self._mq.DequeueMessage()
-            if mesg is None:
+            self._inflight = self._mq.DequeueMessage(lock)
+            if self._inflight is None:
                 continue
-            self.history.Append(mesg)
-            self.SendRaw(mesg.payload, "")
-            self._mq.WaitForInFlightMessageCompletion()
+            self.history.Append(self._inflight)
+            self.SendRaw(self._inflight.payload, "")
+            lock.acquire()
+            self._inflight = None
+            lock.release()
+
         logging.warning("_DriverSendingThread terminated")
 
     def _ClearDevice(self):
@@ -178,37 +186,46 @@ class Driver(object):
 
     def _ProcessReceivedMessage(self, m):
         # logging.debug("rx buffer: %s", buf)
+        inflight = self._inflight
         if m[0] == zwave.NAK:
             return False, ""
         elif m[0] == zwave.CAN:
-            inflight = self._mq.GetInFlightMessage()
-            if inflight is not None:
-                logging.error("re-sending message after CAN ==== %s",
-                              zmessage.PrettifyRawMessage(inflight.payload))
-                inflight.can += 1
-                # TODO: maybe add max
-                # if self._inflight.can > 3:
-                self.SendRaw(inflight.payload, "re-try")
-                return False, ""
-            else:
+            if inflight is None:
                 logging.error("nothing to re-send after CAN")
                 return False, "stray"
+            logging.error("re-sending message after CAN ==== %s",
+                          zmessage.PrettifyRawMessage(inflight.payload))
+            inflight.can += 1
+            # TODO: maybe add max
+            # if self._inflight.can > 3:
+            self.SendRaw(inflight.payload, "re-try")
+            return False, ""
+
         elif m[0] == zwave.ACK:
-            return False, self._mq.MaybeCompleteMessage(m)
+            if inflight is None:
+                logging.error("nothing to re-send after ACK")
+                return False, "stray"
+            return False, self._inflight.MaybeComplete(m)
         elif m[0] == zwave.SOF:
             if zmessage.Checksum(m) != zwave.SOF:
                 # maybe send a CAN?
                 logging.error("bad checksum")
                 return False, "bad"
             if m[2] == zwave.RESPONSE:
-                return True, self._mq.MaybeCompleteMessage(m)
+                if inflight is None:
+                    logging.error("nothing to re-send after RESPONSE")
+                    return True, "stray"
+                return True, self._inflight.MaybeComplete(m)
             elif m[2] == zwave.REQUEST:
                 if (m[3] == zwave.API_ZW_APPLICATION_UPDATE or
                     m[3] == zwave.API_APPLICATION_COMMAND_HANDLER):
                     self._mq.PutIncommingRawMessage(m)
                     return True, ""
                 else:
-                    return True, self._mq.MaybeCompleteMessage(m)
+                    if inflight is None:
+                        logging.error("nothing to re-send after REQUEST")
+                        return True, "stray"
+                    return True, self._inflight.MaybeComplete(m)
             else:
                 logging.error("message is neither request nor response")
                 return False, "bad"
