@@ -2,7 +2,6 @@
 # Copyright 2016 Robert Muth <robert@muth.org>
 
 
-
 # FIRST
 ACK = 0x06
 CAN = 0x18
@@ -836,312 +835,312 @@ SUBCMD_TO_STRING = {
 }
 
 GENERIC_SPECIFIC_DB = {
-0x2001 : ['Routing Binary Sensor', [48], [32], 0x30],
-0x0103 : ['Portable Installer Tool', [33, 114, 134, 143], [33, 96, 112, 114, 132, 133, 134, 142, 32], 0x00],
-0x0901 : ['Simple Window Covering', [80, 32], [], 0x50],
-0xa108 : ['Basic Zensor Smoke Sensor', [113, 114, 134], [113, 32], 0x71],
-0x1107 : ['Motor Control Class C', [37, 114, 134, 32, 38], [], 0x26],
-0x4001 : ['Door Lock', [98, 32], [], 0x62],
-0x1204 : ['Multilevel Toggle Remote Switch', [], [41, 32], 0x29],
-0x0201 : ['Static PC Controller', [], [32], 0x00],
-0xa107 : ['Routing Smoke Sensor', [113, 114, 128, 133, 134], [113, 32], 0x71],
-0x0311 : ['Satellite Receiver V2', [114, 134, 148, 32], [], 0x94],
-0x0805 : ['Setback Thermostat', [64, 67, 71, 114, 134, 32], [], 0x40],
-0x4003 : ['Secure Keypad Door Lock', [98, 99, 114, 134, 152, 32], [], 0x62],
-0x1201 : ['Binary Remote Switch', [], [37, 32], 0x25],
-0x0102 : ['Portable Scene Controller', [45, 114, 133], [43, 32], 0x00],
-0xa103 : ['Basic Zensor Alarm Sensor', [113, 114, 134], [113, 32], 0x71],
-0x1106 : ['Motor Control Class B', [37, 114, 134, 32, 38], [], 0x26],
-0x0801 : ['Heating Thermostat', [32], [], 0x00],
-0x1003 : ['Binary Scene Switch', [39, 43, 44, 114, 32, 37], [], 0x25],
-0xa10a : ['Advanced Zensor Smoke Sensor', [113, 114, 128, 133, 134], [113, 32], 0x71],
-0xa101 : ['Basic Routing Alarm Sensor', [113, 114, 133, 134], [113, 32], 0x71],
-0xa106 : ['Basic Routing Smoke Sensor', [113, 114, 133, 134], [113, 32], 0x71],
-0x0202 : ['Static Scene Controller', [45, 114, 133], [43, 32], 0x00],
-0x0806 : ['General Thermostat V2', [64, 67, 114, 134, 32], [], 0x40],
-0x0401 : ['Simple Display', [114, 134, 146, 147, 32], [], 0x00],
-0x0101 : ['Portable Remote Controller', [], [32], 0x00],
-0xa109 : ['Zensor Smoke Sensor', [113, 114, 128, 134], [113, 32], 0x71],
-0x1105 : ['Motor Control Class A', [37, 114, 134, 32, 38], [], 0x26],
-0x0802 : ['General Thermostat', [64, 67, 114, 32], [], 0x40],
-0x1202 : ['Multilevel Remote Switch', [], [38, 32], 0x26],
-0xa102 : ['Routing Alarm Sensor', [113, 114, 128, 133, 134], [113, 32], 0x71],
-0x1101 : ['Multilevel Power Switch', [39, 32, 38], [], 0x26],
-0xa105 : ['Advanced Zensor Alarm Sensor', [113, 114, 128, 133, 134], [113, 32], 0x71],
-0x1302 : ['Multilevel Toggle Switch', [38, 41, 32], [], 0x29],
-0x0203 : ['Static Installer Tool', [33, 114, 134, 143], [33, 96, 112, 114, 132, 133, 134, 142, 32], 0x00],
-0x1200 : ['Remote Switch', [], [32, 32], 0x00],
-0x0100 : ['Remote Controller', [], [32], 0x00],
-0x0f01 : ['Basic Repeater Slave', [32], [], 0x00],
-0x2101 : ['Routing Multilevel Sensor', [49], [32], 0x31],
-0x1104 : ['Multilevel Scene Switch', [39, 43, 44, 114, 32, 38], [], 0x26],
-0x5001 : ['Energy Production', [144, 32, 114, 134, 136], [], 0x00],
-0x0803 : ['Setback Schedule Thermostat', [70, 114, 134, 143, 32], [70, 129, 143], 0x46],
-0x1203 : ['Binary Toggle Remote Switch', [], [40, 32], 0x28],
-0x3101 : ['Simple Meter', [50, 114, 134], [32], 0x32],
-0xa104 : ['Zensor Alarm Sensor', [113, 114, 128, 134], [113, 32], 0x71],
-0x4002 : ['Advanced Door Lock', [98, 114, 134, 32], [], 0x62],
-0x1001 : ['Binary Power Switch', [39, 32, 37], [], 0x25],
-0x0312 : ['Doorbell', [48, 114, 133, 134, 32], [], 0x30],
-0x1103 : ['Multiposition Motor', [114, 134, 32, 38], [], 0x26],
-0xa100 : ['Alarm Sensor', [], [32], 0x71],
-0x1301 : ['Binary Toggle Switch', [37, 40, 32], [], 0x28],
-0x0304 : ['Satellite Receiver', [114, 134, 148, 32], [], 0x00],
-0x0804 : ['Setpoint Thermostat', [67, 114, 134, 143, 32], [67, 143], 0x43],
+    0x2001: ['Routing Binary Sensor', [48], [32], 0x30],
+    0x0103: ['Portable Installer Tool', [33, 114, 134, 143], [33, 96, 112, 114, 132, 133, 134, 142, 32], 0x00],
+    0x0901: ['Simple Window Covering', [80, 32], [], 0x50],
+    0xa108: ['Basic Zensor Smoke Sensor', [113, 114, 134], [113, 32], 0x71],
+    0x1107: ['Motor Control Class C', [37, 114, 134, 32, 38], [], 0x26],
+    0x4001: ['Door Lock', [98, 32], [], 0x62],
+    0x1204: ['Multilevel Toggle Remote Switch', [], [41, 32], 0x29],
+    0x0201: ['Static PC Controller', [], [32], 0x00],
+    0xa107: ['Routing Smoke Sensor', [113, 114, 128, 133, 134], [113, 32], 0x71],
+    0x0311: ['Satellite Receiver V2', [114, 134, 148, 32], [], 0x94],
+    0x0805: ['Setback Thermostat', [64, 67, 71, 114, 134, 32], [], 0x40],
+    0x4003: ['Secure Keypad Door Lock', [98, 99, 114, 134, 152, 32], [], 0x62],
+    0x1201: ['Binary Remote Switch', [], [37, 32], 0x25],
+    0x0102: ['Portable Scene Controller', [45, 114, 133], [43, 32], 0x00],
+    0xa103: ['Basic Zensor Alarm Sensor', [113, 114, 134], [113, 32], 0x71],
+    0x1106: ['Motor Control Class B', [37, 114, 134, 32, 38], [], 0x26],
+    0x0801: ['Heating Thermostat', [32], [], 0x00],
+    0x1003: ['Binary Scene Switch', [39, 43, 44, 114, 32, 37], [], 0x25],
+    0xa10a: ['Advanced Zensor Smoke Sensor', [113, 114, 128, 133, 134], [113, 32], 0x71],
+    0xa101: ['Basic Routing Alarm Sensor', [113, 114, 133, 134], [113, 32], 0x71],
+    0xa106: ['Basic Routing Smoke Sensor', [113, 114, 133, 134], [113, 32], 0x71],
+    0x0202: ['Static Scene Controller', [45, 114, 133], [43, 32], 0x00],
+    0x0806: ['General Thermostat V2', [64, 67, 114, 134, 32], [], 0x40],
+    0x0401: ['Simple Display', [114, 134, 146, 147, 32], [], 0x00],
+    0x0101: ['Portable Remote Controller', [], [32], 0x00],
+    0xa109: ['Zensor Smoke Sensor', [113, 114, 128, 134], [113, 32], 0x71],
+    0x1105: ['Motor Control Class A', [37, 114, 134, 32, 38], [], 0x26],
+    0x0802: ['General Thermostat', [64, 67, 114, 32], [], 0x40],
+    0x1202: ['Multilevel Remote Switch', [], [38, 32], 0x26],
+    0xa102: ['Routing Alarm Sensor', [113, 114, 128, 133, 134], [113, 32], 0x71],
+    0x1101: ['Multilevel Power Switch', [39, 32, 38], [], 0x26],
+    0xa105: ['Advanced Zensor Alarm Sensor', [113, 114, 128, 133, 134], [113, 32], 0x71],
+    0x1302: ['Multilevel Toggle Switch', [38, 41, 32], [], 0x29],
+    0x0203: ['Static Installer Tool', [33, 114, 134, 143], [33, 96, 112, 114, 132, 133, 134, 142, 32], 0x00],
+    0x1200: ['Remote Switch', [], [32, 32], 0x00],
+    0x0100: ['Remote Controller', [], [32], 0x00],
+    0x0f01: ['Basic Repeater Slave', [32], [], 0x00],
+    0x2101: ['Routing Multilevel Sensor', [49], [32], 0x31],
+    0x1104: ['Multilevel Scene Switch', [39, 43, 44, 114, 32, 38], [], 0x26],
+    0x5001: ['Energy Production', [144, 32, 114, 134, 136], [], 0x00],
+    0x0803: ['Setback Schedule Thermostat', [70, 114, 134, 143, 32], [70, 129, 143], 0x46],
+    0x1203: ['Binary Toggle Remote Switch', [], [40, 32], 0x28],
+    0x3101: ['Simple Meter', [50, 114, 134], [32], 0x32],
+    0xa104: ['Zensor Alarm Sensor', [113, 114, 128, 134], [113, 32], 0x71],
+    0x4002: ['Advanced Door Lock', [98, 114, 134, 32], [], 0x62],
+    0x1001: ['Binary Power Switch', [39, 32, 37], [], 0x25],
+    0x0312: ['Doorbell', [48, 114, 133, 134, 32], [], 0x30],
+    0x1103: ['Multiposition Motor', [114, 134, 32, 38], [], 0x26],
+    0xa100: ['Alarm Sensor', [], [32], 0x71],
+    0x1301: ['Binary Toggle Switch', [37, 40, 32], [], 0x28],
+    0x0304: ['Satellite Receiver', [114, 134, 148, 32], [], 0x00],
+    0x0804: ['Setpoint Thermostat', [67, 114, 134, 143, 32], [67, 143], 0x43],
 }
 
 SUBCMD_TO_PARSE_TABLE = {
 
-# NoOperation (0x00 = 0)
-    0x0000 : [],                                              # Set (0)
+    # NoOperation (0x00 = 0)
+    0x0000: [],  # Set (0)
 
-# Basic (0x20 = 32)
-    0x2001 : ['B{generic}'],                                  # Set (1)
-    0x2002 : [],                                              # Get (2)
-    0x2003 : ['B{generic}'],                                  # Report (3)
+    # Basic (0x20 = 32)
+    0x2001: ['B{generic}'],  # Set (1)
+    0x2002: [],  # Get (2)
+    0x2003: ['B{generic}'],  # Report (3)
 
-# ControllerReplication (0x21 = 33)
-    0x2131 : ['B{seq}', 'B{group}', 'B{node}'],               # TransferGroup (49)
-    0x2133 : ['B{seq}', 'B{scene}', 'B{node}', 'B{level}'],   # TransferScene (51)
+    # ControllerReplication (0x21 = 33)
+    0x2131: ['B{seq}', 'B{group}', 'B{node}'],  # TransferGroup (49)
+    0x2133: ['B{seq}', 'B{scene}', 'B{node}', 'B{level}'],  # TransferScene (51)
 
-# ApplicationStatus (0x22 = 34)
-    0x2201 : ['B{status}', 'B{delay}'],                       # Busy (1)
-    0x2202 : ['B{status}'],                                   # RejectedRequest (2)
+    # ApplicationStatus (0x22 = 34)
+    0x2201: ['B{status}', 'B{delay}'],  # Busy (1)
+    0x2202: ['B{status}'],  # RejectedRequest (2)
 
-# SwitchBinary (0x25 = 37)
-    0x2501 : ['B{switch}'],                                   # Set (1)
-    0x2502 : [],                                              # Get (2)
-    0x2503 : ['B{switch}'],                                   # Report (3)
+    # SwitchBinary (0x25 = 37)
+    0x2501: ['B{switch}'],  # Set (1)
+    0x2502: [],  # Get (2)
+    0x2503: ['B{switch}'],  # Report (3)
 
-# SwitchMultilevel (0x26 = 38)
-    0x2601 : ['B{percent}', 'B{duration}'],                   # Set (1)
-    0x2602 : [],                                              # Get (2)
-    0x2603 : ['B{percent}'],                                  # Report (3)
-    0x2604 : ['B{mode}', 'L{command}'],                       # StartLevelChange (4)
-    0x2605 : [],                                              # StopLevelChange (5)
-    0x2606 : [],                                              # SupportedGet (6)
-    0x2607 : ['B{type1}', 'B{type2}'],                        # SupportedReport (7)
+    # SwitchMultilevel (0x26 = 38)
+    0x2601: ['B{percent}', 'B{duration}'],  # Set (1)
+    0x2602: [],  # Get (2)
+    0x2603: ['B{percent}'],  # Report (3)
+    0x2604: ['B{mode}', 'L{command}'],  # StartLevelChange (4)
+    0x2605: [],  # StopLevelChange (5)
+    0x2606: [],  # SupportedGet (6)
+    0x2607: ['B{type1}', 'B{type2}'],  # SupportedReport (7)
 
-# SwitchAll (0x27 = 39)
-    0x2701 : ['B{mode}'],                                     # Set (1)
-    0x2702 : [],                                              # Get (2)
-    0x2703 : ['B{switch}'],                                   # Report (3)
-    0x2704 : [],                                              # On (4)
-    0x2705 : [],                                              # Off (5)
+    # SwitchAll (0x27 = 39)
+    0x2701: ['B{mode}'],  # Set (1)
+    0x2702: [],  # Get (2)
+    0x2703: ['B{switch}'],  # Report (3)
+    0x2704: [],  # On (4)
+    0x2705: [],  # Off (5)
 
-# SwitchToggleBinary (0x28 = 40)
-    0x2801 : [],                                              # Set (1)
-    0x2802 : [],                                              # Get (2)
-    0x2803 : ['B{switch}'],                                   # Report (3)
+    # SwitchToggleBinary (0x28 = 40)
+    0x2801: [],  # Set (1)
+    0x2802: [],  # Get (2)
+    0x2803: ['B{switch}'],  # Report (3)
 
-# SceneActivation (0x2b = 43)
-    0x2b01 : ['B{scene}', 'B{delay}'],                        # Set (1)
+    # SceneActivation (0x2b = 43)
+    0x2b01: ['B{scene}', 'B{delay}'],  # Set (1)
 
-# SceneActuatorConf (0x2c = 44)
-    0x2c01 : ['B{scene}', 'B{delay}', 'B{extra}', 'B{level}'],  # Set (1)
-    0x2c02 : ['B{scene}'],                                    # Get (2)
-    0x2c03 : ['B{scene}', 'B{level}', 'B{delay}'],            # Report (3)
+    # SceneActuatorConf (0x2c = 44)
+    0x2c01: ['B{scene}', 'B{delay}', 'B{extra}', 'B{level}'],  # Set (1)
+    0x2c02: ['B{scene}'],  # Get (2)
+    0x2c03: ['B{scene}', 'B{level}', 'B{delay}'],  # Report (3)
 
-# SceneControllerConf (0x2d = 45)
-    0x2d01 : ['B{delay}', 'B{group}', 'B{scene}'],            # Set (1)
-    0x2d02 : ['B{group}'],                                    # Get (2)
-    0x2d03 : ['B{delay}', 'B{group}', 'B{scene}'],            # Report (3)
+    # SceneControllerConf (0x2d = 45)
+    0x2d01: ['B{delay}', 'B{group}', 'B{scene}'],  # Set (1)
+    0x2d02: ['B{group}'],  # Get (2)
+    0x2d03: ['B{delay}', 'B{group}', 'B{scene}'],  # Report (3)
 
-# SensorBinary (0x30 = 48)
-    0x3002 : [],                                              # Get (2)
-    0x3003 : ['B{active}'],                                   # Report (3)
+    # SensorBinary (0x30 = 48)
+    0x3002: [],  # Get (2)
+    0x3003: ['B{active}'],  # Report (3)
 
-# SensorMultilevel (0x31 = 49)
-    0x3101 : [],                                              # SupportedGet (1)
-    0x3102 : ['R{bits}'],                                     # SupportedReport (2)
-    0x3104 : ['Y{sensor}'],                                   # Get (4)
-    0x3105 : ['B{type}', 'X{value}'],                         # Report (5)
+    # SensorMultilevel (0x31 = 49)
+    0x3101: [],  # SupportedGet (1)
+    0x3102: ['R{bits}'],  # SupportedReport (2)
+    0x3104: ['Y{sensor}'],  # Get (4)
+    0x3105: ['B{type}', 'X{value}'],  # Report (5)
 
-# Meter (0x32 = 50)
-    0x3201 : ['Y{scale}'],                                    # Get (1)
-    0x3202 : ['M{meter}'],                                    # Report (2)
-    0x3203 : [],                                              # SupportedGet (3)
-    0x3204 : ['B{type}', 'B{scale}'],                         # SupportedReport (4)
-    0x3205 : [],                                              # Reset (5)
+    # Meter (0x32 = 50)
+    0x3201: ['Y{scale}'],  # Get (1)
+    0x3202: ['M{meter}'],  # Report (2)
+    0x3203: [],  # SupportedGet (3)
+    0x3204: ['B{type}', 'B{scale}'],  # SupportedReport (4)
+    0x3205: [],  # Reset (5)
 
-# ColorSwitch (0x33 = 51)
-    0x3301 : [],                                              # SupportedGet (1)
-    0x3302 : ['U{bits}'],                                     # SupportedReport (2)
-    0x3303 : ['B{group}'],                                    # Get (3)
-    0x3304 : ['B{group}', 'B{level}'],                        # Report (4)
+    # ColorSwitch (0x33 = 51)
+    0x3301: [],  # SupportedGet (1)
+    0x3302: ['U{bits}'],  # SupportedReport (2)
+    0x3303: ['B{group}'],  # Get (3)
+    0x3304: ['B{group}', 'B{level}'],  # Report (4)
 
-# ThermostatMode (0x40 = 64)
-    0x4001 : ['B{thermo}'],                                   # Set (1)
-    0x4002 : [],                                              # Get (2)
-    0x4003 : ['B{thermo}'],                                   # Report (3)
-    0x4004 : [],                                              # SupportedGet (4)
-    0x4005 : ['U{thermo}'],                                   # SupportedReport (5)
+    # ThermostatMode (0x40 = 64)
+    0x4001: ['B{thermo}'],  # Set (1)
+    0x4002: [],  # Get (2)
+    0x4003: ['B{thermo}'],  # Report (3)
+    0x4004: [],  # SupportedGet (4)
+    0x4005: ['U{thermo}'],  # SupportedReport (5)
 
-# ThermostatSetpoint (0x43 = 67)
-    0x4302 : ['B{thermo}'],                                   # Get (2)
-    0x4303 : ['B{thermo}', 'X{value}'],                       # Report (3)
-    0x4304 : [],                                              # SupportedGet (4)
-    0x4305 : ['U{thermo}'],                                   # SupportedReport (5)
+    # ThermostatSetpoint (0x43 = 67)
+    0x4302: ['B{thermo}'],  # Get (2)
+    0x4303: ['B{thermo}', 'X{value}'],  # Report (3)
+    0x4304: [],  # SupportedGet (4)
+    0x4305: ['U{thermo}'],  # SupportedReport (5)
 
-# DoorLockLogging (0x4c = 76)
-    0x4c01 : [],                                              # SupportedGet (1)
-    0x4c02 : ['B{count}'],                                    # SupportedReport (2)
-    0x4c03 : ['B{count}'],                                    # Get (3)
-    0x4c04 : ['B{count}', 'C{date}', 'B{type}', 'B{user}', 'A{code}'],  # Report (4)
+    # DoorLockLogging (0x4c = 76)
+    0x4c01: [],  # SupportedGet (1)
+    0x4c02: ['B{count}'],  # SupportedReport (2)
+    0x4c03: ['B{count}'],  # Get (3)
+    0x4c04: ['B{count}', 'C{date}', 'B{type}', 'B{user}', 'A{code}'],  # Report (4)
 
-# AssociationGroupInformation (0x59 = 89)
-    0x5901 : ['B{group}'],                                    # NameGet (1)
-    0x5902 : ['B{group}', 'A{name}'],                         # NameReport (2)
-    0x5903 : ['B{mode}', 'B{group}'],                         # InfoGet (3)
-    0x5904 : ['G{groups}'],                                   # InfoReport (4)
-    0x5905 : ['B{mode}', 'B{group}'],                         # ListGet (5)
-    0x5906 : ['B{group}', 'A{commands}'],                     # ListReport (6)
+    # AssociationGroupInformation (0x59 = 89)
+    0x5901: ['B{group}'],  # NameGet (1)
+    0x5902: ['B{group}', 'A{name}'],  # NameReport (2)
+    0x5903: ['B{mode}', 'B{group}'],  # InfoGet (3)
+    0x5904: ['G{groups}'],  # InfoReport (4)
+    0x5905: ['B{mode}', 'B{group}'],  # ListGet (5)
+    0x5906: ['B{group}', 'A{commands}'],  # ListReport (6)
 
-# CentralScene (0x5b = 91)
-    0x5b01 : [],                                              # SupportedGet (1)
-    0x5b02 : ['B{count}'],                                    # SupportedReport (2)
-    0x5b03 : ['B{count}', 'B{mode}', 'B{scene}'],             # Notification (3)
+    # CentralScene (0x5b = 91)
+    0x5b01: [],  # SupportedGet (1)
+    0x5b02: ['B{count}'],  # SupportedReport (2)
+    0x5b03: ['B{count}', 'B{mode}', 'B{scene}'],  # Notification (3)
 
-# ZwavePlusInfo (0x5e = 94)
-    0x5e01 : [],                                              # Get (1)
-    0x5e02 : ['B{version}', 'B{role}', 'W{icon}', 'W{type}'],  # Report (2)
+    # ZwavePlusInfo (0x5e = 94)
+    0x5e01: [],  # Get (1)
+    0x5e02: ['B{version}', 'B{role}', 'W{icon}', 'W{type}'],  # Report (2)
 
-# MultiInstance (0x60 = 96)
-    0x6004 : ['B{mode}'],                                     # Get (4)
-    0x6005 : ['B{mode}', 'B{count}'],                         # Report (5)
-    0x6006 : ['B{mode}', 'L{command}'],                       # Encap (6)
-    0x6007 : [],                                              # ChannelEndPointGet (7)
-    0x6008 : ['B{mode}', 'B{count}'],                         # ChannelEndPointReport (8)
-    0x6009 : [],                                              # ChannelCapabilityGet (9)
-    0x600a : [],                                              # ChannelCapabilityReport (10)
-    0x600b : [],                                              # ChannelEndPointFind (11)
-    0x600c : [],                                              # ChannelEndPointFindReport (12)
-    0x600d : [],                                              # ChannelEncap (13)
+    # MultiInstance (0x60 = 96)
+    0x6004: ['B{mode}'],  # Get (4)
+    0x6005: ['B{mode}', 'B{count}'],  # Report (5)
+    0x6006: ['B{mode}', 'L{command}'],  # Encap (6)
+    0x6007: [],  # ChannelEndPointGet (7)
+    0x6008: ['B{mode}', 'B{count}'],  # ChannelEndPointReport (8)
+    0x6009: [],  # ChannelCapabilityGet (9)
+    0x600a: [],  # ChannelCapabilityReport (10)
+    0x600b: [],  # ChannelEndPointFind (11)
+    0x600c: [],  # ChannelEndPointFindReport (12)
+    0x600d: [],  # ChannelEncap (13)
 
-# DoorLock (0x62 = 98)
-    0x6201 : ['B{status}'],                                   # Set (1)
-    0x6202 : [],                                              # Get (2)
-    0x6203 : ['B{status}'],                                   # Report (3)
-    0x6204 : ['B{timeout}', 'B{control}', 'B{min}', 'B{sec}'],  # ConfigurationSet (4)
-    0x6205 : [],                                              # ConfigurationGet (5)
-    0x6206 : ['B{timeout}', 'B{control}', 'B{min}', 'B{sec}'],  # ConfigurationReport (6)
+    # DoorLock (0x62 = 98)
+    0x6201: ['B{status}'],  # Set (1)
+    0x6202: [],  # Get (2)
+    0x6203: ['B{status}'],  # Report (3)
+    0x6204: ['B{timeout}', 'B{control}', 'B{min}', 'B{sec}'],  # ConfigurationSet (4)
+    0x6205: [],  # ConfigurationGet (5)
+    0x6206: ['B{timeout}', 'B{control}', 'B{min}', 'B{sec}'],  # ConfigurationReport (6)
 
-# UserCode (0x63 = 99)
-    0x6301 : [],                                              # Set (1)
-    0x6302 : ['B{count}'],                                    # Get (2)
-    0x6303 : ['B{count}', 'B{status}', 'D{code}'],            # Report (3)
-    0x6304 : [],                                              # NumberGet (4)
-    0x6305 : ['B{count}'],                                    # NumberReport (5)
+    # UserCode (0x63 = 99)
+    0x6301: [],  # Set (1)
+    0x6302: ['B{count}'],  # Get (2)
+    0x6303: ['B{count}', 'B{status}', 'D{code}'],  # Report (3)
+    0x6304: [],  # NumberGet (4)
+    0x6305: ['B{count}'],  # NumberReport (5)
 
-# Configuration (0x70 = 112)
-    0x7004 : ['B{parameter}', 'V{value}'],                    # Set (4)
-    0x7005 : ['B{parameter}'],                                # Get (5)
-    0x7006 : ['B{parameter}', 'V{value}'],                    # Report (6)
+    # Configuration (0x70 = 112)
+    0x7004: ['B{parameter}', 'V{value}'],  # Set (4)
+    0x7005: ['B{parameter}'],  # Get (5)
+    0x7006: ['B{parameter}', 'V{value}'],  # Report (6)
 
-# Alarm (0x71 = 113)
-    0x7104 : [],                                              # Get (4)
-    0x7105 : ['B{type}', 'B{level}'],                         # Report (5)
-    0x7106 : ['B{type}', 'B{level}'],                         # Set (6)
-    0x7107 : [],                                              # SupportedGet (7)
-    0x7108 : [],                                              # SupportedReport (8)
+    # Alarm (0x71 = 113)
+    0x7104: [],  # Get (4)
+    0x7105: ['B{type}', 'B{level}'],  # Report (5)
+    0x7106: ['B{type}', 'B{level}'],  # Set (6)
+    0x7107: [],  # SupportedGet (7)
+    0x7108: [],  # SupportedReport (8)
 
-# ManufacturerSpecific (0x72 = 114)
-    0x7204 : [],                                              # Get (4)
-    0x7205 : ['W{manufacturer}', 'W{type}', 'W{product}'],    # Report (5)
-    0x7206 : ['B{type}'],                                     # DeviceSpecificGet (6)
-    0x7207 : ['B{type}', 'F{bytes}'],                         # DeviceSpecificReport (7)
+    # ManufacturerSpecific (0x72 = 114)
+    0x7204: [],  # Get (4)
+    0x7205: ['W{manufacturer}', 'W{type}', 'W{product}'],  # Report (5)
+    0x7206: ['B{type}'],  # DeviceSpecificGet (6)
+    0x7207: ['B{type}', 'F{bytes}'],  # DeviceSpecificReport (7)
 
-# Powerlevel (0x73 = 115)
-    0x7301 : ['B{level}', 'B{timeout}'],                      # Set (1)
-    0x7302 : [],                                              # Get (2)
-    0x7303 : ['B{level}', 'B{timeout}'],                      # Report (3)
-    0x7304 : ['B{node}', 'B{level}', 'W{count}'],             # TestNodeSet (4)
-    0x7305 : [],                                              # TestNodeGet (5)
-    0x7306 : ['B{node}', 'B{status}', 'B{level}', 'W{count}'],  # TestNodeGetReport (6)
+    # Powerlevel (0x73 = 115)
+    0x7301: ['B{level}', 'B{timeout}'],  # Set (1)
+    0x7302: [],  # Get (2)
+    0x7303: ['B{level}', 'B{timeout}'],  # Report (3)
+    0x7304: ['B{node}', 'B{level}', 'W{count}'],  # TestNodeSet (4)
+    0x7305: [],  # TestNodeGet (5)
+    0x7306: ['B{node}', 'B{status}', 'B{level}', 'W{count}'],  # TestNodeGetReport (6)
 
-# Protection (0x75 = 117)
-    0x7501 : ['B{protection}'],                               # Set (1)
-    0x7502 : [],                                              # Get (2)
-    0x7503 : ['B{protection}'],                               # Report (3)
+    # Protection (0x75 = 117)
+    0x7501: ['B{protection}'],  # Set (1)
+    0x7502: [],  # Get (2)
+    0x7503: ['B{protection}'],  # Report (3)
 
-# Lock (0x76 = 118)
-    0x7601 : ['B{state}'],                                    # Set (1)
-    0x7602 : [],                                              # Get (2)
-    0x7603 : ['B{state}'],                                    # Report (3)
+    # Lock (0x76 = 118)
+    0x7601: ['B{state}'],  # Set (1)
+    0x7602: [],  # Get (2)
+    0x7603: ['B{state}'],  # Report (3)
 
-# NodeNaming (0x77 = 119)
-    0x7701 : ['N{name}'],                                     # Set (1)
-    0x7702 : [],                                              # Get (2)
-    0x7703 : ['N{name}'],                                     # Report (3)
-    0x7704 : ['N{name}'],                                     # LocationSet (4)
-    0x7705 : [],                                              # LocationGet (5)
-    0x7706 : ['N{name}'],                                     # LocationReport (6)
+    # NodeNaming (0x77 = 119)
+    0x7701: ['N{name}'],  # Set (1)
+    0x7702: [],  # Get (2)
+    0x7703: ['N{name}'],  # Report (3)
+    0x7704: ['N{name}'],  # LocationSet (4)
+    0x7705: [],  # LocationGet (5)
+    0x7706: ['N{name}'],  # LocationReport (6)
 
-# Firmware (0x7a = 122)
-    0x7a01 : [],                                              # MetadataGet (1)
-    0x7a02 : ['W{manufacturer}', 'W{id}', 'W{checksum}'],     # MetadataReport (2)
+    # Firmware (0x7a = 122)
+    0x7a01: [],  # MetadataGet (1)
+    0x7a02: ['W{manufacturer}', 'W{id}', 'W{checksum}'],  # MetadataReport (2)
 
-# Battery (0x80 = 128)
-    0x8002 : [],                                              # Get (2)
-    0x8003 : ['B{percent}'],                                  # Report (3)
+    # Battery (0x80 = 128)
+    0x8002: [],  # Get (2)
+    0x8003: ['B{percent}'],  # Report (3)
 
-# Clock (0x81 = 129)
-    0x8104 : ['B{dayhour}', 'B{minute}'],                     # Set (4)
-    0x8105 : [],                                              # Get (5)
-    0x8106 : ['W{dhm}'],                                      # Report (6)
+    # Clock (0x81 = 129)
+    0x8104: ['B{dayhour}', 'B{minute}'],  # Set (4)
+    0x8105: [],  # Get (5)
+    0x8106: ['W{dhm}'],  # Report (6)
 
-# Hail (0x82 = 130)
-    0x8201 : [],                                              # Hail (1)
+    # Hail (0x82 = 130)
+    0x8201: [],  # Hail (1)
 
-# WakeUp (0x84 = 132)
-    0x8404 : [],                                              # IntervalSet (4)
-    0x8405 : [],                                              # IntervalGet (5)
-    0x8406 : [],                                              # IntervalReport (6)
-    0x8407 : [],                                              # Notification (7)
-    0x8408 : [],                                              # NoMoreInformation (8)
-    0x8409 : [],                                              # IntervalCapabilitiesGet (9)
-    0x840a : ['3{XXX}', '3{XXX}', '3{XXX}', '3{XXX}'],        # IntervalCapabilitiesReport (10)
+    # WakeUp (0x84 = 132)
+    0x8404: [],  # IntervalSet (4)
+    0x8405: [],  # IntervalGet (5)
+    0x8406: [],  # IntervalReport (6)
+    0x8407: [],  # Notification (7)
+    0x8408: [],  # NoMoreInformation (8)
+    0x8409: [],  # IntervalCapabilitiesGet (9)
+    0x840a: ['3{XXX}', '3{XXX}', '3{XXX}', '3{XXX}'],  # IntervalCapabilitiesReport (10)
 
-# Association (0x85 = 133)
-    0x8501 : ['B{group}', 'L{nodes}'],                        # Set (1)
-    0x8502 : ['B{group}'],                                    # Get (2)
-    0x8503 : ['B{group}', 'B{count}', 'B{seq}', 'L{nodes}'],  # Report (3)
-    0x8504 : ['B{group}', 'L{nodes}'],                        # Remove (4)
-    0x8505 : [],                                              # GroupingsGet (5)
-    0x8506 : ['B{count}'],                                    # GroupingsReport (6)
+    # Association (0x85 = 133)
+    0x8501: ['B{group}', 'L{nodes}'],  # Set (1)
+    0x8502: ['B{group}'],  # Get (2)
+    0x8503: ['B{group}', 'B{count}', 'B{seq}', 'L{nodes}'],  # Report (3)
+    0x8504: ['B{group}', 'L{nodes}'],  # Remove (4)
+    0x8505: [],  # GroupingsGet (5)
+    0x8506: ['B{count}'],  # GroupingsReport (6)
 
-# Version (0x86 = 134)
-    0x8611 : [],                                              # Get (17)
-    0x8612 : ['B{library}', 'B{protocol}', 'B{protocol}', 'B{application}', 'B{application}'],  # Report (18)
-    0x8613 : ['B{class}'],                                    # CommandClassGet (19)
-    0x8614 : ['B{class}', 'B{version}'],                      # CommandClassReport (20)
+    # Version (0x86 = 134)
+    0x8611: [],  # Get (17)
+    0x8612: ['B{library}', 'B{protocol}', 'B{protocol}', 'B{application}', 'B{application}'],  # Report (18)
+    0x8613: ['B{class}'],  # CommandClassGet (19)
+    0x8614: ['B{class}', 'B{version}'],  # CommandClassReport (20)
 
-# Indicator (0x87 = 135)
-    0x8701 : ['B{status}'],                                   # Set (1)
-    0x8702 : [],                                              # Get (2)
-    0x8703 : ['B{status}'],                                   # Report (3)
+    # Indicator (0x87 = 135)
+    0x8701: ['B{status}'],  # Set (1)
+    0x8702: [],  # Get (2)
+    0x8703: ['B{status}'],  # Report (3)
 
-# TimeParameters (0x8b = 139)
-    0x8b01 : ['C{date}'],                                     # Set (1)
-    0x8b02 : [],                                              # Get (2)
-    0x8b03 : ['C{date}'],                                     # Report (3)
+    # TimeParameters (0x8b = 139)
+    0x8b01: ['C{date}'],  # Set (1)
+    0x8b02: [],  # Get (2)
+    0x8b03: ['C{date}'],  # Report (3)
 
-# Security (0x98 = 152)
-    0x9802 : [],                                              # SupportedGet (2)
-    0x9803 : ['B{mode}', 'L{command}'],                       # SupportedReport (3)
-    0x9804 : ['B{mode}'],                                     # SchemeGet (4)
-    0x9805 : ['B{mode}'],                                     # SchemeReport (5)
-    0x9806 : ['K{key}'],                                      # NetworkKeySet (6)
-    0x9807 : [],                                              # NetworkKeyVerify (7)
-    0x9808 : [],                                              # SchemeInherit (8)
-    0x9840 : [],                                              # NonceGet (64)
-    0x9880 : ['O{nonce}'],                                    # NonceReport (128)
-    0x9881 : ['D{data}'],                                     # MessageEncap (129)
-    0x98c1 : ['D{data}'],                                     # MessageEncapNonceGet (193)
+    # Security (0x98 = 152)
+    0x9802: [],  # SupportedGet (2)
+    0x9803: ['B{mode}', 'L{command}'],  # SupportedReport (3)
+    0x9804: ['B{mode}'],  # SchemeGet (4)
+    0x9805: ['B{mode}'],  # SchemeReport (5)
+    0x9806: ['K{key}'],  # NetworkKeySet (6)
+    0x9807: [],  # NetworkKeyVerify (7)
+    0x9808: [],  # SchemeInherit (8)
+    0x9840: [],  # NonceGet (64)
+    0x9880: ['O{nonce}'],  # NonceReport (128)
+    0x9881: ['D{data}'],  # MessageEncap (129)
+    0x98c1: ['D{data}'],  # MessageEncapNonceGet (193)
 
-# SensorAlarm (0x9c = 156)
-    0x9c01 : ['B{alarm}'],                                    # Get (1)
-    0x9c02 : ['B{node}', 'B{alarm}'],                         # Report (2)
-    0x9c03 : [],                                              # SupportedGet (3)
-    0x9c04 : ['T{alarm}'],                                    # SupportedReport (4)
+    # SensorAlarm (0x9c = 156)
+    0x9c01: ['B{alarm}'],  # Get (1)
+    0x9c02: ['B{node}', 'B{alarm}'],  # Report (2)
+    0x9c03: [],  # SupportedGet (3)
+    0x9c04: ['T{alarm}'],  # SupportedReport (4)
 }
