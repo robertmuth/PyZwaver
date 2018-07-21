@@ -28,24 +28,26 @@ import collections
 
 from pyzwaver import zwave
 
+
 # ==================================================
 # Priorities for outgoing messages
 # ==================================================
 
 
 def ControllerPriority():
-    return (1, 0, -1)
+    return 1, 0, -1
 
 
 def NodePriorityHi(node):
-    return (2, 0, node)
+    return 2, 0, node
 
 
 def NodePriorityLo(node):
-    return (3, 0, node)
+    return 3, 0, node
+
 
 def LowestPriority():
-    return (1000, 0, -1)
+    return 1000, 0, -1
 
 
 class MessageQueueOut:
@@ -69,8 +71,7 @@ class MessageQueueOut:
             self._lo_min = 0
             self._hi_min = 0
 
-
-        level, count , node = priority
+        level, count, node = priority
         if level == 2:
             count = self._hi_counts[node]
             count = max(count + 1, self._hi_min)
@@ -84,7 +85,6 @@ class MessageQueueOut:
             self._counter += 1
         self._per_node_size[node] += 1
         self._q.put(((level, count, node), message))
-
 
     def get(self):
         priority, message = self._q.get()
@@ -126,7 +126,8 @@ def Hexify(t):
 
 
 def PrettifyRawMessage(m):
-    if m is None: return "None"
+    if m is None:
+        return "None"
 
     out = Hexify(m)
     out[0] = zwave.FIRST_TO_STRING.get(m[0], "??")
@@ -208,6 +209,7 @@ def RawMessageDstNode(data):
         return data[4]
     return -1
 
+
 def RawMessageIsRequest(data):
     if len(data) < 5:
         return -1
@@ -230,6 +232,7 @@ def ExtracRawMessage(data):
     if len(data) < length + 2:
         return None
     return data[0:length + 2]
+
 
 # ==================================================
 
@@ -273,10 +276,10 @@ def MakeRawReplicationSendDataWithId(node, data, xmit, cb_id=None):
     out = [node, len(data)] + data + [xmit]
     return MakeRawMessageWithId(zwave.API_ZW_REPLICATION_SEND_DATA, out, cb_id)
 
+
 RAW_MESSAGE_ACK = bytes([zwave.ACK])
 RAW_MESSAGE_NAK = bytes([zwave.NAK])
 RAW_MESSAGE_CAN = bytes([zwave.CAN])
-
 
 # ==================================================
 # Message
@@ -302,11 +305,9 @@ ACTION_MATCH_CBID = 8
 ACTION_NO_REPORT = 9
 ACTION_REPORT_EQ = 10
 
-
-
 # maps inflight message type to the action taken when a matching response is received
 _RESPONSE_ACTION = {
-    zwave.API_ZW_REMOVE_FAILED_NODE_ID:  [ACTION_REPORT_NE, 0], # removal started
+    zwave.API_ZW_REMOVE_FAILED_NODE_ID: [ACTION_REPORT_NE, 0],  # removal started
     zwave.API_ZW_SET_DEFAULT: [ACTION_NONE],
 }
 
@@ -320,11 +321,9 @@ _COMMANDS_WITH_NO_ACTION = [
     zwave.API_ZW_SET_PROMISCUOUS_MODE,
 ]
 
-
 for x in _COMMANDS_WITH_NO_ACTION:
     _RESPONSE_ACTION[x] = [ACTION_NONE]
     _REQUEST_ACTION[x] = [ACTION_NONE]
-
 
 _COMMANDS_WITH_RESPONSE_ACTION_REPORT = [
     zwave.API_ZW_GET_SUC_NODE_ID,
@@ -345,11 +344,9 @@ _COMMANDS_WITH_RESPONSE_ACTION_REPORT = [
     zwave.API_ZW_REQUEST_NODE_INFO,
 ]
 
-
 for x in _COMMANDS_WITH_RESPONSE_ACTION_REPORT:
     _RESPONSE_ACTION[x] = [ACTION_REPORT]
     _REQUEST_ACTION[x] = [ACTION_NONE]
-
 
 _COMMANDS_WITH_SIMPLE_RESPONSE_AND_REQUEST = {
     zwave.API_ZW_SEND_DATA: [7, 9],
@@ -360,8 +357,7 @@ _COMMANDS_WITH_SIMPLE_RESPONSE_AND_REQUEST = {
 
 for x, y in _COMMANDS_WITH_SIMPLE_RESPONSE_AND_REQUEST.items():
     _RESPONSE_ACTION[x] = [ACTION_REPORT_EQ, 1]
-    _REQUEST_ACTION[x] =  [ACTION_MATCH_CBID] + y
-
+    _REQUEST_ACTION[x] = [ACTION_MATCH_CBID] + y
 
 _COMMANDS_WITH_MULTI_REQUESTS = [
     zwave.API_ZW_ADD_NODE_TO_NETWORK,
@@ -373,6 +369,7 @@ _COMMANDS_WITH_MULTI_REQUESTS = [
 for x in _COMMANDS_WITH_MULTI_REQUESTS:
     _RESPONSE_ACTION[x] = [ACTION_NONE]
     _REQUEST_ACTION[x] = [ACTION_MATCH_CBID_MULTI]
+
 
 # TODO
 # RESPONSE
@@ -404,6 +401,7 @@ class Message:
     when it has been fully processed.
 
     """
+
     def __init__(self, payload, priority, callback, node,
                  timeout=1.0, action_requ=None, action_resp=None):
         self.payload = payload
@@ -431,7 +429,8 @@ class Message:
             self.action_resp = action_resp
 
     def _Timeout(self):
-        if self.inflight_lock is None: return
+        if self.inflight_lock is None:
+            return
         self.Complete(None, MESSAGE_STATE_TIMEOUT)
 
     def Start(self, lock):
@@ -455,13 +454,13 @@ class Message:
         return state
 
     def Complete(self, m, state):
-        if self.callback: self.callback(m)
+        if self.callback:
+            self.callback(m)
         return self._CompleteNoMessage(state)
-
 
     def _MaybeCompleteAck(self, m):
         if (self.action_requ[0] == ACTION_NONE and
-            self.action_resp[0] == ACTION_NONE):
+                self.action_resp[0] == ACTION_NONE):
             self.Complete(m, MESSAGE_STATE_COMPLETED)
         else:
             return ""
@@ -470,16 +469,18 @@ class Message:
         cbid = self.payload[-2]
         if self.action_requ[0] == ACTION_MATCH_CBID_MULTI:
             if m[4] != cbid:
-                logging.error("unexpected call back id: %s",
+                logging.error("[%d] %s unexpected call back id: %s",
+                              self.node, PrettifyRawMessage(self.payload),
                               PrettifyRawMessage(m))
                 return "unexpected"
             assert self.callback is not None
             if not self.callback(m):
                 return "continue"
-            return self.CompleteNoMessage(MESSAGE_STATE_COMPLETED)
+            return self._CompleteNoMessage(MESSAGE_STATE_COMPLETED)
         elif self.action_requ[0] == ACTION_MATCH_CBID:
             if m[4] != cbid:
-                logging.error("unexpected call back id: %s",
+                logging.error("[%d] %s unexpected call back id: %s",
+                              self.node, PrettifyRawMessage(self.payload),
                               PrettifyRawMessage(m))
                 return "unexpected"
             return self.Complete(m, MESSAGE_STATE_COMPLETED)
@@ -502,18 +503,18 @@ class Message:
                 # Note, we currently do not record having received m
                 # as we have not seen failure modes requiring it.
                 logging.debug("delivered to stack")
-                if self.callback: self.callback(m)
+                if self.callback:
+                    self.callback(m)
                 return "continue"
             else:
-                logging.warning("unexpected resp status is %d wanted %d ==== %s",
-                                m[4], self.action_resp[1],
-                                PrettifyRawMessage(self.payload))
+                logging.warning("[%d] %s unexpected resp status is %d wanted %d",
+                                self.node, PrettifyRawMessage(self.payload),
+                                m[4], self.action_resp[1])
+
                 return self.Complete(m, MESSAGE_STATE_NOT_READY)
-            return False
 
         else:
             assert False
-
 
     def MaybeComplete(self, m):
         if m[0] == zwave.ACK:
@@ -524,7 +525,9 @@ class Message:
 
         func = self.payload[3]
         if m[3] != func:
-            logging.error("unexpected request/response: ")
+            logging.error("[%d %s unexpected request/response: %s",
+                          self.node, PrettifyRawMessage(self.payload),
+                          PrettifyRawMessage(m))
             return "unexpected"
 
         if m[2] == zwave.RESPONSE:
@@ -543,7 +546,6 @@ class Message:
 
     def __lt__(self, other):
         return self.priority < other.priority
-
 
 
 # ==================================================
@@ -566,6 +568,7 @@ class MessageQueue:
     And serveral messages coming back from the device might be needed
     before the Message is fully processed.
     """
+
     def __init__(self):
         # outgoing message
         self._out_queue = MessageQueueOut()
@@ -577,7 +580,6 @@ class MessageQueue:
         out = ["queue length: %d" % self._out_queue.qsize(),
                "by node: %s" % str(self._out_queue)]
         return "\n".join(out)
-
 
     def EnqueueMessage(self, m):
         self._out_queue.put(m.priority, m)
@@ -598,12 +600,11 @@ class MessageQueue:
         if func in [zwave.API_ZW_ADD_NODE_TO_NETWORK, zwave.API_ZW_REMOVE_NODE_FROM_NETWORK]:
             self._inflight_result.put(None)
 
-
     def WaitUntilAllPreviousMessagesHaveBeenHandled(self):
-        semaphore = threading.Semaphore()
-        semaphore.acquire()
+        lock = threading.Lock()
+        lock.acquire()
         # send dummy message to clear out pipe
-        mesg = Message(None, LowestPriority(), lambda _: semaphore.release(), None)
+        mesg = Message(None, LowestPriority(), lambda _: lock.release(), None)
         self.EnqueueMessage(mesg)
         # wait until semaphore is released by callback
-        semaphore.acquire()
+        lock.acquire()
