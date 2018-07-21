@@ -24,7 +24,6 @@ It also contains some logic pertaining to the node state machine.
 import logging
 import re
 
-
 from pyzwaver import zwave
 
 UNIT_LEVEL = "level"
@@ -33,7 +32,6 @@ UNIT_NONE = ""
 # sensor kinds
 SENSOR_KIND_SWITCH_BINARY = "SwitchBinary"
 SENSOR_KIND_SWITCH_MULTILEVEL = "SwitchMultilevel"
-SENSOR_KIND_SWITCH_BINARY = "SwitchBinary"
 SENSOR_KIND_SWITCH_TOGGLE = "SwitchToggle"
 SENSOR_KIND_BATTERY = "Battery"
 SENSOR_KIND_BASIC = "Basic"
@@ -52,7 +50,6 @@ SECURITY_NONCE_REQUESTED = "SecurityNonceRequested"
 SECURITY_UNWRAP = "SecurityUnwrap"
 SECURITY_KEY_VERIFY = "SecurityKeyVerify"
 
-
 EVENT_ALARM = "Alarm"
 EVENT_WAKE_UP = "WakeUp"
 EVENT_HAIL = "Hail"
@@ -67,7 +64,6 @@ NODE_STATE_DISCOVERED = "2_Discovered"
 # interviewed means we have received product info (including most static
 # info an versions)
 NODE_STATE_INTERVIEWED = "3_Interviewed"
-
 
 _VALUE_NAME_REWRITES = [
     # note: order is important
@@ -87,7 +83,7 @@ def GetValueName(k):
 METER_TYPES = [
     [SENSOR_KIND_INVALID, [None, None, None, None, None, None, None, None]],
     [SENSOR_KIND_ELECTRIC, ["kWh", "kVAh", "W", "Pulses",
-                     "V", "A", "Power-Factor", None]],
+                            "V", "A", "Power-Factor", None]],
     [SENSOR_KIND_GAS, ["m^3", "ft^3", None, "Pulses", None, None, None, None]],
     [SENSOR_KIND_WATER, ["m^3", "ft^3", None, "Pulses", None, None, None, None]],
 ]
@@ -121,7 +117,7 @@ SENSOR_TYPES = [
     # 20
     ["Distance", ["m", "cm", "ft", None]],
     ["Angle Position", ["%", "deg N", "deg S", None]],
-    ["Rotation",  ["rpm", "Hz", None, None]],
+    ["Rotation", ["rpm", "Hz", None, None]],
     ["Water Temperature", ["C", "F", None, None]],
     # 24
     ["Soil Temperature", ["C", "F", None, None]],
@@ -204,6 +200,7 @@ def EventTypeToString(t):
         return DOOR_LOG_EVENT_TYPE[t]
     return "@UNKNOWN_EVENT[%d]@" % t
 
+
 # ======================================================================
 def _GetSignedValue(m, index, size):
     value = 0
@@ -236,7 +233,7 @@ def _GetTimeDelta(m, index):
 
 
 def _ExtractValues(m, index, units_extra):
-    unit = None
+    # unit = None
     val1 = None
     dt = None
     val2 = None
@@ -253,11 +250,12 @@ def _ExtractValues(m, index, units_extra):
 
 
 def _ParseMeter(m, index):
-    #extra = m[index] & 0x60
+    # extra = m[index] & 0x60
     units_extra = (m[index] & 0x80) >> 5
     meter_type = m[index] & 0x1f
     index, val = _ExtractValues(m, index + 1, units_extra)
     return index, [meter_type] + val
+
 
 # ======================================================================
 # all parsers return the amount of consumed bytes or a negative number to indicate
@@ -274,6 +272,7 @@ def _ParseWord(m, index):
     if len(m) <= index + 1:
         return index, None
     return index + 2, m[index] * 256 + m[index + 1]
+
 
 _ENCODING_TO_DECODER = [
     "ascii",
@@ -305,6 +304,7 @@ def _ParseListRest(m, index):
     size = len(m) - index
     return index + size, m[index:index + size]
 
+
 def _ExtractBitVector(data, offset):
     bits = set()
     for i in range(len(data)):
@@ -313,6 +313,7 @@ def _ExtractBitVector(data, offset):
             if b & (1 << j) != 0:
                 bits.add(j + i * 8 + offset)
     return bits
+
 
 def _ParseGroups(m, index):
     misc = m[index]
@@ -330,13 +331,14 @@ def _ParseGroups(m, index):
         index += 7
     return index, groups,
 
+
 def _ParseBitVector(m, index):
     size = m[index]
     return index + 1 + size, _ExtractBitVector(m[index + 1:index + 1 + size], 0)
 
 
 def _ParseBitVectorRest(m, index):
-    size = len(m) - index
+    # size = len(m) - index
     return len(m), _ExtractBitVector(m[index:], 0)
 
 
@@ -396,7 +398,7 @@ def _ParseSensor(m, index):
 def _ParseValue(m, index):
     size = m[index] & 0x7
     start = index + 1
-    return index + 1 + size, [size, _GetIntBigEndian(m[start:start+size])]
+    return index + 1 + size, [size, _GetIntBigEndian(m[start:start + size])]
 
 
 def _ParseDate(m, index):
@@ -407,10 +409,10 @@ def _ParseDate(m, index):
     year = m[index] * 256 + m[index + 1]
     month = m[index + 2]
     day = m[index + 3]
-    hour = m[index + 4]
-    min = m[index + 5]
-    sec = m[index + 6]
-    return index + 7, [year, month, day, hour, min, sec]
+    hours = m[index + 4]
+    mins = m[index + 5]
+    secs = m[index + 6]
+    return index + 7, [year, month, day, hours, mins, secs]
 
 
 _PARSE_ACTIONS = {
@@ -421,7 +423,7 @@ _PARSE_ACTIONS = {
     'G': _ParseGroups,
     'N': _ParseName,
     'L': _ParseListRest,
-    'R': _ParseRestLittleEndianInt,   # as integer
+    'R': _ParseRestLittleEndianInt,  # as integer
     "W": _ParseWord,
     "V": _ParseValue,
     "M": _ParseMeter,
@@ -460,6 +462,7 @@ def ParseCommand(m, prefix):
         index = new_index
     return out
 
+
 # ======================================================================
 
 
@@ -467,8 +470,7 @@ def _MakeValue(conf, value):
     size = conf & 7
     assert size in (1, 2, 4)
 
-    data = []
-    data.append(conf)
+    data = [conf]
     shift = (size - 1) * 8
     while shift >= 0:
         data.append(0xff & (value >> shift))
@@ -483,10 +485,11 @@ def _MakeDate(date):
 # raw_cmd: [class, subcommand, arg1, arg2, ....]
 def AssembleCommand(raw_cmd):
     table = zwave.SUBCMD_TO_PARSE_TABLE[raw_cmd[0] * 256 + raw_cmd[1]]
-    assert table != None
-    data = []
-    data.append(raw_cmd[0])
-    data.append(raw_cmd[1])
+    assert table is not None
+    data = [
+        raw_cmd[0],
+        raw_cmd[1]
+    ]
     # logging.debug("${raw_cmd[0]} ${raw_cmd[1]}: table length:
     # ${table.length}")
     for i in range(len(table)):
@@ -495,7 +498,7 @@ def AssembleCommand(raw_cmd):
         if t[0] == 'B':
             data.append(v)
         elif t[0] == 'Y':
-            if v != None:
+            if v is not None:
                 data.append(v)
         elif t[0] == 'N':
             data.append(1)
@@ -510,7 +513,7 @@ def AssembleCommand(raw_cmd):
             data += v
         elif t[0] == 'S':
             logging.info("unknown parameter: ${t[0]}")
-            assert (False)
+            assert False, "unreachable"
             # for c in v:
             # out.append(ord(c))
         elif t[0] == 'L':
@@ -525,9 +528,10 @@ def AssembleCommand(raw_cmd):
             data += _MakeValue(v[0], v[1])
         else:
             logging.error("unknown parameter: ${t[0]}")
-            assert (False)
+            assert False, "unreachable"
 
     return data
+
 
 # ======================================================================
 class Value:
@@ -547,9 +551,9 @@ class Value:
 
     def __str__(self):
         if self.unit == UNIT_NONE:
-            return "%s[%s]" % (self.value,self.kind)
+            return "%s[%s]" % (self.value, self.kind)
         else:
-            return "%s[%s, %s]" % (self.value,self.kind, self.unit)
+            return "%s[%s, %s]" % (self.value, self.kind, self.unit)
 
 
 def ValueSensorNormal(value, prefix):
@@ -560,28 +564,31 @@ def ValueSensorNormal(value, prefix):
     unit = info[1][scale]
     if unit is None:
         logging.error("%s bad sensor reading [%d, %d]: %s",
-                          prefix, kind, scale, info)
+                      prefix, kind, scale, info)
     assert unit is not None
     return Value(info[0], unit, reading)
+
 
 def ValueMeterNormal(value, prefix):
     val = value[0]
     if len(val) != 5:
-        logging.error("%s bad meter normal %s %s",
-                      prefix, action, value)
+        logging.error("%s bad meter normal %s",
+                      prefix, value)
         return None
     kind = val[0]
-    scale =  val[1]
+    scale = val[1]
     info = METER_TYPES[kind]
     unit = info[1][scale]
     assert unit is not None
     return Value(info[0], unit, val[2], val[3], val[4])
 
+
 def ValueBare(k, value):
     return Value(GetValueName(k), UNIT_NONE, value)
 
+
 # ======================================================================
-_STORE_VALUE_SCALAR_ACTIONS= [
+_STORE_VALUE_SCALAR_ACTIONS = [
     (zwave.SwitchAll, zwave.SwitchAll_Report),
     (zwave.ColorSwitch, zwave.ColorSwitch_SupportedReport),
     (zwave.Protection, zwave.Protection_Report),
@@ -624,81 +631,81 @@ _STORE_VALUE_LIST_ACTIONS = [
 # ======================================================================
 ACTIONS = {
     (zwave.SceneActuatorConf, zwave.SceneActuatorConf_Report):
-    (lambda n, v, k, p: None, -1, EVENT_VALUE_CHANGE),
+        (lambda n, v, k, p: None, -1, EVENT_VALUE_CHANGE),
     #
     # COMMAND
     #
     (zwave.Version, zwave.Version_CommandClassReport):
-    (lambda n, v, k, p: n.commands.SetVersion(v), 2, EVENT_VALUE_CHANGE),
+        (lambda n, v, k, p: n.commands.SetVersion(v), 2, EVENT_VALUE_CHANGE),
     #
     # SENSOR
     #
     (zwave.SensorMultilevel, zwave.SensorMultilevel_Report):
-    (lambda n, v, k, p: n.sensors.Set(ValueSensorNormal(v, p)), 2, EVENT_VALUE_CHANGE),
+        (lambda n, v, k, p: n.sensors.Set(ValueSensorNormal(v, p)), 2, EVENT_VALUE_CHANGE),
     (zwave.SensorMultilevel, zwave.SensorMultilevel_SupportedReport):
-    (lambda n, v, k, p: n.sensors.SetSupported(v), 1, EVENT_VALUE_CHANGE),
+        (lambda n, v, k, p: n.sensors.SetSupported(v), 1, EVENT_VALUE_CHANGE),
     (zwave.SwitchBinary, zwave.SwitchBinary_Report):
-    (lambda n, v, k, p: n.sensors.Set(
-        Value(SENSOR_KIND_SWITCH_BINARY, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
+        (lambda n, v, k, p: n.sensors.Set(
+            Value(SENSOR_KIND_SWITCH_BINARY, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
     (zwave.Battery, zwave.Battery_Report):
-    (lambda n, v, k, p: n.sensors.Set(
-        Value(SENSOR_KIND_BATTERY, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
+        (lambda n, v, k, p: n.sensors.Set(
+            Value(SENSOR_KIND_BATTERY, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
     (zwave.SensorBinary, zwave.SensorBinary_Report):
-    (lambda n, v, k, p: n.sensors.Set(
-        Value(SENSOR_KIND_SWITCH_BINARY, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
+        (lambda n, v, k, p: n.sensors.Set(
+            Value(SENSOR_KIND_SWITCH_BINARY, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
     (zwave.SwitchToggleBinary, zwave.SwitchToggleBinary_Report):
-    (lambda n, v, k, p: n.sensors.Set(
-        Value(SENSOR_KIND_SWITCH_TOGGLE, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
+        (lambda n, v, k, p: n.sensors.Set(
+            Value(SENSOR_KIND_SWITCH_TOGGLE, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
     (zwave.SwitchMultilevel, zwave.SwitchMultilevel_Report):
-    (lambda n, v, k, p: n.sensors.Set(
-        Value(SENSOR_KIND_SWITCH_MULTILEVEL, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
+        (lambda n, v, k, p: n.sensors.Set(
+            Value(SENSOR_KIND_SWITCH_MULTILEVEL, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
     (zwave.Basic, zwave.Basic_Report):
-    (lambda n, v, k, p: n.sensors.Set(
-        Value(SENSOR_KIND_BASIC, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
+        (lambda n, v, k, p: n.sensors.Set(
+            Value(SENSOR_KIND_BASIC, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
     #
     # METER
     #
     (zwave.Meter, zwave.Meter_Report):
-    (lambda n, v, k, p: n.meters.Set(ValueMeterNormal(v, p)), 1, EVENT_VALUE_CHANGE),
+        (lambda n, v, k, p: n.meters.Set(ValueMeterNormal(v, p)), 1, EVENT_VALUE_CHANGE),
     (zwave.Meter, zwave.Meter_SupportedReport):
-    (lambda n, v, k, p: n.meters.SetSupported(v), 2, EVENT_VALUE_CHANGE),
+        (lambda n, v, k, p: n.meters.SetSupported(v), 2, EVENT_VALUE_CHANGE),
     #
     # PARAMETER
     #
     (zwave.Configuration, zwave.Configuration_Report):
-    (lambda n, v, k, p: n.parameters.Set(v), 2, EVENT_VALUE_CHANGE),
+        (lambda n, v, k, p: n.parameters.Set(v), 2, EVENT_VALUE_CHANGE),
     #
     # ASSOCIATIONS
     #
-    (zwave.Association, zwave.Association_GroupingsReport) :
-    (lambda n, v, k, p: n.associations.StoreCount(v), 1, EVENT_VALUE_CHANGE),
+    (zwave.Association, zwave.Association_GroupingsReport):
+        (lambda n, v, k, p: n.associations.StoreCount(v), 1, EVENT_VALUE_CHANGE),
     (zwave.Association, zwave.Association_Report):
-    (lambda n, v, k, p: n.associations.StoreNodes(v), 4, EVENT_VALUE_CHANGE),
+        (lambda n, v, k, p: n.associations.StoreNodes(v), 4, EVENT_VALUE_CHANGE),
     (zwave.AssociationGroupInformation, zwave.AssociationGroupInformation_NameReport):
-    (lambda n, v, k, p: n.associations.StoreName(v), 2, EVENT_VALUE_CHANGE),
+        (lambda n, v, k, p: n.associations.StoreName(v), 2, EVENT_VALUE_CHANGE),
     (zwave.AssociationGroupInformation, zwave.AssociationGroupInformation_InfoReport):
-    (lambda n, v, k, p: n.associations.StoreMeta(v), -1, EVENT_VALUE_CHANGE),
+        (lambda n, v, k, p: n.associations.StoreMeta(v), -1, EVENT_VALUE_CHANGE),
     (zwave.AssociationGroupInformation, zwave.AssociationGroupInformation_ListReport):
-    (lambda n, v, k, p: n.associations.StoreCommands(v), 2, EVENT_VALUE_CHANGE),
+        (lambda n, v, k, p: n.associations.StoreCommands(v), 2, EVENT_VALUE_CHANGE),
     #
     # MAP VALUES
     (zwave.ColorSwitch, zwave.ColorSwitch_Report):
-    (lambda n, v, k, p: n.values.SetMap(k, ValueBare(k, {v[0]: v[1]})),
-                        2, EVENT_VALUE_CHANGE),
+        (lambda n, v, k, p: n.values.SetMap(k, ValueBare(k, {v[0]: v[1]})),
+         2, EVENT_VALUE_CHANGE),
 
     #
     #
     # EVENTS
     #
     (zwave.Alarm, zwave.Alarm_Report):
-    (lambda n, v, k, p: n.StoreEvent(
-        Value(EVENT_ALARM, UNIT_NONE, v)), -1, None),
+        (lambda n, v, k, p: n.StoreEvent(
+            Value(EVENT_ALARM, UNIT_NONE, v)), -1, None),
     (zwave.Alarm, zwave.Alarm_Set):
-    (lambda n, v, k, p: n.StoreEvent(
-        Value(EVENT_ALARM, UNIT_NONE, v)), -1, None),
+        (lambda n, v, k, p: n.StoreEvent(
+            Value(EVENT_ALARM, UNIT_NONE, v)), -1, None),
     (zwave.WakeUp, zwave.WakeUp_Notification):
-    (lambda n, v, k, p: n.StoreEvent(Value(EVENT_WAKE_UP, UNIT_NONE, 1)),
-     -1, None),
+        (lambda n, v, k, p: n.StoreEvent(Value(EVENT_WAKE_UP, UNIT_NONE, 1)),
+         -1, None),
     #
     # These need a lot more work
     #
@@ -709,55 +716,57 @@ ACTIONS = {
     (zwave.Security, zwave.Security_MessageEncap): [SECURITY_UNWRAP],
     (zwave.Security, zwave.Security_NetworkKeyVerify): [SECURITY_KEY_VERIFY],
 
-# maps incoming API_APPLICATION_COMMAND messages to action we want to take
-# Most of the time we deal with "reports" and the action will be to
-# store some value inside the message for later use.
-# NODE_ACTION_TO_BE_REVISITED = {
-#     #
-#     (zwave.MultiInstance, zwave.MultiInstance_Report):
-#     [ACTION_STORE_MAP, VALUE_TYPE_MAP_SCALAR, "multi_instance"],
-#     (zwave.SceneControllerConf, zwave.SceneControllerConf_Report):
-#     [ACTION_STORE_MAP, VALUE_TYPE_MAP_LIST, "button"],
-#     (zwave.ApplicationStatus, zwave.ApplicationStatus_RejectedRequest):
-#     [ACTION_STORE_EVENT, VALUE_TYPE_CONST, "rejected_request", 1],
-#     #
-#     (zwave.Basic, zwave.Basic_Get):
-#     [ACTION_STORE_EVENT, VALUE_TYPE_CONST, "BASIC_GET", 1],
-#     #
-#     (zwave.UserCode, zwave.UserCode_Report):
-#     [ACTION_STORE_MAP, VALUE_TYPE_MAP_LIST, "user_code"],
-#     (zwave.DoorLockLogging, zwave.DoorLockLogging_Report):
-#     [ACTION_STORE_MAP, VALUE_TYPE_MAP_LIST, "lock_log"],
-#     #
-#     (zwave.Hail, zwave.Hail_Hail):
-#     [ACTION_STORE_EVENT, VALUE_TYPE_CONST, "HAIL", 1],
-#     # ZWAVE+
-#     # SECURITY
-#     #
-
+    # maps incoming API_APPLICATION_COMMAND messages to action we want to take
+    # Most of the time we deal with "reports" and the action will be to
+    # store some value inside the message for later use.
+    # NODE_ACTION_TO_BE_REVISITED = {
+    #     #
+    #     (zwave.MultiInstance, zwave.MultiInstance_Report):
+    #     [ACTION_STORE_MAP, VALUE_TYPE_MAP_SCALAR, "multi_instance"],
+    #     (zwave.SceneControllerConf, zwave.SceneControllerConf_Report):
+    #     [ACTION_STORE_MAP, VALUE_TYPE_MAP_LIST, "button"],
+    #     (zwave.ApplicationStatus, zwave.ApplicationStatus_RejectedRequest):
+    #     [ACTION_STORE_EVENT, VALUE_TYPE_CONST, "rejected_request", 1],
+    #     #
+    #     (zwave.Basic, zwave.Basic_Get):
+    #     [ACTION_STORE_EVENT, VALUE_TYPE_CONST, "BASIC_GET", 1],
+    #     #
+    #     (zwave.UserCode, zwave.UserCode_Report):
+    #     [ACTION_STORE_MAP, VALUE_TYPE_MAP_LIST, "user_code"],
+    #     (zwave.DoorLockLogging, zwave.DoorLockLogging_Report):
+    #     [ACTION_STORE_MAP, VALUE_TYPE_MAP_LIST, "lock_log"],
+    #     #
+    #     (zwave.Hail, zwave.Hail_Hail):
+    #     [ACTION_STORE_EVENT, VALUE_TYPE_CONST, "HAIL", 1],
+    #     # ZWAVE+
+    #     # SECURITY
+    #     #
 }
 
 STATE_CHANGE = {
     (zwave.ManufacturerSpecific, zwave.ManufacturerSpecific_Report):
-    (lambda n, v, k, p: n._MaybeChangeState(NODE_STATE_INTERVIEWED), -1, None),
+        (lambda n, v, k, p: n._MaybeChangeState(NODE_STATE_INTERVIEWED), -1, None),
 }
+
 
 def PatchUpActions():
     global ACTIONS
     logging.info("PatchUpActions")
     for key in _STORE_VALUE_SCALAR_ACTIONS:
-       ACTIONS[key] =  (lambda n, v, k, p: n.values.Set(k, ValueBare(k, v[0])),
+        ACTIONS[key] = (lambda n, v, k, p: n.values.Set(k, ValueBare(k, v[0])),
                         1, EVENT_VALUE_CHANGE)
 
     for key in _STORE_VALUE_LIST_ACTIONS:
-        ACTIONS[key] =  (lambda n, v, k, p: n.values.Set(k, ValueBare(k, v)),
-                         -1, EVENT_VALUE_CHANGE)
+        ACTIONS[key] = (lambda n, v, k, p: n.values.Set(k, ValueBare(k, v)),
+                        -1, EVENT_VALUE_CHANGE)
+
 
 PatchUpActions()
 
 
 def RenderSensorList(values):
     return str([SENSOR_TYPES[x][0] for x in values])
+
 
 def RenderMeterList(meter, values):
     return str([METER_TYPES[meter][1][x] for x in values])
