@@ -1081,7 +1081,7 @@ def main():
     tornado.options.parse_command_line()
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
-    logger.setLevel(logging.WARNING)
+    # logger.setLevel(logging.WARNING)
     # logger.setLevel(logging.ERROR)
     for h in logger.handlers:
         h.setFormatter(MyFormatter())
@@ -1098,7 +1098,7 @@ def main():
     )
 
     logging.info("opening serial")
-    MQ = zmessage.MessageQueue()
+    MQ = zdriver.MessageQueue()
     device = zdriver.MakeSerialDevice(OPTIONS.serial_port)
 
     DRIVER = zdriver.Driver(device, MQ)

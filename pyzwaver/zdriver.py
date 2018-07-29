@@ -24,6 +24,7 @@ import serial
 import threading
 import time
 import collections
+import queue
 
 from pyzwaver import zwave
 from pyzwaver import zmessage
@@ -94,9 +95,9 @@ DO_PROPAGATE = "DO_PROPAGATE"
 
 def _ProcessReceivedMessage(inflight, m):
     """
-    Process a reply message
-    :param m:
-    :return:
+    Process an message arriving at the driver and determines
+    the course of action taking the current inflight message
+    into acoount.
     """
     # logging.debug("rx buffer: %s", buf)
     if m[0] == zwave.NAK:
@@ -140,13 +141,128 @@ def _ProcessReceivedMessage(inflight, m):
         logging.error("received unknown start byte: %s", m[0])
         return DO_NOTHING, "bad-unknown-start-byte"
 
+class MessageQueueOut:
+
+    def __init__(self):
+        self._q = queue.PriorityQueue()
+        self._lo_counts = collections.defaultdict(int)
+        self._hi_counts = collections.defaultdict(int)
+        self._lo_min = 0
+        self._hi_min = 0
+        self._counter = 0
+        self._per_node_size = collections.defaultdict(int)
+
+    def qsize(self):
+        return self._q.qsize()
+
+    def put(self, priority, message):
+        if self._q.empty():
+            self._lo_counts = collections.defaultdict(int)
+            self._hi_counts = collections.defaultdict(int)
+            self._lo_min = 0
+            self._hi_min = 0
+
+        level, count, node = priority
+        if level == 2:
+            count = self._hi_counts[node]
+            count = max(count + 1, self._hi_min)
+            self._hi_counts[node] = count
+        elif level == 3:
+            count = self._lo_counts[node]
+            count = max(count + 1, self._lo_min)
+            self._lo_counts[node] = count
+        else:
+            count = self._counter
+            self._counter += 1
+        self._per_node_size[node] += 1
+        self._q.put(((level, count, node), message))
+
+    def get(self):
+        priority, message = self._q.get()
+        level = priority[0]
+        if level == 2:
+            self._hi_min = priority[1]
+        elif level == 2:
+            self._lo_min = priority[1]
+        self._per_node_size[priority[2]] -= 1
+        return message
+
+    def __str__(self):
+        return str(self._per_node_size)
+
+
+class MessageQueue:
+    """MessageQueue is a cental abstraction which allows us to decouple
+    Controller, Driver and NodeSet from each other.
+    It really consists of three seperate queues:
+    * _out_queue: messages to be sent to the device (usb serial)
+                  typically messages going to nodes
+    * _in_queue: messages: messages coming from the device
+                 typically messages coming from the nodes
+    * _inflight_result: an internal queue for messages pertaining
+                        to the _inflight Message
+
+    Only one outgoing Message can ever be inflight.
+    And serveral messages coming back from the device might be needed
+    before the Message is fully processed.
+    """
+
+    def __init__(self):
+        # outgoing message
+        self._out_queue = MessageQueueOut()
+        # unsolicited incoming - raw messages
+        # TODO: should this be its own class?
+        self._in_queue = queue.Queue()
+
+    def __str__(self):
+        out = ["queue length: %d" % self._out_queue.qsize(),
+               "by node: %s" % str(self._out_queue)]
+        return "\n".join(out)
+
+    def EnqueueMessage(self, m):
+        self._out_queue.put(m.priority, m)
+
+    def GetIncommingRawMessage(self):
+        return self._in_queue.get()
+
+    def PutIncommingRawMessage(self, rm):
+        self._in_queue.put(rm)
+
+    def DequeueMessage(self):
+        return self._out_queue.get()
+
+    def MaybeCancelLearningOperation(self):
+        if not self._inflight:
+            return
+        func = self._inflight.payload[3]
+        if func in [zwave.API_ZW_ADD_NODE_TO_NETWORK, zwave.API_ZW_REMOVE_NODE_FROM_NETWORK]:
+            self._inflight_result.put(None)
+
+    def WaitUntilAllPreviousMessagesHaveBeenHandled(self):
+        lock = threading.Lock()
+        lock.acquire()
+        # send dummy message to clear out pipe
+        mesg = zmessage.Message(None, zmessage.LowestPriority(), lambda _: lock.release(), None)
+        self.EnqueueMessage(mesg)
+        # wait until semaphore is released by callback
+        lock.acquire()
+
 
 class Driver(object):
     """
-    Driver deals sending raw Z-Wave message (arrays of bytes) to a serial
-    Z-Wave stick and receiving reply message.
-    It spawns to threads:
+    Driver is responsible for sending and receiving raw
+    Z-Wave message (arrays of bytes) to/from a serial
+    Z-Wave stick. Some of the messages will not go out to
+    any Z-Wave node but will just be local communication
+    with the stick.
 
+    It spawns to threads:
+    * a sending thread which in a loop picks a message from
+      the outgoing queue, sends it, waits for any related
+      replies and triggers actions based on the replies
+    * a receiving thread which waits from new messages to
+      arrive and then associates them with either the most
+       recently sent message or
     """
 
     def __init__(self, serialDevice, message_queue):
@@ -202,7 +318,7 @@ class Driver(object):
         self._mq.EnqueueMessage(zmessage.Message(None, zmessage.LowestPriority(), lambda _: None, None))
         logging.info("Driver terminated")
 
-    def SendRaw(self, payload, comment=""):
+    def _SendRaw(self, payload, comment=""):
         # if len(payload) >= 5:
         #    if self._last == payload[4]:
         #        time.sleep(SEND_DELAY_LARGE)
@@ -239,7 +355,7 @@ class Driver(object):
             inflight.Start(lock)
             time.sleep(self._delay[inflight.node])
 
-            self.SendRaw(inflight.payload, "")
+            self._SendRaw(inflight.payload, "")
             # Now wait for this message to complete by
             # waiting for lock to get released again
             lock.acquire()
@@ -278,12 +394,12 @@ class Driver(object):
             next_action, comment = _ProcessReceivedMessage(self._inflight, m)
             self._LogReceived(ts, m, comment)
             if next_action == DO_ACK:
-                self.SendRaw(zmessage.RAW_MESSAGE_ACK)
+                self._SendRaw(zmessage.RAW_MESSAGE_ACK)
             elif next_action == DO_RETRY:
                 self._inflight.IncRetry()
-                self.SendRaw(self._inflight.payload, "re-try")
+                self._SendRaw(self._inflight.payload, "re-try")
             elif next_action == DO_PROPAGATE:
-                self.SendRaw(zmessage.RAW_MESSAGE_ACK)
+                self._SendRaw(zmessage.RAW_MESSAGE_ACK)
                 self._mq.PutIncommingRawMessage(m)
 
     logging.warning("_DriverReceivingThread terminated")

@@ -21,10 +21,8 @@ that decides when a message has been properly processed.
 """
 
 import logging
-import queue
 import threading
 import time
-import collections
 
 from pyzwaver import zwave
 
@@ -48,56 +46,6 @@ def NodePriorityLo(node):
 
 def LowestPriority():
     return 1000, 0, -1
-
-
-class MessageQueueOut:
-
-    def __init__(self):
-        self._q = queue.PriorityQueue()
-        self._lo_counts = collections.defaultdict(int)
-        self._hi_counts = collections.defaultdict(int)
-        self._lo_min = 0
-        self._hi_min = 0
-        self._counter = 0
-        self._per_node_size = collections.defaultdict(int)
-
-    def qsize(self):
-        return self._q.qsize()
-
-    def put(self, priority, message):
-        if self._q.empty():
-            self._lo_counts = collections.defaultdict(int)
-            self._hi_counts = collections.defaultdict(int)
-            self._lo_min = 0
-            self._hi_min = 0
-
-        level, count, node = priority
-        if level == 2:
-            count = self._hi_counts[node]
-            count = max(count + 1, self._hi_min)
-            self._hi_counts[node] = count
-        elif level == 3:
-            count = self._lo_counts[node]
-            count = max(count + 1, self._lo_min)
-            self._lo_counts[node] = count
-        else:
-            count = self._counter
-            self._counter += 1
-        self._per_node_size[node] += 1
-        self._q.put(((level, count, node), message))
-
-    def get(self):
-        priority, message = self._q.get()
-        level = priority[0]
-        if level == 2:
-            self._hi_min = priority[1]
-        elif level == 2:
-            self._lo_min = priority[1]
-        self._per_node_size[priority[2]] -= 1
-        return message
-
-    def __str__(self):
-        return str(self._per_node_size)
 
 
 # ==================================================
@@ -560,63 +508,4 @@ class Message:
         return self.priority < other.priority
 
 
-# ==================================================
-# Message Queue
-# ==================================================
 
-
-class MessageQueue:
-    """MessageQueue is a cental abstraction which allows us to decouple
-    Controller, Driver and NodeSet from each other.
-    It really consists of three seperate queues:
-    * _out_queue: messages to be sent to the device (usb serial)
-                  typically messages going to nodes
-    * _in_queue: messages: messages coming from the device
-                 typically messages coming from the nodes
-    * _inflight_result: an internal queue for messages pertaining
-                        to the _inflight Message
-
-    Only one outgoing Message can ever be inflight.
-    And serveral messages coming back from the device might be needed
-    before the Message is fully processed.
-    """
-
-    def __init__(self):
-        # outgoing message
-        self._out_queue = MessageQueueOut()
-        # unsolicited incoming - raw messages
-        # TODO: should this be its own class?
-        self._in_queue = queue.Queue()
-
-    def __str__(self):
-        out = ["queue length: %d" % self._out_queue.qsize(),
-               "by node: %s" % str(self._out_queue)]
-        return "\n".join(out)
-
-    def EnqueueMessage(self, m):
-        self._out_queue.put(m.priority, m)
-
-    def GetIncommingRawMessage(self):
-        return self._in_queue.get()
-
-    def PutIncommingRawMessage(self, rm):
-        self._in_queue.put(rm)
-
-    def DequeueMessage(self):
-        return self._out_queue.get()
-
-    def MaybeCancelLearningOperation(self):
-        if not self._inflight:
-            return
-        func = self._inflight.payload[3]
-        if func in [zwave.API_ZW_ADD_NODE_TO_NETWORK, zwave.API_ZW_REMOVE_NODE_FROM_NETWORK]:
-            self._inflight_result.put(None)
-
-    def WaitUntilAllPreviousMessagesHaveBeenHandled(self):
-        lock = threading.Lock()
-        lock.acquire()
-        # send dummy message to clear out pipe
-        mesg = Message(None, LowestPriority(), lambda _: lock.release(), None)
-        self.EnqueueMessage(mesg)
-        # wait until semaphore is released by callback
-        lock.acquire()
