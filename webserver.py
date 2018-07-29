@@ -1098,12 +1098,11 @@ def main():
     )
 
     logging.info("opening serial")
-    MQ = zdriver.MessageQueue()
     device = zdriver.MakeSerialDevice(OPTIONS.serial_port)
 
-    DRIVER = zdriver.Driver(device, MQ)
-    NODESET = znode.NodeSet(MQ, NodeEventCallback, OPTIONS.node_auto_refresh_secs)
-    CONTROLLER = zcontroller.Controller(MQ, pairing_timeout_secs=OPTIONS.pairing_timeout_secs)
+    DRIVER = zdriver.Driver(device)
+    NODESET = znode.NodeSet(DRIVER, NodeEventCallback, OPTIONS.node_auto_refresh_secs)
+    CONTROLLER = zcontroller.Controller(DRIVER, pairing_timeout_secs=OPTIONS.pairing_timeout_secs)
     CONTROLLER.Initialize()
     CONTROLLER.WaitUntilInitialized()
     CONTROLLER.UpdateRoutingInfo()

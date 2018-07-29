@@ -23,6 +23,7 @@ import logging
 import struct
 import time
 
+from pyzwaver import zdriver
 from pyzwaver import zwave
 from pyzwaver import zmessage
 
@@ -200,7 +201,7 @@ class Controller:
 
     """
 
-    def __init__(self, message_queue, pairing_timeout_secs=15.0):
+    def __init__(self, message_queue : zdriver.Driver, pairing_timeout_secs=15.0):
         """
         :param message_queue:  is used to send commands to the controller and other zwave nodes.
                                The other end of the queue must be handled by the driver.
@@ -491,24 +492,24 @@ class Controller:
     def SendCommand(self, func, data, handler):
         raw = zmessage.MakeRawMessage(func, data)
         mesg = zmessage.Message(raw, self.Priority(), handler, -1)
-        self._mq.EnqueueMessage(mesg)
+        self._mq.SendMessage(mesg)
 
     def SendCommandWithId(self, func, data, handler, timeout=2.0):
         raw = zmessage.MakeRawMessageWithId(func, data)
         mesg = zmessage.Message(raw, self.Priority(), handler, -1, timeout=timeout)
-        self._mq.EnqueueMessage(mesg)
+        self._mq.SendMessage(mesg)
 
     def SendCommandWithIdNoResponse(self, func, data, timeout=2.0):
         raw = zmessage.MakeRawMessageWithId(func, data)
         mesg = zmessage.Message(raw, self.Priority(), None, -1, timeout=timeout,
                                 action_requ=[zmessage.ACTION_NONE],
                                 action_resp=[zmessage.ACTION_NONE])
-        self._mq.EnqueueMessage(mesg)
+        self._mq.SendMessage(mesg)
 
     def SendBarrierCommand(self, handler):
         """Dummy Command to invoke the handler when all previous commands are done"""
         mesg = zmessage.Message(None, self.Priority(), handler, None)
-        self._mq.EnqueueMessage(mesg)
+        self._mq.SendMessage(mesg)
 
     def Initialize(self):
         self.UpdateVersion()

@@ -32,6 +32,7 @@ from pyzwaver import zmessage
 from pyzwaver import command
 from pyzwaver import zwave
 from pyzwaver import zsecurity
+from pyzwaver import zdriver
 
 
 def Hexify(t):
@@ -220,7 +221,7 @@ def CompactifyParams(params):
 class _SharedNodeState:
     """SharedNodeState is a grab bag of stuff shared by all Nodes"""
 
-    def __init__(self, message_queue, event_cb, security_key=0, enable_secure_pairing=True):
+    def __init__(self, message_queue: zdriver.Driver, event_cb, security_key=0, enable_secure_pairing=True):
         self.mq = message_queue
         self.event_cb = event_cb
         self.security_key = security_key
@@ -455,14 +456,14 @@ class NodeValues:
                 (None, command.ValueBare(KEY_COLOR_SWITCH_SUPPORTED, set())),
         }
 
-    def HasValue(self, key):
+    def HasValue(self, key: tuple):
         return key in self._values
 
     def Set(self, key, value):
         if value is None: return
         self._values[key] = time.time(), value
 
-    def SetMap(self, key, value):
+    def SetMap(self, key: tuple, value):
         if value is None:
             return
         _, v = self._values.get(key, (None, None))
@@ -472,7 +473,7 @@ class NodeValues:
             v.value.update(value.value)
         self._values[key] = time.time(), v
 
-    def Get(self, key):
+    def Get(self, key: tuple):
         v = self._values.get(key)
         if v is not None:
             return v[1]
@@ -493,7 +494,7 @@ class Node:
     to the relevant Node by calling ProcessCommand() or ProcessNodeInfo().
     """
 
-    def __init__(self, n, shared):
+    def __init__(self, n, shared: _SharedNodeState):
         assert n >= 1
         self._shared = shared
         self.n = n
@@ -702,8 +703,9 @@ class Node:
 
     def SecurityChangeKey(self, key):
         logging.warning("SecurityChangeKey")
-        self.BatchCommandSubmitFilteredFast(
-            [[zwave.Security, zwave.Security_NetworkSetKey, key]], XMIT_OPTIONS_SECURE)
+        assert False
+        #self.BatchCommandSubmitFilteredFast(
+        #    [[zwave.Security, zwave.Security_NetworkSetKey, key]], XMIT_OPTIONS_SECURE)
 
     def StoreEvent(self, val):
         self._events[val.kind] = val
@@ -851,7 +853,7 @@ class Node:
             self._UpdateIsFailedNode(None)
             self._RequestNodeInfo(retries)
         else:
-            def handler(m):
+            def handler(_):
                 if not self._failed:
                     self._RequestNodeInfo(retries)
 
@@ -990,7 +992,7 @@ class Node:
                 self._secure_messaging.Send(cmd)
                 continue
 
-            def handler(m):
+            def handler(_):
                 logging.debug("@@handler invoked")
 
             try:
@@ -1004,7 +1006,7 @@ class Node:
 
             m = zmessage.MakeRawCommandWithId(self.n, raw_cmd, xmit)
             mesg = zmessage.Message(m, priority(self.n), handler, self.n)
-            self._shared.mq.EnqueueMessage(mesg)
+            self._shared.mq.SendMessage(mesg)
 
     def BatchCommandSubmitFilteredSlow(self, commands, xmit):
         self.BatchCommandSubmitFiltered(commands, zmessage.NodePriorityLo, xmit)
@@ -1026,13 +1028,13 @@ class Node:
         raw = zmessage.MakeRawMessage(func, data)
         mesg = zmessage.Message(
             raw, zmessage.ControllerPriority(), handler, self.n)
-        self._shared.mq.EnqueueMessage(mesg)
+        self._shared.mq.SendMessage(mesg)
 
     def SendSecureCommand(self, func, data, handler):
         raw = zmessage.MakeRawMessage(func, data)
         mesg = zmessage.Message(
             raw, zmessage.ControllerPriority(), handler, self.n)
-        self._shared.mq.EnqueueMessage(mesg)
+        self._shared.mq.SendMessage(mesg)
 
 
 NODES_HEADERS = [
@@ -1066,7 +1068,7 @@ class NodeSet(object):
 
     """
 
-    def __init__(self, message_queue, event_cb, refresher_interval=60.0):
+    def __init__(self, message_queue: zdriver.Driver, event_cb, refresher_interval=60.0):
         self._shared = _SharedNodeState(message_queue, event_cb, [1] * 16)
         self._refresh_interval = refresher_interval
         self.nodes = {}

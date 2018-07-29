@@ -141,7 +141,12 @@ def _ProcessReceivedMessage(inflight, m):
         logging.error("received unknown start byte: %s", m[0])
         return DO_NOTHING, "bad-unknown-start-byte"
 
+
 class MessageQueueOut:
+    """
+    MessageQueue for outbound messages. Tries to support
+    priorities and fairness.
+    """
 
     def __init__(self):
         self._q = queue.PriorityQueue()
@@ -191,63 +196,6 @@ class MessageQueueOut:
         return str(self._per_node_size)
 
 
-class MessageQueue:
-    """MessageQueue is a cental abstraction which allows us to decouple
-    Controller, Driver and NodeSet from each other.
-    It really consists of three seperate queues:
-    * _out_queue: messages to be sent to the device (usb serial)
-                  typically messages going to nodes
-    * _in_queue: messages: messages coming from the device
-                 typically messages coming from the nodes
-    * _inflight_result: an internal queue for messages pertaining
-                        to the _inflight Message
-
-    Only one outgoing Message can ever be inflight.
-    And serveral messages coming back from the device might be needed
-    before the Message is fully processed.
-    """
-
-    def __init__(self):
-        # outgoing message
-        self._out_queue = MessageQueueOut()
-        # unsolicited incoming - raw messages
-        # TODO: should this be its own class?
-        self._in_queue = queue.Queue()
-
-    def __str__(self):
-        out = ["queue length: %d" % self._out_queue.qsize(),
-               "by node: %s" % str(self._out_queue)]
-        return "\n".join(out)
-
-    def EnqueueMessage(self, m):
-        self._out_queue.put(m.priority, m)
-
-    def GetIncommingRawMessage(self):
-        return self._in_queue.get()
-
-    def PutIncommingRawMessage(self, rm):
-        self._in_queue.put(rm)
-
-    def DequeueMessage(self):
-        return self._out_queue.get()
-
-    def MaybeCancelLearningOperation(self):
-        if not self._inflight:
-            return
-        func = self._inflight.payload[3]
-        if func in [zwave.API_ZW_ADD_NODE_TO_NETWORK, zwave.API_ZW_REMOVE_NODE_FROM_NETWORK]:
-            self._inflight_result.put(None)
-
-    def WaitUntilAllPreviousMessagesHaveBeenHandled(self):
-        lock = threading.Lock()
-        lock.acquire()
-        # send dummy message to clear out pipe
-        mesg = zmessage.Message(None, zmessage.LowestPriority(), lambda _: lock.release(), None)
-        self.EnqueueMessage(mesg)
-        # wait until semaphore is released by callback
-        lock.acquire()
-
-
 class Driver(object):
     """
     Driver is responsible for sending and receiving raw
@@ -265,14 +213,15 @@ class Driver(object):
        recently sent message or
     """
 
-    def __init__(self, serialDevice, message_queue):
+    def __init__(self, serialDevice):
         self._device = serialDevice
+        self._out_queue = MessageQueueOut()  # stuff being send to the stick
 
         self._raw_history = []
         self._history = []  # a message is copied into this once if makes it into _inflight.
         self._device_idle = True
         self._terminate = False  # True if we want to shut things down
-        self._mq = message_queue
+        self._in_queue = queue.Queue()  # stuff coming from the stick unrelated to _inflight
         # Make sure we flush old stuff
         self._ClearDevice()
         self._ClearDevice()
@@ -284,11 +233,11 @@ class Driver(object):
                                            name="DriverReceive")
         self._rx_thread.start()
         self._last = None
-        self._inflight = None
+        self._inflight = None  # out bound message waiting for responses
         self._delay = collections.defaultdict(int)
 
     def __str__(self):
-        out = [str(self._mq),
+        out = [str(self._out_queue),
                MessageStatsString(self._history)]
         return "\n".join(out)
 
@@ -303,11 +252,31 @@ class Driver(object):
     def _RecordInflight(self, m):
         self._history.append(m)
 
+    def SendMessage(self, m: zmessage.Message):
+        self._out_queue.put(m.priority, m)
+
+    def GetIncommingRawMessage(self):
+        return self._in_queue.get()
+
+    def WaitUntilAllPreviousMessagesHaveBeenHandled(self):
+        lock = threading.Lock()
+        lock.acquire()
+        # send dummy message to clear out pipe
+        mesg = zmessage.Message(None, zmessage.LowestPriority(), lambda _: lock.release(), None)
+        self.SendMessage(mesg)
+        # wait until semaphore is released by callback
+        lock.acquire()
+
     def GetInFlightMessage(self):
         """"
         Returns the current outbound message being processed or None.
         """
         return self._inflight
+
+    def OutQueueString(self):
+        out = ["queue length: %d" % self._out_queue.qsize(),
+               "by node: %s" % str(self._out_queue)]
+        return "\n".join(out)
 
     def Terminate(self):
         """
@@ -315,7 +284,7 @@ class Driver(object):
 
         """
         self._terminate = True
-        self._mq.EnqueueMessage(zmessage.Message(None, zmessage.LowestPriority(), lambda _: None, None))
+        self._out_queue.put(zmessage.Message(None, zmessage.LowestPriority(), lambda _: None, None))
         logging.info("Driver terminated")
 
     def _SendRaw(self, payload, comment=""):
@@ -345,7 +314,7 @@ class Driver(object):
         logging.warning("_DriverSendingThread started")
         lock = threading.Lock()
         while not self._terminate:
-            inflight = self._mq.DequeueMessage()
+            inflight = self._out_queue.get()
             if inflight.payload is None:
                 inflight.callback(None)
                 continue
@@ -400,6 +369,6 @@ class Driver(object):
                 self._SendRaw(self._inflight.payload, "re-try")
             elif next_action == DO_PROPAGATE:
                 self._SendRaw(zmessage.RAW_MESSAGE_ACK)
-                self._mq.PutIncommingRawMessage(m)
+                self._in_queue.put(m)
 
     logging.warning("_DriverReceivingThread terminated")
