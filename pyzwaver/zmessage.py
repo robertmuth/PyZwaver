@@ -293,6 +293,13 @@ MESSAGE_STATE_ABORTED = "Aborted"
 MESSAGE_STATE_TIMEOUT = "Timeout"
 MESSAGE_STATE_NOT_READY = "NotReady"
 
+MESSAGE_STATES_FINAL = {
+    MESSAGE_STATE_COMPLETED,
+    MESSAGE_STATE_NOT_READY,
+    MESSAGE_STATE_ABORTED,
+    MESSAGE_STATE_TIMEOUT
+}
+
 # TODO: explain these in detail
 ACTION_INVALID = 0
 ACTION_DELIVERED = 1
@@ -407,14 +414,13 @@ class Message:
         self.payload = payload
         self.priority = priority
         self.node = node
-        self.callback = callback
-        self.timeout = timeout
+        self._callback = callback
+        self._timeout = timeout
         self.start = None
         self.end = None
         self.can = 0
-        self.aborted = False
         self.state = MESSAGE_STATE_CREATED
-        self.inflight_lock = None
+        self._inflight_lock = None
         if payload is None:
             return
         func = payload[3]
@@ -429,33 +435,39 @@ class Message:
             self.action_resp = action_resp
 
     def _Timeout(self):
-        if self.inflight_lock is None:
+        if self._inflight_lock is None:
             return
         self.Complete(None, MESSAGE_STATE_TIMEOUT)
 
     def Start(self, lock):
         self.state = MESSAGE_STATE_STARTED
         self.start = time.time()
-        self.inflight_lock = lock
-        self.inflight_lock.acquire()
-        threading.Timer(self.timeout, self._Timeout).start()
+        self._inflight_lock = lock
+        self._inflight_lock.acquire()
+        threading.Timer(self._timeout, self._Timeout).start()
+
+    def IncRetry(self):
+        self.can += 1
+
+    def WasAborted(self):
+        return (self.state in MESSAGE_STATES_FINAL and
+                self.state != MESSAGE_STATE_COMPLETED)
 
     def _CompleteNoMessage(self, state):
-        if self.inflight_lock is None:
+        assert state in MESSAGE_STATES_FINAL
+        if self._inflight_lock is None:
             logging.warning("message already completed: ", self.state)
             return
-        if state != MESSAGE_STATE_COMPLETED:
-            self.aborted = True
         self.state = state
         self.end = time.time()
         logging.warning("%s: %s", state, PrettifyRawMessage(self.payload))
-        self.inflight_lock.release()
-        self.inflight_lock = None
+        self._inflight_lock.release()
+        self._inflight_lock = None
         return state
 
     def Complete(self, m, state):
-        if self.callback:
-            self.callback(m)
+        if self._callback:
+            self._callback(m)
         return self._CompleteNoMessage(state)
 
     def _MaybeCompleteAck(self, m):
@@ -473,8 +485,8 @@ class Message:
                               self.node, PrettifyRawMessage(self.payload),
                               PrettifyRawMessage(m))
                 return "unexpected"
-            assert self.callback is not None
-            if not self.callback(m):
+            assert self._callback is not None
+            if not self._callback(m):
                 return "continue"
             return self._CompleteNoMessage(MESSAGE_STATE_COMPLETED)
         elif self.action_requ[0] == ACTION_MATCH_CBID:
@@ -503,8 +515,8 @@ class Message:
                 # Note, we currently do not record having received m
                 # as we have not seen failure modes requiring it.
                 logging.debug("delivered to stack")
-                if self.callback:
-                    self.callback(m)
+                if self._callback:
+                    self._callback(m)
                 return "continue"
             else:
                 logging.warning("[%d] %s unexpected resp status is %d wanted %d",
