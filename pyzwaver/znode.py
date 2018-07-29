@@ -230,30 +230,30 @@ class _SharedNodeState:
 class AssociationGroup:
     def __init__(self, no):
         self._no = no
-        self._nodes = []
-        self._capacity = 0
-        self._name = ""
+        self.nodes = []
+        self.capacity = 0
+        self.name = ""
         self._profile = None
         self._event = None
         self._commands = None
 
     def SetNodes(self, capacity, nodes):
-        self._capacity = capacity
-        self._nodes = nodes
+        self.capacity = capacity
+        self.nodes = nodes
 
     def SetMeta(self, profile, event):
         self._profile = profile
         self._event = event
 
     def SetName(self, name):
-        self._name = name
+        self.name = name
 
     def SetCommands(self, commands):
         self._commands = commands
 
     def __str__(self):
         return "Group %d [%s]  profile:%d  event:%d  cmds:%s  capacity:%d  nodes:%s" % (
-            self._no, self._name, self._profile, self._event, self._commands, self._capacity, self._nodes)
+            self._no, self.name, self._profile, self._event, self._commands, self.capacity, self.nodes)
 
 
 class NodeAssociations:

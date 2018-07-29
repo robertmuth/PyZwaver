@@ -20,7 +20,7 @@ check_pyflakes::
 check:: check_pylint check_pyflakes
 
 # generate zwave.py file with all zwave constants
-../pyzwaver/zwave.py: constants_generator.py
+pyzwaver/zwave.py: constants_generator.py
 	./constants_generator.py python > $@
 
 

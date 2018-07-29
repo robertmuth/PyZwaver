@@ -435,7 +435,6 @@ tornado.options.define("serial_port",
 
 OPTIONS = tornado.options.options
 
-
 # ======================================================================
 # A few globals
 # ======================================================================
@@ -444,18 +443,19 @@ DRIVER = None
 CONTROLLER = None
 NODESET = None
 DB = None
-
+MQ = None
 # ======================================================================
 # WebSocker
 # ======================================================================
 
 SOCKETS = set()
 
+
 def SendToSocket(mesg):
-    #logging.error("Sending to socket: %d", len(SOCKETS))
+    # logging.error("Sending to socket: %d", len(SOCKETS))
     for s in SOCKETS:
         s.write_message(mesg)
-    #logging.error("Sending to socket done: %d", len(SOCKETS))
+    # logging.error("Sending to socket done: %d", len(SOCKETS))
 
 
 def NodeEventCallback(n, event):
@@ -466,11 +466,13 @@ def NodeEventCallback(n, event):
         SendToSocket("o%d:" % n + RenderNode(node))
         SendToSocket("d:" + RenderDriver())
 
+
 def ControllerEventCallback(action, event):
     SendToSocket("S:" + event)
     SendToSocket("A:" + action)
     if event == zcontroller.EVENT_UPDATE_COMPLETE:
         SendToSocket("c:" + RenderController())
+
 
 class EchoWebSocket(tornado.websocket.WebSocketHandler):
     def open(self):
@@ -484,7 +486,6 @@ class EchoWebSocket(tornado.websocket.WebSocketHandler):
     def on_close(self):
         logging.info("WebSocket closed")
         SOCKETS.remove(self)
-
 
 
 # ======================================================================
@@ -509,6 +510,7 @@ class MainHandler(BaseHandler):
         self.write(HTML % GetPrologArgs("Web-Zwaver"))
         self.finish()
 
+
 def GetPrologArgs(title):
     return {
         "css_path": OPTIONS.css_style_file,
@@ -520,24 +522,30 @@ def MakeButton(action, param, label, cls=""):
     if cls:
         cls = "class='" + cls + "' "
     s = "<button onclick='%s(event)' %sdata-param='%s'>%s</button>"
-    return  s % (action, cls, param, label)
+    return s % (action, cls, param, label)
+
 
 def MakeNodeButton(node, action, label, cls=""):
     return MakeButton("HandleUrl", "/node/%d/%s" % (node.n, action), label, cls)
 
+
 def MakeNodeButtonInput(node, action, label):
     return MakeButton("HandleUrlInput", "/node/%d/%s" % (node.n, action), label)
+
 
 def MakeNodeButtonInputConfig(node, action, label):
     return MakeButton("HandleUrlInputConfig", "/node/%d/%s" % (node.n, action), label)
 
+
 def MakeControllerButton(action, label):
     return MakeButton("HandleUrl", "/controller/%s" % action, label)
 
+
 def MakeNodeRange(node, action, lo, hi):
-   s = ("<input onchange='HandleChange(event)' data-param='/node/%d/%s/' class='multilevel' "
-        "type=range min=%f max=%f value='%f'>")
-   return s % (node.n, action, lo, hi, node.sensors.GetMultilevelSwitchLevel())
+    s = ("<input onchange='HandleChange(event)' data-param='/node/%d/%s/' class='multilevel' "
+         "type=range min=%f max=%f value='%f'>")
+    return s % (node.n, action, lo, hi, node.sensors.GetMultilevelSwitchLevel())
+
 
 def RenderReading(value):
     v = value.value
@@ -576,6 +584,7 @@ def RenderAllReadings(values1, values2):
         out.append("<span class=reading>" + RenderReading(v) + "</span>")
     return out
 
+
 def ClassSpecificNodeButtons(node):
     out = []
     if node.commands.HasCommandClass(zwave.SwitchBinary):
@@ -587,6 +596,7 @@ def ClassSpecificNodeButtons(node):
         # reset
         pass
     return out
+
 
 def MakeTableRowForNode(node, status_only, is_failed):
     global DB
@@ -604,7 +614,7 @@ def MakeTableRowForNode(node, status_only, is_failed):
         basic["state"] = "FAILED"
     action = "HandleTabNode"
     param = str(node.n)
-    #if node.IsSelf():
+    # if node.IsSelf():
     #    action = "HandleTab"
     #    param = "tab-controller"
     return [
@@ -638,32 +648,32 @@ def RenderNodes(as_status):
 
 
 def RenderController():
-   out = [
-       "<pre>%s</pre>\n" % CONTROLLER,
-       "<p>",
-       MakeControllerButton("soft_reset", "Soft Rest"),
-       "&nbsp;",
-       MakeControllerButton("hard_reset", "Hard Rest"),
-       "<p>",
-       MakeControllerButton("refresh", "Refresh"),
-       "<h3>Pairing</h3>",
-       MakeControllerButton("add_node", "Add Node"),
-            "&nbsp;",
-       #MakeControllerButton("stop_add_node", "Abort"),
-       "<p>",
-       MakeControllerButton("add_controller_primary", "Add Primary Controller"),
-       "&nbsp;",
-       #MakeControllerButton("stop_add_controller_primary", "Abort"),
-       "<p>",
-       MakeControllerButton("remove_node", "Remove Node"),
-       "&nbsp;",
-       #MakeControllerButton("stop_remove_node", "Abort"),
-       "<p>",
-       MakeControllerButton("set_learn_mode", "Enter Learn Mode"),
-       "&nbsp;",
-       #MakeControllerButton("stop_set_learn_mode", "Abort"),
-   ]
-   return "\n".join(out)
+    out = [
+        "<pre>%s</pre>\n" % CONTROLLER,
+        "<p>",
+        MakeControllerButton("soft_reset", "Soft Rest"),
+        "&nbsp;",
+        MakeControllerButton("hard_reset", "Hard Rest"),
+        "<p>",
+        MakeControllerButton("refresh", "Refresh"),
+        "<h3>Pairing</h3>",
+        MakeControllerButton("add_node", "Add Node"),
+        "&nbsp;",
+        # MakeControllerButton("stop_add_node", "Abort"),
+        "<p>",
+        MakeControllerButton("add_controller_primary", "Add Primary Controller"),
+        "&nbsp;",
+        # MakeControllerButton("stop_add_controller_primary", "Abort"),
+        "<p>",
+        MakeControllerButton("remove_node", "Remove Node"),
+        "&nbsp;",
+        # MakeControllerButton("stop_remove_node", "Abort"),
+        "<p>",
+        MakeControllerButton("set_learn_mode", "Enter Learn Mode"),
+        "&nbsp;",
+        # MakeControllerButton("stop_set_learn_mode", "Abort"),
+    ]
+    return "\n".join(out)
 
 
 def RenderDriver():
@@ -679,8 +689,9 @@ def DriverLogs():
         t = time.strftime("%H:%M:%S", time.localtime(t)) + ms
         d = sent and "=>" or "<="
         m = zmessage.PrettifyRawMessage(m)
-        out.append({"t": t, "c": comment, "d": d, "m": m })
+        out.append({"t": t, "c": comment, "d": d, "m": m})
     return out
+
 
 def DriverSlow():
     global DRIVER
@@ -694,8 +705,9 @@ def DriverSlow():
         ms = ".%03d" % int(1000 * (t - math.floor(t)))
         t = time.strftime("%H:%M:%S", time.localtime(t)) + ms
         m = zmessage.PrettifyRawMessage(m.payload)
-        out.append({"d": d, "t": t, "m": m })
+        out.append({"d": d, "t": t, "m": m})
     return out
+
 
 def DriverBad():
     global DRIVER
@@ -709,7 +721,7 @@ def DriverBad():
         ms = ".%03d" % int(1000 * (t - math.floor(t)))
         t = time.strftime("%H:%M:%S", time.localtime(t)) + ms
         m = zmessage.PrettifyRawMessage(m.payload)
-        out.append({"d": d, "t": t, "m": m })
+        out.append({"d": d, "t": t, "m": m})
     return out
 
 
@@ -729,11 +741,11 @@ class DisplayHandler(BaseHandler):
             elif cmd == "driver":
                 SendToSocket("d:" + RenderDriver())
             elif cmd == "logs":
-                SendToSocket("l:" + json.dumps(DriverLogs(), sort_keys=True,  indent=4))
+                SendToSocket("l:" + json.dumps(DriverLogs(), sort_keys=True, indent=4))
             elif cmd == "slow":
-                SendToSocket("b:" + json.dumps(DriverSlow(), sort_keys=True,  indent=4))
+                SendToSocket("b:" + json.dumps(DriverSlow(), sort_keys=True, indent=4))
             elif cmd == "failed":
-                SendToSocket("f:" + json.dumps(DriverBad(), sort_keys=True,  indent=4))
+                SendToSocket("f:" + json.dumps(DriverBad(), sort_keys=True, indent=4))
 
             elif cmd == "controller":
                 SendToSocket("c:" + RenderController())
@@ -757,10 +769,10 @@ class DisplayHandler(BaseHandler):
 def RenderAssociationGroup(node: znode.Node, group: znode.AssociationGroup):
     no = group._no
     out = ["<tr>"
-           "<th>", "Group %d %s [%d]:" % (no, group._name, group._capacity), "</th>",
+           "<th>", "Group %d %s [%d]:" % (no, group.name, group.capacity), "</th>",
            "<td>",
            ]
-    for n in group._nodes:
+    for n in group.nodes:
         out += ["%d" % n,
                 MakeNodeButton(node, "association_remove/%d/%d" % (no, n), "X", "remove"),
                 "&nbsp;"]
@@ -779,19 +791,20 @@ def RenderNodeCommandClasses(node):
            MakeNodeButton(node, "refresh_commands", "Probe"),
            "<p>",
            "<table>",
-    ]
+           ]
     for cls, version in node.commands.CommandVersions():
-        name =  "%s [%d]" % (zwave.CMD_TO_STRING.get(cls, "UKNOWN:%d" % cls), cls)
+        name = "%s [%d]" % (zwave.CMD_TO_STRING.get(cls, "UKNOWN:%d" % cls), cls)
         out += ["<tr><td>", name, "</td><td>", str(version), "</td></tr>"]
     out += ["</table>"]
     return out
+
 
 def RenderNodeAssociations(node: znode.Node):
     out = ["<h2>Associations</h2>",
            MakeNodeButton(node, "refresh_assoc", "Probe"),
            "<p>",
            "<table>",
-    ]
+           ]
     for group in node.associations.Groups():
         out.append(RenderAssociationGroup(node, group))
     out += ["</table>"]
@@ -813,19 +826,20 @@ def RenderNodeParameters(node: znode.Node):
            "value <input id=value type='number' name='val' value=0 style='width: 7em'>",
            "<p>",
            "<table>",
-    ]
+           ]
     for a, b, c, d in sorted(compact):
         r = str(a)
         if a != b:
             r += " - " + str(b)
-        out += ["<tr><td>",  r, "</td><td>", "[%d]" % c, "</td><td>", str(d), "</td></tr>"]
+        out += ["<tr><td>", r, "</td><td>", "[%d]" % c, "</td><td>", str(d), "</td></tr>"]
     out += ["</table>"]
     return out
 
+
 def RenderMiscValues(node):
     out = ["<h2>Misc Values</h2>",
-            "<table>",
-    ]
+           "<table>",
+           ]
     for _, _, v in node.values.GetAllTuples():
         out += ["<tr><td>", v.kind, "</td><td>", repr(v.value), "</td></tr>"]
     out += ["</table>",
@@ -856,16 +870,16 @@ def RenderNode(node):
                RenderNodeParameters(node),
                RenderNodeAssociations(node),
                RenderMiscValues(node),
-    ]
-
+               ]
 
     out += ["<table class=node-sections width='100%'>",
             "<tr>"
-    ]
+            ]
     for c in columns:
         out += ["<td class=section>"] + c + ["</td>"]
     out += ["</tr></table>"]
     return "\n".join(out)
+
 
 class NodeActionHandler(BaseHandler):
     """Single Node Actions"""
@@ -908,7 +922,7 @@ class NodeActionHandler(BaseHandler):
                 num = int(token.pop(0))
                 size = int(token.pop(0))
                 value = int(token.pop(0))
-                print (num, size, value)
+                print(num, size, value)
                 node.SetConfigValue(num, size, value)
             elif cmd == "association_remove":
                 group = int(token.pop(0))
@@ -960,7 +974,7 @@ class ControllerActionHandler(BaseHandler):
                 CONTROLLER.ChangeController(ControllerEventCallback)
                 CONTROLLER.StopChangeController(ControllerEventCallback)
             elif cmd == "stop_add_controller_primary":
-                CONTROLLER.StopChangeController(ChangeController)
+                CONTROLLER.StopChangeController(ControllerEventCallback)
             elif cmd == "remove_node":
                 CONTROLLER.StopRemoveNodeFromNetwork(CONTROLLER)
                 CONTROLLER.RemoveNodeFromNetwork(ControllerEventCallback)
@@ -990,7 +1004,6 @@ class ControllerActionHandler(BaseHandler):
         self.finish()
 
 
-
 class JsonHandler(BaseHandler):
 
     def set_default_headers(self):
@@ -998,14 +1011,13 @@ class JsonHandler(BaseHandler):
         self.set_header("Access-Control-Allow-Headers", "x-requested-with")
         self.set_header('Access-Control-Allow-Methods', 'GET,OPTIONS')
 
-
     @tornado.web.asynchronous
     def get(self):
         global NODESET, DB
         summary = NODESET.SummaryTabular()
         for no, row in summary.items():
             row.name = DB.GetNodeName(no)
-        self.write(json.dumps(summary, sort_keys=True,  indent=4))
+        self.write(json.dumps(summary, sort_keys=True, indent=4))
         self.finish()
 
     @tornado.web.asynchronous
@@ -1033,6 +1045,7 @@ class MyFormatter(logging.Formatter):
         pass
 
     TIME_FMT = '%Y-%m-%d %H:%M:%S.%f'
+
     def format(self, record):
         return "%s%s %s:%s:%d %s" % (
             record.levelname[0],
@@ -1042,32 +1055,34 @@ class MyFormatter(logging.Formatter):
             record.lineno,
             record.msg % record.args)
 
+
 class Db:
     """Simple persistent storage"""
 
     def __init__(self, shelf_path):
-        self._shelf =  shelve.open(shelf_path)
+        self._shelf = shelve.open(shelf_path)
         atexit.register(self._shelf.close)
 
     def SetNodeName(self, num, name):
         key = "NodeName:%d" % num
         self._shelf[key] = name
 
-    def GetNodeName(self, num,):
+    def GetNodeName(self, num, ):
         key = "NodeName:%d" % num
         return self._shelf.get(key, "Node %d" % num)
 
+
 def main():
-    global DRIVER, CONTROLLER, NODESET, DB
+    global DRIVER, CONTROLLER, NODESET, DB, MQ
     # note: this makes sure we have at least one handler
     # logging.basicConfig(level=logging.WARNING)
-    #logging.basicConfig(level=logging.ERROR)
+    # logging.basicConfig(level=logging.ERROR)
 
     tornado.options.parse_command_line()
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     logger.setLevel(logging.WARNING)
-    logger.setLevel(logging.ERROR)
+    # logger.setLevel(logging.ERROR)
     for h in logger.handlers:
         h.setFormatter(MyFormatter())
 
@@ -1083,14 +1098,12 @@ def main():
     )
 
     logging.info("opening serial")
-    MQ =  zmessage.MessageQueue()
+    MQ = zmessage.MessageQueue()
     device = zdriver.MakeSerialDevice(OPTIONS.serial_port)
 
     DRIVER = zdriver.Driver(device, MQ)
     NODESET = znode.NodeSet(MQ, NodeEventCallback, OPTIONS.node_auto_refresh_secs)
-    CONTROLLER = zcontroller.Controller(MQ,
-                                        ControllerEventCallback,
-                                        pairing_timeout_secs=OPTIONS.pairing_timeout_secs)
+    CONTROLLER = zcontroller.Controller(MQ, pairing_timeout_secs=OPTIONS.pairing_timeout_secs)
     CONTROLLER.Initialize()
     CONTROLLER.WaitUntilInitialized()
     CONTROLLER.UpdateRoutingInfo()
@@ -1108,6 +1121,7 @@ def main():
     application.listen(OPTIONS.port)
     tornado.ioloop.IOLoop.instance().start()
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -196,10 +196,18 @@ class Controller:
     """Represents the controller node in a Zwave network
     The message_queue is used to send messages to the physical controller and
     the other nodes in the network.
+
+
     """
 
-    def __init__(self, message_queue, event_cb, pairing_timeout_secs=15.0):
-        self._event_cb = event_cb
+    def __init__(self, message_queue, pairing_timeout_secs=15.0):
+        """
+        :param message_queue:  is used to send commands to the controller and other zwave nodes.
+                               The other end of the queue must be handled by the driver.
+        :param event_cb:
+        :param pairing_timeout_secs:
+        """
+        # self._event_cb = event_cb
         self._pairing_timeout_sec = pairing_timeout_secs
         self._state = CONTROLLER_STATE_NONE
         self._mq = message_queue
@@ -388,7 +396,7 @@ class Controller:
                 event_cb(activity, EVENT_PAIRING_SUCCESS)
                 # This not make much sense for node removals but does not hurt either
                 self.RequestNodeInfo(node)
-                self.Update()
+                self.Update(event_cb)
                 return True
             elif a == PAIRING_ACTION_FAILED:
                 logging.warning("[%s] Failure - %s [%d]" % (activity, name, node))
@@ -528,7 +536,7 @@ class Controller:
     def GetNodeId(self):
         return self.props.node_id
 
-    def Update(self):
+    def Update(self, cb):
         # self._event_cb(ACTIVITY_CONTROLLER_UPDATE, EVENT_UPDATE_STARTED)
         self.UpdateId()
         self.UpdateControllerCapabilities()
@@ -536,4 +544,4 @@ class Controller:
         self.UpdateSerialApiGetInitData()
         for n in self.nodes:
             self.UpdateFailedNode(n)
-        self.SendBarrierCommand(lambda x: self._event_cb(ACTIVITY_CONTROLLER_UPDATE, EVENT_UPDATE_COMPLETE))
+        self.SendBarrierCommand(lambda x: cb(ACTIVITY_CONTROLLER_UPDATE, EVENT_UPDATE_COMPLETE))

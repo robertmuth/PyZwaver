@@ -31,10 +31,7 @@ from pyzwaver import zmessage
 from pyzwaver import command
 from pyzwaver import zwave
 
-
-
-
-_DEFAULT_NETWORK_KEY = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+_DEFAULT_NETWORK_KEY = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 
 _TEMP_NETWORK_KEY = [0] * 16
 
@@ -44,7 +41,8 @@ _AUTH_SECRET = [0x55] * 16
 
 _NONCE_TIMEOUT_SEC = 5.0
 
-_NONCE_GET_RAW = [zwave.Security,  zwave.Security_NonceGet]
+_NONCE_GET_RAW = [zwave.Security, zwave.Security_NonceGet]
+
 
 def Crypt(key, data, iv_orig):
     assert len(iv_orig) == 16
@@ -56,6 +54,7 @@ def Crypt(key, data, iv_orig):
             iv = cipher.encrypt(iv)
         out[i] = data[i] ^ iv[i % 16]
     return out
+
 
 def ComputeMAC(key, data, iv, sub_command, src_node, dst_node):
     assert len(iv) == 16
@@ -75,38 +74,37 @@ def ComputeMAC(key, data, iv, sub_command, src_node, dst_node):
 
 class Crypter:
 
-     def __init__(self, key):
-         assert len(key) == 16
-         cipher = AES.new(bytes(key))
-         self._auth_key = cipher.encrypt(bytes(_AUTH_SECRET))
-         self._crypt_key = cipher.encrypt(bytes(_CRYPT_SECRET))
+    def __init__(self, key):
+        assert len(key) == 16
+        cipher = AES.new(bytes(key))
+        self._auth_key = cipher.encrypt(bytes(_AUTH_SECRET))
+        self._crypt_key = cipher.encrypt(bytes(_CRYPT_SECRET))
 
+    def Wrap(self, payload, nonce, random, sub_command, src_node, dst_node):
+        assert len(random) == 8
+        assert len(nonce) == 8
+        iv = random + nonce
+        plain = [0] + payload
+        enc = Crypt(self._crypt_key, plain, iv)
+        mac = ComputeMAC(self._auth_key, enc, iv, sub_command, src_node, dst_node)
+        return iv[0:8] + enc + [nonce[0]] + mac
 
-     def Wrap(self, payload, nonce, random, sub_command, src_node, dst_node):
-         assert len(random) == 8
-         assert len(nonce) == 8
-         iv = random +  nonce
-         plain = [0] + payload
-         enc = Crypt(self._crypt_key, plain, iv)
-         mac = ComputeMAC(self._auth_key, enc, iv, sub_command, src_node, dst_node)
-         return iv[0:8] + enc +[nonce[0]] + mac
-
-     def Unwrap(self, wrapped, nonce, sub_command, src_node, dst_node):
-         enc_size = len(wrapped) - 8 - 8 - 1
-         iv = wrapped[0:8] + nonce
-         enc = wrapped[8:8+enc_size]
-         mac_expected = wrapped[-8:]
-         if wrapped[-9] != nonce[0]:
-             logging.error("nonce in wrapped message is off %02x vs %02x",
-                           wrapped[-9], nonce[0])
-             return None
-         mac_actual = ComputeMAC(self._auth_key, enc, iv, sub_command, src_node, dst_node)
-         for a, b in zip(mac_actual, mac_expected):
-             if a != b:
-                 logging.error("mac mismatch %s vs %s", mac_expected, mac_actual)
-                 return None
-         plain =  Crypt(self._crypt_key, enc, iv)
-         return plain[1:]
+    def Unwrap(self, wrapped, nonce, sub_command, src_node, dst_node):
+        enc_size = len(wrapped) - 8 - 8 - 1
+        iv = wrapped[0:8] + nonce
+        enc = wrapped[8:8 + enc_size]
+        mac_expected = wrapped[-8:]
+        if wrapped[-9] != nonce[0]:
+            logging.error("nonce in wrapped message is off %02x vs %02x",
+                          wrapped[-9], nonce[0])
+            return None
+        mac_actual = ComputeMAC(self._auth_key, enc, iv, sub_command, src_node, dst_node)
+        for a, b in zip(mac_actual, mac_expected):
+            if a != b:
+                logging.error("mac mismatch %s vs %s", mac_expected, mac_actual)
+                return None
+        plain = Crypt(self._crypt_key, enc, iv)
+        return plain[1:]
 
 
 class Nonce:
@@ -116,6 +114,7 @@ class Nonce:
 
     def IsExpired(self, now):
         return now > self.expiration
+
 
 class SecureQueue:
     """ SecurityQueue handles per node security
@@ -139,17 +138,15 @@ class SecureQueue:
         # DEBUGGING HACK FIXME
         return _CRYPT_SECRET[:n]
 
-
     def __init(self, node, controller_node, random):
-         self,_node = node
-         self._controller_node = controller_node
-         self.SetKey(_DEFAULT_KEY)
-         self._queue = []
+        self, _node = node
+        self._controller_node = controller_node
+        self.SetKey(_DEFAULT_KEY)
+        self._queue = []
 
-
-         # for message send form controller to the node
-         self,_nonce_outbound = Nonce(None, -_NONCE_EXPIRATION_SEC)
-         self,_nonce_outbound_requested = False
+        # for message send form controller to the node
+        self, _nonce_outbound = Nonce(None, -_NONCE_EXPIRATION_SEC)
+        self, _nonce_outbound_requested = False
 
     def ProcessReceivedNonce(self, nonce):
         # we assume the nonce is not expired

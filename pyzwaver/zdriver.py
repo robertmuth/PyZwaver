@@ -28,9 +28,8 @@ import collections
 from pyzwaver import zwave
 from pyzwaver import zmessage
 
-
 # TODO: why the heck to we need this silly delay?
-SEND_DELAY_LARGE = 0.05
+SEND_DELAY_LARGE = 0.01
 SEND_DELAY_SMALL = 0.01
 
 
@@ -92,10 +91,11 @@ class History(object):
                 duration = int(1000.0 * (m.end - m.start))
                 by_node_dur[node] += duration
                 sum_duration += duration
-        out = []
-        out.append("processed: %d  with-can: %d (total can: %d) avg-time: %dms" %
-                   (count, with_can, total_can, sum_duration // count))
-        out.append("by state:")
+        out = [
+            "processed: %d  with-can: %d (total can: %d) avg-time: %dms" %
+            (count, with_can, total_can, sum_duration // count),
+            "by state:"
+        ]
         for n in sorted(by_state.keys()):
             out.append(" %-20s: %4d" % (n, by_state[n]))
 
@@ -115,7 +115,7 @@ class Driver(object):
         self.history = History()
 
         self._device_idle = True
-        self._terminate = False   # True if we want to shut things down
+        self._terminate = False  # True if we want to shut things down
         self._mq = message_queue
         # Make sure we flush old stuff
         self._ClearDevice()
@@ -129,6 +129,7 @@ class Driver(object):
         self._rx_thread.start()
         self._last = None
         self._inflight = None
+        self._delay = collections.defaultdict(int)
 
     def __str__(self):
         out = [str(self._mq),
@@ -144,8 +145,7 @@ class Driver(object):
         logging.info("Driver terminated")
 
     def SendRaw(self, payload, comment):
-        time.sleep(SEND_DELAY_LARGE)
-        #if len(payload) >= 5:
+        # if len(payload) >= 5:
         #    if self._last == payload[4]:
         #        time.sleep(SEND_DELAY_LARGE)
         #    self._last = payload[4]
@@ -170,14 +170,24 @@ class Driver(object):
         logging.warning("_DriverSendingThread started")
         lock = threading.Lock()
         while not self._terminate:
-            self._inflight = self._mq.DequeueMessage()
-            if self._inflight.payload is None:
-                self._inflight.callback(None)
-                contain
-            self._inflight.Start(lock)
-            self.history.Append(self._inflight)
-            self.SendRaw(self._inflight.payload, "")
+            inflight = self._mq.DequeueMessage()
+            self._inflight = inflight
+            if inflight.payload is None:
+                inflight.callback(None)
+                continue
+            inflight.Start(lock)
+            self.history.Append(inflight)
+            time.sleep(self._delay[inflight.node])
+
+            self.SendRaw(inflight.payload, "")
+            # Now wait for this mesage to complete
             lock.acquire()
+            if inflight.aborted:
+                if self._delay[inflight.node] < 0.08:
+                    self._delay[inflight.node] += 0.02
+            else:
+                if self._delay[inflight.node] >= 0.01:
+                    self._delay[inflight.node] -= 0.01
             self._inflight = None
             lock.release()
 
@@ -190,7 +200,6 @@ class Driver(object):
         self._device.flush()
         self._device.flushInput()
         self._device.flushOutput()
-
 
     def _ProcessReceivedMessage(self, m):
         # logging.debug("rx buffer: %s", buf)
@@ -226,7 +235,7 @@ class Driver(object):
                 return True, self._inflight.MaybeComplete(m)
             elif m[2] == zwave.REQUEST:
                 if (m[3] == zwave.API_ZW_APPLICATION_UPDATE or
-                    m[3] == zwave.API_APPLICATION_COMMAND_HANDLER):
+                        m[3] == zwave.API_APPLICATION_COMMAND_HANDLER):
                     self._mq.PutIncommingRawMessage(m)
                     return True, ""
                 else:
@@ -247,7 +256,7 @@ class Driver(object):
         while not self._terminate:
             r = self._device.read(1)
             if not r:
-                #logging.warning("received empty message/timeout")
+                # logging.warning("received empty message/timeout")
                 continue
             buf += r
             m = buf[0:1]
@@ -261,6 +270,5 @@ class Driver(object):
             self.history.LogReceived(ts, m, comment)
             if must_ack:
                 self.SendControl(zmessage.RAW_MESSAGE_ACK)
-
 
         logging.warning("_DriverReceivingThread terminated")
