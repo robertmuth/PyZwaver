@@ -408,7 +408,7 @@ class Message:
             return
         self.state = state
         self.end = ts
-        logging.warning("%s: %s", state, PrettifyRawMessage(self.payload))
+        logging.info("%s: %s", state, PrettifyRawMessage(self.payload))
         self._inflight_lock.release()
         self._inflight_lock = None
         return state

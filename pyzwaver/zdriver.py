@@ -243,10 +243,10 @@ class Driver(object):
 
     def _LogSent(self, ts, m, comment):
         self._raw_history.append((ts, True, m, comment))
-        logging.warning("sent: %s", zmessage.PrettifyRawMessage(m))
+        logging.info("sent: %s", zmessage.PrettifyRawMessage(m))
 
     def _LogReceived(self, ts, m, comment):
-        logging.warning("recv: %s", zmessage.PrettifyRawMessage(m))
+        logging.info("recv: %s", zmessage.PrettifyRawMessage(m))
         self._raw_history.append((ts, False, m, comment))
 
     def _RecordInflight(self, m):
