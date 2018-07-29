@@ -677,9 +677,9 @@ class Node:
             return
         self.commands.InitializeUnversioned(cmd, controls, v[1], v[2])
 
-    def ProcessNodeInfo(self, m):
+    def ProcessNodeInfo(self, ts, m):
         self._shared.event_cb(self.n, command.EVENT_NODE_INFO)
-        self._last_contact = time.time()
+        self._last_contact = ts
         m = MaybePatchCommand(m)
         logging.warning("[%d] process node info: %s", self.n, Hexify(m))
         cmd = []
@@ -1152,7 +1152,7 @@ class NodeSet(object):
                 node.Ping(1, True)
         logging.warning("_NodesetRefresherThread terminated")
 
-    def GetNode(self, num):
+    def GetNode(self, num) -> Node:
         if num not in self.nodes:
             self.nodes[num] = Node(num, self._shared)
         return self.nodes[num]
@@ -1168,7 +1168,7 @@ class NodeSet(object):
             self._refresher_thread.join()
         logging.info("NodeSet terminated")
 
-    def HandleMessage(self, m):
+    def HandleMessage(self, ts, m):
         # logging.info("NodeSet received: %s",  zmessage.PrettifyRawMessage(m))
         if m[3] == zwave.API_APPLICATION_COMMAND_HANDLER:
             _ = m[4]  # status
@@ -1201,7 +1201,7 @@ class NodeSet(object):
                 length = m[6]
                 m = m[7: 7 + length]
                 node = self.GetNode(n)
-                node.ProcessNodeInfo(m)
+                node.ProcessNodeInfo(ts, m)
             elif kind == zwave.UPDATE_STATE_SUC_ID:
                 logging.warning("succ id updated")
             else:
@@ -1213,10 +1213,10 @@ class NodeSet(object):
     def _NodesetReceiverThread(self):
         logging.warning("_NodesetReceiverThread started")
         while True:
-            m = self._shared.mq.GetIncommingRawMessage()
+            ts, m = self._shared.mq.GetIncommingRawMessage()
             if m is None:
                 break
             if m is None:
                 break
-            self.HandleMessage(m)
+            self.HandleMessage(ts, m)
         logging.warning("_NodesetReceiverThread terminated")

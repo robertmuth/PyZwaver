@@ -93,7 +93,7 @@ DO_RETRY = "DO_RETRY"
 DO_PROPAGATE = "DO_PROPAGATE"
 
 
-def _ProcessReceivedMessage(inflight, m):
+def _ProcessReceivedMessage(ts, inflight : zmessage.Message, m):
     """
     Process an message arriving at the driver and determines
     the course of action taking the current inflight message
@@ -114,7 +114,7 @@ def _ProcessReceivedMessage(inflight, m):
         if inflight is None:
             logging.error("nothing to re-send after ACK")
             return DO_NOTHING, "stray"
-        return False, inflight.MaybeComplete(m)
+        return False, inflight.MaybeComplete(ts, m)
     elif m[0] == zwave.SOF:
         if zmessage.Checksum(m) != zwave.SOF:
             # maybe send a CAN?
@@ -124,7 +124,7 @@ def _ProcessReceivedMessage(inflight, m):
             if inflight is None:
                 logging.error("nothing to re-send after RESPONSE")
                 return DO_ACK, "stray"
-            return DO_ACK, inflight.MaybeComplete(m)
+            return DO_ACK, inflight.MaybeComplete(ts, m)
         elif m[2] == zwave.REQUEST:
             if (m[3] == zwave.API_ZW_APPLICATION_UPDATE or
                     m[3] == zwave.API_APPLICATION_COMMAND_HANDLER):
@@ -133,7 +133,7 @@ def _ProcessReceivedMessage(inflight, m):
                 if inflight is None:
                     logging.error("nothing to re-send after REQUEST")
                     return DO_ACK, "stray"
-                return DO_ACK, inflight.MaybeComplete(m)
+                return DO_ACK, inflight.MaybeComplete(ts, m)
         else:
             logging.error("message is neither request nor response")
             return DO_NOTHING, "bad"
@@ -284,7 +284,7 @@ class Driver(object):
 
         """
         self._terminate = True
-        self._out_queue.put(zmessage.Message(None, zmessage.LowestPriority(), lambda _: None, None))
+        self.SendMessage(zmessage.Message(None, zmessage.LowestPriority(), lambda _: None, None))
         logging.info("Driver terminated")
 
     def _SendRaw(self, payload, comment=""):
@@ -321,7 +321,7 @@ class Driver(object):
             self._inflight = inflight
             self._RecordInflight(inflight)
 
-            inflight.Start(lock)
+            inflight.Start(time.time(), lock)
             time.sleep(self._delay[inflight.node])
 
             self._SendRaw(inflight.payload, "")
@@ -360,7 +360,7 @@ class Driver(object):
                     continue
             buf = buf[len(m):]
             ts = time.time()
-            next_action, comment = _ProcessReceivedMessage(self._inflight, m)
+            next_action, comment = _ProcessReceivedMessage(ts, self._inflight, m)
             self._LogReceived(ts, m, comment)
             if next_action == DO_ACK:
                 self._SendRaw(zmessage.RAW_MESSAGE_ACK)
@@ -369,6 +369,6 @@ class Driver(object):
                 self._SendRaw(self._inflight.payload, "re-try")
             elif next_action == DO_PROPAGATE:
                 self._SendRaw(zmessage.RAW_MESSAGE_ACK)
-                self._in_queue.put(m)
+                self._in_queue.put((ts, m))
 
     logging.warning("_DriverReceivingThread terminated")

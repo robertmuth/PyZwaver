@@ -385,11 +385,11 @@ class Message:
     def _Timeout(self):
         if self._inflight_lock is None:
             return
-        self.Complete(None, MESSAGE_STATE_TIMEOUT)
+        self.Complete(time.time(), None, MESSAGE_STATE_TIMEOUT)
 
-    def Start(self, lock):
+    def Start(self, ts, lock):
         self.state = MESSAGE_STATE_STARTED
-        self.start = time.time()
+        self.start = ts
         self._inflight_lock = lock
         self._inflight_lock.acquire()
         threading.Timer(self._timeout, self._Timeout).start()
@@ -401,31 +401,31 @@ class Message:
         return (self.state in MESSAGE_STATES_FINAL and
                 self.state != MESSAGE_STATE_COMPLETED)
 
-    def _CompleteNoMessage(self, state):
+    def _CompleteNoMessage(self, ts, state):
         assert state in MESSAGE_STATES_FINAL
         if self._inflight_lock is None:
             logging.warning("message already completed: ", self.state)
             return
         self.state = state
-        self.end = time.time()
+        self.end = ts
         logging.warning("%s: %s", state, PrettifyRawMessage(self.payload))
         self._inflight_lock.release()
         self._inflight_lock = None
         return state
 
-    def Complete(self, m, state):
+    def Complete(self, ts, m, state):
         if self._callback:
             self._callback(m)
-        return self._CompleteNoMessage(state)
+        return self._CompleteNoMessage(ts, state)
 
-    def _MaybeCompleteAck(self, m):
+    def _MaybeCompleteAck(self, ts, m):
         if (self.action_requ[0] == ACTION_NONE and
                 self.action_resp[0] == ACTION_NONE):
-            self.Complete(m, MESSAGE_STATE_COMPLETED)
+            self.Complete(ts, m, MESSAGE_STATE_COMPLETED)
         else:
             return ""
 
-    def _MaybeCompleteRequest(self, m):
+    def _MaybeCompleteRequest(self, ts, m):
         cbid = self.payload[-2]
         if self.action_requ[0] == ACTION_MATCH_CBID_MULTI:
             if m[4] != cbid:
@@ -443,16 +443,16 @@ class Message:
                               self.node, PrettifyRawMessage(self.payload),
                               PrettifyRawMessage(m))
                 return "unexpected"
-            return self.Complete(m, MESSAGE_STATE_COMPLETED)
+            return self.Complete(ts, m, MESSAGE_STATE_COMPLETED)
 
         else:
             logging.error("unexpected action: %s for %s",
                           self.action_requ[0], PrettifyRawMessage(self.payload))
             assert False
 
-    def _MaybeCompleteResponse(self, m):
+    def _MaybeCompleteResponse(self, ts, m):
         if self.action_resp[0] == ACTION_REPORT:
-            return self.Complete(m, MESSAGE_STATE_COMPLETED)
+            return self.Complete(ts, m, MESSAGE_STATE_COMPLETED)
         elif self.action_resp[0] == ACTION_REPORT_EQ:
             assert len(m) == 6
             # we expect a message of the form:
@@ -471,14 +471,14 @@ class Message:
                                 self.node, PrettifyRawMessage(self.payload),
                                 m[4], self.action_resp[1])
 
-                return self.Complete(m, MESSAGE_STATE_NOT_READY)
+                return self.Complete(ts, m, MESSAGE_STATE_NOT_READY)
 
         else:
             assert False
 
-    def MaybeComplete(self, m):
+    def MaybeComplete(self, ts, m):
         if m[0] == zwave.ACK:
-            return self._MaybeCompleteAck(m)
+            return self._MaybeCompleteAck(ts, m)
 
         if m[0] != zwave.SOF:
             assert False
@@ -491,9 +491,9 @@ class Message:
             return "unexpected"
 
         if m[2] == zwave.RESPONSE:
-            return self._MaybeCompleteResponse(m)
+            return self._MaybeCompleteResponse(ts, m)
         elif m[2] == zwave.REQUEST:
-            return self._MaybeCompleteRequest(m)
+            return self._MaybeCompleteRequest(ts, m)
         else:
             assert False
 
