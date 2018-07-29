@@ -744,10 +744,10 @@ ACTIONS = {
 }
 
 STATE_CHANGE = {
-    (zwave.ManufacturerSpecific, zwave.ManufacturerSpecific_Report):
-        (lambda n, v, k, p: n._MaybeChangeState(NODE_STATE_INTERVIEWED), -1, None),
+    (zwave.ManufacturerSpecific, zwave.ManufacturerSpecific_Report): NODE_STATE_INTERVIEWED,
 }
 
+NO_ACTION = None, None, None
 
 def PatchUpActions():
     global ACTIONS

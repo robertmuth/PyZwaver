@@ -31,7 +31,7 @@ import queue
 from pyzwaver import zmessage
 from pyzwaver import command
 from pyzwaver import zwave
-from pyzwaver import zsecurity
+# from pyzwaver import zsecurity
 from pyzwaver import zdriver
 
 
@@ -704,50 +704,18 @@ class Node:
     def SecurityChangeKey(self, key):
         logging.warning("SecurityChangeKey")
         assert False
-        #self.BatchCommandSubmitFilteredFast(
+        # self.BatchCommandSubmitFilteredFast(
         #    [[zwave.Security, zwave.Security_NetworkSetKey, key]], XMIT_OPTIONS_SECURE)
 
     def StoreEvent(self, val):
         self._events[val.kind] = val
         self._shared.event_cb(self.n, val.kind)
 
-    def _OneAction(self, action, value, key, prefix):
-        logging.info("%s action: %s value: %s", prefix, action, value)
-        func, num_val, event = action
-        if num_val != -1 and num_val != len(value):
-            logging.error("%s unexpected value length: %s [want: %d]",
-                          prefix, value, num_val)
-            assert False
-        if func:
-            func(self, value, key, prefix)
-        self._shared.event_cb(self.n, event)
-
-        # elif a == command.ACTION_STORE_MAP:
-        #    val = command.GetValue(actions, value, prefix)
-        #    if val.kind not in self._values:
-        #        self._values[val.kind] = {}
-        #    self._values[val.kind][val.unit] = val
-        # elif a == command.ACTION_STORE_SCENE:
-        #    if value[0] == 0:
-        #        # TODO
-        #        #self._values[command.VALUE_ACTIVE_SCENE] = -1
-        #        pass
-        #    else:
-        #        self.scenes[value[0]] = value[1:]
-        # elif a == command.SECURITY_SCHEME:
-        #    assert len(value) == 1
-        #    if value[0] == 0:
-        #        # not paired yet start key exchange
-        #        self.SecurityChangeKey(self._shared,security_key)
-        #    else:
-        #        # already paired
-        #        self.SecurityRequestClasses()
-
     def LogPrefix(self, k):
         cmd = zwave.SUBCMD_TO_STRING.get(k[0] * 256 + k[1], "Unknown_" + str(k))
         return "[%d] %s" % (self.n, cmd)
 
-    def ProcessCommand(self, data):
+    def ProcessCommand(self, ts, data):
         self._last_contact = time.time()
         key = (data[0], data[1])
         prefix = self.LogPrefix(key)
@@ -756,14 +724,43 @@ class Node:
             logging.error("%s parsing failed for %s", prefix, Hexify(data))
             return
 
-        state_change = command.STATE_CHANGE.get(key)
-        if state_change:
-            self._OneAction(state_change, value, key, prefix)
-        action = command.ACTIONS.get(key)
-        if action is None:
+        new_state = command.STATE_CHANGE.get(key)
+        if new_state is not None:
+            self._MaybeChangeState(new_state)
+
+        func, num_val, event = command.ACTIONS.get(key, command.NO_ACTION)
+        logging.warning("%s action: %s value: %s", prefix, event, value)
+        if func is None:
             logging.error("%s unknown command %s", prefix, Hexify(data))
             return
-        self._OneAction(action, value, key, prefix)
+        if num_val != -1 and num_val != len(value):
+            logging.error("%s unexpected value length: %s [want: %d]",
+                          prefix, value, num_val)
+            assert False
+        if func:
+            func(self, value, key, prefix)
+        self._shared.event_cb(self.n, event)
+
+    # elif a == command.ACTION_STORE_MAP:
+    #    val = command.GetValue(actions, value, prefix)
+    #    if val.kind not in self._values:
+    #        self._values[val.kind] = {}
+    #    self._values[val.kind][val.unit] = val
+    # elif a == command.ACTION_STORE_SCENE:
+    #    if value[0] == 0:
+    #        # TODO
+    #        #self._values[command.VALUE_ACTIVE_SCENE] = -1
+    #        pass
+    #    else:
+    #        self.scenes[value[0]] = value[1:]
+    # elif a == command.SECURITY_SCHEME:
+    #    assert len(value) == 1
+    #    if value[0] == 0:
+    #        # not paired yet start key exchange
+    #        self.SecurityChangeKey(self._shared,security_key)
+    #    else:
+    #        # already paired
+    #        self.SecurityRequestClasses()
 
     def _ProcessProtocolInfo(self, m):
         flags = self.flags
@@ -1178,7 +1175,7 @@ class NodeSet(object):
             try:
                 c = [int(x) for x in m[7:7 + size]]
                 c = MaybePatchCommand(c)
-                node.ProcessCommand(c)
+                node.ProcessCommand(ts, c)
             except:
                 logging.error(
                     "Exception caught: cannot parse: %s", zmessage.PrettifyRawMessage(m))
