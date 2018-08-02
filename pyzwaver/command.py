@@ -464,7 +464,7 @@ def _GetParameterDescriptors(m):
 
 
 def ParseCommand(m, prefix=""):
-    """ParseCommand decodes an API_APPLICATION_COMMAND request into a list of values"""
+    """ParseCommand decodes an API_APPLICATION_COMMAND request into a map of values"""
     table = _GetParameterDescriptors(m)
 
     if table is None:

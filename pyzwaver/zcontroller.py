@@ -60,7 +60,6 @@ def ExtractNodes(bits):
             continue
         node_id = i + 1
         r.add(node_id)
-        logging.info("found node %d", node_id)
     return r
 
 
@@ -361,6 +360,7 @@ class Controller:
     # ============================================================
     def UpdateRoutingInfo(self):
         def handler(node, neighbors):
+            logging.info("[%d] setting routing info to: %s", node, neighbors)
             self.routes[node] = set(neighbors)
 
         for n in self.nodes:
@@ -523,6 +523,7 @@ class Controller:
         self.ApplNodeInformation()
 
     def WaitUntilInitialized(self):
+        logging.info("Controller::WaitUntilInitialized")
         while self._state != CONTROLLER_STATE_INITIALIZED:
             logging.warning("wait - current Controller state is: %s", self._state)
             time.sleep(0.5)
