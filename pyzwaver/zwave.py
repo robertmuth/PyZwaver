@@ -908,9 +908,9 @@ SUBCMD_TO_PARSE_TABLE = {
     0x2202: ['B{status}'],  # RejectedRequest (2)
 
     # SwitchBinary (0x25 = 37)
-    0x2501: ['B{switch}'],  # Set (1)
+    0x2501: ['B{level}'],  # Set (1)
     0x2502: [],  # Get (2)
-    0x2503: ['B{switch}'],  # Report (3)
+    0x2503: ['B{level}'],  # Report (3)
 
     # SwitchMultilevel (0x26 = 38)
     0x2601: ['B{percent}', 'B{duration}'],  # Set (1)
@@ -924,14 +924,14 @@ SUBCMD_TO_PARSE_TABLE = {
     # SwitchAll (0x27 = 39)
     0x2701: ['B{mode}'],  # Set (1)
     0x2702: [],  # Get (2)
-    0x2703: ['B{switch}'],  # Report (3)
+    0x2703: ['B{level}'],  # Report (3)
     0x2704: [],  # On (4)
     0x2705: [],  # Off (5)
 
     # SwitchToggleBinary (0x28 = 40)
     0x2801: [],  # Set (1)
     0x2802: [],  # Get (2)
-    0x2803: ['B{switch}'],  # Report (3)
+    0x2803: ['B{level}'],  # Report (3)
 
     # SceneActivation (0x2b = 43)
     0x2b01: ['B{scene}', 'B{delay}'],  # Set (1)
@@ -1003,7 +1003,7 @@ SUBCMD_TO_PARSE_TABLE = {
 
     # ZwavePlusInfo (0x5e = 94)
     0x5e01: [],  # Get (1)
-    0x5e02: ['B{version}', 'B{role}', 'W{icon}', 'W{type}'],  # Report (2)
+    0x5e02: ['B{version}', 'B{role}', 'B{type}', 'W{icon}', 'W{icon2}'],  # Report (2)
 
     # MultiInstance (0x60 = 96)
     0x6004: ['B{mode}'],  # Get (4)
@@ -1111,7 +1111,7 @@ SUBCMD_TO_PARSE_TABLE = {
 
     # Version (0x86 = 134)
     0x8611: [],  # Get (17)
-    0x8612: ['B{library}', 'B{protocol}', 'B{protocol}', 'B{application}', 'B{application}'],  # Report (18)
+    0x8612: ['B{library}', 'W{protocol}', 'W{firmware}'],  # Report (18)
     0x8613: ['B{class}'],  # CommandClassGet (19)
     0x8614: ['B{class}', 'B{version}'],  # CommandClassReport (20)
 

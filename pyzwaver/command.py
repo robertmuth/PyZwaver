@@ -202,59 +202,75 @@ def EventTypeToString(t):
 
 
 # ======================================================================
-def _GetSignedValue(m, index, size):
+def _GetSignedValue(data):
     value = 0
-    negative = (m[index] & 0x80) != 0
-    for i in range(size):
+    negative = (data[0] & 0x80) != 0
+    for d in data:
         value <<= 8
         if negative:
-            value += ~m[index + i]
+            value += ~d
         else:
-            value += m[index + i]
+            value += d
 
     if negative:
         value += 1
-        return - float(value)
+        return -value
     else:
-        return float(value)
+        return value
 
 
 # ======================================================================
 def _GetReading(m, index, units_extra):
-    size = m[index] & 0x7
-    units = (m[index] & 0x18) >> 3 | units_extra
-    precision = (m[index] & 0xe0) >> 5
-    value = _GetSignedValue(m, index + 1, size) / pow(10, precision)
-    return index + 1 + size, [units, value]
+    c = m[index]
+    size = c & 0x7
+    units = (c & 0x18) >> 3 | units_extra
+    exp = (c & 0xe0) >> 5
+    mantissa = m[index + 1: index + 1 + size]
+    value = _GetSignedValue(mantissa) / pow(10, exp)
+    return index + 1 + size, units, mantissa, exp, value
 
 
 def _GetTimeDelta(m, index):
     return index + 2, m[index] * 256 + m[index + 1]
 
 
-def _ExtractValues(m, index, units_extra):
-    # unit = None
-    val1 = None
-    dt = None
-    val2 = None
-    if index >= len(m):
-        return index, [val1, dt, val2]
-
-    index, (unit, val1) = _GetReading(m, index, units_extra)
-    if index + 1 < len(m):
-        index, dt = _GetTimeDelta(m, index)
-    if index < len(m):
-        index, (_, val2) = _GetReading(m, index, units_extra)
-
-    return index, [unit, val1, dt, val2]
-
-
 def _ParseMeter(m, index):
-    # extra = m[index] & 0x60
-    units_extra = (m[index] & 0x80) >> 5
-    meter_type = m[index] & 0x1f
-    index, val = _ExtractValues(m, index + 1, units_extra)
-    return index, [meter_type] + val
+    if index + 2 > len(m):
+        logging.error("cannot parse value")
+        return index, None
+    c1 = m[index]
+    unit_extra = (c1 & 0x80) >> 7
+    type = c1 & 0x1f
+    rate = (c1 & 0x60) >> 5
+    c2 = m[index + 1]
+    size = c2 & 0x7
+    unit = (c2 & 0x18) >> 3 | unit_extra << 2
+    exp = (c2 & 0xe0) >> 5
+    index += 2
+    out = {
+        "type": type,
+        "unit": unit,
+        "exp": exp,
+        "rate": rate,
+    }
+    if index + size >= len(m):
+        logging.error("cannot parse value")
+        return index, None
+    mantissa = m[index: index + size]
+    index += size
+    value = _GetSignedValue(mantissa) / pow(10, exp)
+    out["mantissa"], out["_value"] = mantissa, value
+    if index + 2 <= len(m):
+        # TODO: provide non-raw version of this
+        index, out["dt"] = _GetTimeDelta(m, index)
+    n = 2
+    if index + size <= len(m):
+        mantissa = m[index: index + size]
+        value = _GetSignedValue(mantissa) / pow(10, out["exp"])
+        out["mantissa%d" % n], out["_value%d" % n] = mantissa, value
+        index += size
+        n += 1
+    return index, out
 
 
 # ======================================================================
@@ -264,12 +280,14 @@ def _ParseMeter(m, index):
 
 def _ParseByte(m, index):
     if len(m) <= index:
+        logging.error("cannot parse byte")
         return index, None
     return index + 1, m[index]
 
 
 def _ParseWord(m, index):
     if len(m) <= index + 1:
+        logging.error("cannot parse word")
         return index, None
     return index + 2, m[index] * 256 + m[index + 1]
 
@@ -284,9 +302,9 @@ _ENCODING_TO_DECODER = [
 def _ParseName(m, index):
     assert len(m) > index
     encoding = m[index] & 3
-    b = bytes(m[index + 1:])
-    # TODO(me)
-    return len(m), b.decode(_ENCODING_TO_DECODER[encoding])
+    m = m[index + 1:]
+    decoded = bytes(m).decode(_ENCODING_TO_DECODER[encoding])
+    return len(m), {"encoding": encoding, "text": m, "_decoded": decoded}
 
 
 def _ParseStringWithLength(m, index):
@@ -297,7 +315,7 @@ def _ParseStringWithLength(m, index):
 def _ParseStringWithLengthAndEncoding(m, index):
     encoding = m[index] >> 5
     size = m[index] & 0x1f
-    return 1 + size, [encoding, bytes(m[index + 1:index + size])]
+    return 1 + size, {"encoding": encoding, "text": m[index + 1:index + 1 + size]}
 
 
 def _ParseListRest(m, index):
@@ -329,7 +347,7 @@ def _ParseGroups(m, index):
         event = m[index + 5] * 256 + m[index + 6]
         groups.append((num, profile, event))
         index += 7
-    return index, groups,
+    return index, groups
 
 
 def _ParseBitVector(m, index):
@@ -374,7 +392,7 @@ def _GetIntBigEndian(m):
 
 def _ParseRestLittleEndianInt(m, index):
     size = len(m) - index
-    return index + size, _GetIntLittleEndian(m[index:index + size])
+    return index + size, {"size": size, "value": _GetIntLittleEndian(m[index:index + size])}
 
 
 def _ParseSensor(m, index):
@@ -390,21 +408,23 @@ def _ParseSensor(m, index):
     if len(m) < index + 1 + size:
         logging.error(
             "malformed sensor string %d %d %d", precision, scale, size)
-        return index, None
-    value = _GetSignedValue(m, index + 1, size) / pow(10, precision)
-    return index + 1 + size, [scale, value]
+        return index
+    mantissa = m[index + 1: index + 1 + size]
+    value = _GetSignedValue(mantissa) / pow(10, precision)
+    return index + 1 + size, {"exp": precision, "scale": scale, "mantissa": mantissa,
+                              "_value": value}
 
 
 def _ParseValue(m, index):
     size = m[index] & 0x7
     start = index + 1
-    return index + 1 + size, [size, _GetIntBigEndian(m[start:start + size])]
+    return index + 1 + size, {"size": size, "value": _GetIntBigEndian(m[start:start + size])}
 
 
 def _ParseDate(m, index):
     if len(m) < index + 7:
         logging.error("malformed time data")
-        return len(m), None
+        return len(m)
 
     year = m[index] * 256 + m[index + 1]
     month = m[index + 2]
@@ -443,7 +463,7 @@ def _GetParameterDescriptors(m):
     return zwave.SUBCMD_TO_PARSE_TABLE[key]
 
 
-def ParseCommand(m, prefix):
+def ParseCommand(m, prefix=""):
     """ParseCommand decodes an API_APPLICATION_COMMAND request into a list of values"""
     table = _GetParameterDescriptors(m)
 
@@ -451,14 +471,16 @@ def ParseCommand(m, prefix):
         logging.error("%s unknown command", prefix)
         return []
 
-    out = []
+    out = {}
     index = 2
     for t in table:
-        new_index, value = _PARSE_ACTIONS[t[0]](m, index)
+        kind = t[0]
+        name = t[2:-1]
+        new_index, value = _PARSE_ACTIONS[kind](m, index)
+        out[name] = value
         if value is None:
-            logging.error("%s malformed message while parsing format %s %s", prefix, t[0], table)
+            logging.error("%s malformed message while parsing format %s %s", prefix, kind, table)
             return None
-        out.append(value)
         index = new_index
     return out
 
@@ -482,50 +504,87 @@ def _MakeDate(date):
     return [date[0] // 256, date[0] % 256, date[1], date[2], date[3], date[4], date[5]]
 
 
+def _MakeSensor(args):
+    m = args["mantissa"]
+    c = args["exp"] << 5 | args["scale"] << 3 | len(m)
+    return [c] + m
+
+
+def _MakeMeter(args):
+    c1 = (args["unit"] & 4) << 7 | args["rate"] << 5 | (args["type"] & 0x1f)
+    c2 = args["exp"] << 5 | (args["unit"] & 3) << 3 | len(args["mantissa"])
+    delta = []
+    if "dt" in args:
+        dt = args["dt"]
+        delta = [dt >> 8, dt & 0xff]
+    return [c1, c2] + args["mantissa"] + delta + args.get("mantissa2", [])
+
+
 # raw_cmd: [class, subcommand, arg1, arg2, ....]
-def AssembleCommand(raw_cmd):
-    table = zwave.SUBCMD_TO_PARSE_TABLE[raw_cmd[0] * 256 + raw_cmd[1]]
+def AssembleCommand(cmd0, cmd1, args):
+    table = zwave.SUBCMD_TO_PARSE_TABLE[cmd0 * 256 + cmd1]
     assert table is not None
     data = [
-        raw_cmd[0],
-        raw_cmd[1]
+        cmd0,
+        cmd1
     ]
     # logging.debug("${raw_cmd[0]} ${raw_cmd[1]}: table length:
     # ${table.length}")
-    for i in range(len(table)):
-        t = table[i]
-        v = raw_cmd[i + 2]
-        if t[0] == 'B':
+    for t in table:
+        kind = t[0]
+        name = t[2:-1]
+        v = args[name]
+        if kind == 'B':
             data.append(v)
-        elif t[0] == 'Y':
+        elif kind == 'W':
+            data.append((v >> 8) & 0xff)
+            data.append(v & 0xff)
+        elif kind == 'Y':
             if v is not None:
                 data.append(v)
-        elif t[0] == 'N':
+        elif kind == 'N':
             data.append(1)
             # for c in v:
             # out.append(ord(c))
-        elif t[0] == 'K':
+        elif kind == 'K':
             if len(v) != 16:
                 logging.error("bad key parameter: ${v}")
                 assert False
             data += v
-        elif t[0] == 'D':
+        elif kind == 'D':
             data += v
-        elif t[0] == 'S':
+        elif kind == 'S':
             logging.info("unknown parameter: ${t[0]}")
             assert False, "unreachable"
             # for c in v:
             # out.append(ord(c))
-        elif t[0] == 'L':
+        elif kind == 'L':
             data += v
-        elif t[0] == 'C':
+        elif kind == 'C':
             data += _MakeDate(v)
-        elif t[0] == 'O':
+        elif kind == 'O':
             if len(v) != 8:
                 logging.error("bad nonce parameter: ${v}")
             data += v
-        elif t[0] == 'V':
-            data += _MakeValue(v[0], v[1])
+        elif kind == 'V':
+            size = v["size"]
+            value = v["value"]
+            data += [size]
+            for i in reversed(range(size)):
+                data += [(value >> 8 * i) & 0xff]
+        elif kind == 'X':
+            data += _MakeSensor(v)
+        elif kind == 'M':
+            data += _MakeMeter(v)
+        elif kind == 'F':
+            m = v["text"]
+            c = (v["encoding"] << 5) | len(m)
+            data += [c] + v["text"]
+        elif kind == 'R':
+            value = v["value"]
+            for i in range(v["size"]):
+                data += [value & 0xff]
+                value >>= 8
         else:
             logging.error("unknown parameter: ${t[0]}")
             assert False, "unreachable"
@@ -646,7 +705,7 @@ ACTIONS = {
         (lambda n, v, k, p: n.sensors.SetSupported(v), 1, EVENT_VALUE_CHANGE),
     (zwave.SwitchBinary, zwave.SwitchBinary_Report):
         (lambda n, v, k, p: n.sensors.Set(
-            Value(SENSOR_KIND_SWITCH_BINARY, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
+            Value(SENSOR_KIND_SWITCH_BINARY, UNIT_LEVEL, v["switch"])), 1, EVENT_VALUE_CHANGE),
     (zwave.Battery, zwave.Battery_Report):
         (lambda n, v, k, p: n.sensors.Set(
             Value(SENSOR_KIND_BATTERY, UNIT_LEVEL, v[0])), 1, EVENT_VALUE_CHANGE),
@@ -748,6 +807,7 @@ STATE_CHANGE = {
 }
 
 NO_ACTION = None, None, None
+
 
 def PatchUpActions():
     global ACTIONS

@@ -355,7 +355,6 @@ ALLOWED_PARAMETER_FORMATS = {
     "A{commands}",
     "B{active}",
     "B{alarm}",
-    "B{application}",
     "B{class}",
     "B{control}",
     "B{count}",
@@ -374,7 +373,6 @@ ALLOWED_PARAMETER_FORMATS = {
     "B{parameter}",
     "B{percent}",
     "B{protection}",
-    "B{protocol}",
     "B{role}",
     "B{scales}",
     "B{scale}",
@@ -383,7 +381,6 @@ ALLOWED_PARAMETER_FORMATS = {
     "B{seq}",
     "B{state}",
     "B{status}",
-    "B{switch}",
     "B{thermo}",
     "B{timeout}",
     "B{type1}",
@@ -408,11 +405,12 @@ ALLOWED_PARAMETER_FORMATS = {
     "U{thermo}",
     "U{bits}",
     "V{value}",
-    "W{application}",
+    "W{firmware}",
     "W{checksum}",
     "W{count}",
     "W{dhm}",
     "W{icon}",
+    "W{icon2}",
     "W{id}",
     "W{manufacturer}",
     "W{product}",
@@ -490,9 +488,9 @@ C("ApplicationStatus", 0x22,
   )
 
 C("SwitchBinary", 0x25,
-  Set=(0x1, "B{switch}"),
+  Set=(0x1, "B{level}"),
   Get=(0x2, ""),
-  Report=(0x3, "B{switch}"))
+  Report=(0x3, "B{level}"))
 
 C("SwitchMultilevel", 0x26,
   Set=(0x01, "B{percent},B{duration}"),
@@ -506,14 +504,14 @@ C("SwitchMultilevel", 0x26,
 C("SwitchAll", 0x27,
   Set=(0x1, "B{mode}"),
   Get=(0x2, ""),
-  Report=(0x3, "B{switch}"),
+  Report=(0x3, "B{level}"),
   On=(0x4, ""),
   Off=(0x5, ""))
 
 C("SwitchToggleBinary", 0x28,
   Set=(0x1, ""),
   Get=(0x2, ""),
-  Report=(0x3, "B{switch}"))
+  Report=(0x3, "B{level}"))
 
 C("SceneActivation", 0x2B,
   Set=(0x1, "B{scene},B{delay}"))
@@ -591,7 +589,7 @@ C("AssociationGroupInformation", 0x59,
 
 C("ZwavePlusInfo", 0x5e,
   Get=(0x01, ""),
-  Report=(0x02, "B{version},B{role},W{icon},W{type}"),
+  Report=(0x02, "B{version},B{role},B{type},W{icon},W{icon2}"),
   )
 
 C("MultiInstance", 0x60,
@@ -710,7 +708,7 @@ C("Association", 0x85,
 
 C("Version", 0x86,
   Get=(0x11, ""),
-  Report=(0x12, "B{library},B{protocol},B{protocol},B{application},B{application}"),
+  Report=(0x12, "B{library},W{protocol},W{firmware}"),
   CommandClassGet=(0x13, "B{class}"),
   CommandClassReport=(0x14, "B{class},B{version}"))
 
@@ -782,7 +780,7 @@ C("ThermostatFanState", 0x45)
 C("ThermostatSetBack", 0x47)
 C("ThermostatOperatingState", 0x42)
 
-# 
+#
 C("DeviceResetLocally", 0x5a)
 
 # special
@@ -955,9 +953,11 @@ def GetGenericCommands(generic):
 ############################################################
 #
 ############################################################
-FORMAT = collections.namedtuple("FORMAT", ['comment', 'final', 'constint', 'terminator'])
+FORMAT = collections.namedtuple(
+    "FORMAT", ['comment', 'final', 'constint', 'terminator'])
 
-DART_FORMAT = FORMAT(comment="// ", final="final ", constint="const int ", terminator=";")
+DART_FORMAT = FORMAT(comment="// ", final="final ",
+                     constint="const int ", terminator=";")
 
 PYTHON_FORMAT = FORMAT(comment="# ", final="", constint="", terminator="")
 
@@ -1098,7 +1098,8 @@ def DumpDartConstants(fmt: FORMAT, string_maps=True):
         if k[0] != last:
             last = k[0]
             print("")
-            print("    " + fmt.comment + CMD_TO_STRING[last] + " (0x%02x = %d)" % (last, last))
+            print("    " + fmt.comment +
+                  CMD_TO_STRING[last] + " (0x%02x = %d)" % (last, last))
         subcmd = SUBCMD_TO_STRING.get((k[0], k[1]), "").split("_")[-1]
         key = k[0] * 256 + k[1]
         s = "    0x%04x: %s," % (key, v)

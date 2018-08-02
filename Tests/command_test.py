@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# Copyright 2016 Robert Muth <robert@muth.org>
+# Copyright 2016 Robert Muth
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -25,49 +25,20 @@ The processed result and action is printed to stdout.
 
 """
 
+# python imports
 import logging
 import sys
 
-from pyzwaver import zwave
+# local imports
+
 from pyzwaver import command
-from pyzwaver import znode
+from pyzwaver import zwave
 
 TRANSLATE = {
     "SOF": zwave.SOF,
     "REQU": zwave.REQUEST,
     "RESP": zwave.RESPONSE,
 }
-
-class FakeMulti:
-    def _init__(self):
-        pass
-
-    def StoreCount(self, v):
-        print ("StoreCount: ", v)
-
-    def Set(self, v):
-        print ("Set: ", v)
-
-    def SetVersion(self, v):
-        print ("SetVersion: ", v)
-
-    def SetSupported(self, v):
-        print ("SetSupported: ", v)
-
-    def StoreNodes(self, v):
-        print ("StoreNodes: ", v)
-
-
-class FakeNode:
-    def __init__(self):
-        self._sensors = FakeMulti()
-        self._meters = FakeMulti()
-        self._associations = FakeMulti()
-        self._commands = FakeMulti()
-        self._parameters = FakeMulti()
-
-    def StoreValue(self, v):
-        print ("StoreValue: ", v)
 
 
 def ParseToken(t):
@@ -78,27 +49,24 @@ def ParseToken(t):
     else:
         return int(t, 16)
 
+
 def Hexify(t):
     return ["%02x" % i for i in t]
 
 
 
 def ProcessApplicationData(data):
-    print ("application data: ", Hexify(data))
-    new_data = znode.MaybePatchCommand(data)
-    if new_data != data:
-        print ("REWRITE")
-        data = new_data
-    value = command.ParseCommand(data, "")
+    print("application data: ", Hexify(data))
     k = (data[0], data[1])
-    node = FakeNode()
-    if k in command.ACTIONS:
-        func, num_val, event = command.ACTIONS.get(k)
-        func(node, value, k, "")
+    table = zwave.SUBCMD_TO_PARSE_TABLE[k[0] * 256 + k[1]]
+    print ("parse table: ", table)
 
-    else:
-        print("ERROR", k)
-        sys.exit(1)
+    value = command.ParseCommand(data)
+    print (value)
+    data2 = command.AssembleCommand(k[0], k[1], value)
+    print("assembled data: ", Hexify(data2))
+    assert data == data2
+
 
 def _main(argv):
     logging.basicConfig(level=logging.ERROR)
@@ -107,18 +75,20 @@ def _main(argv):
         token = line.split()
         if len(token) == 0: continue
 
-        print ()
-        print ("incoming: ", line[:-1])
-        message = [ParseToken(t) for t  in token]
-        print ("hex: ", message)
+        print()
+        print("incoming: ", line[:-1])
+        message = [ParseToken(t) for t in token]
+        print("hex: ", Hexify(message))
         if message[0] != zwave.SOF: continue
         if message[2] != zwave.REQUEST: continue
         if message[3] != zwave.API_APPLICATION_COMMAND_HANDLER: continue
-        #status = message[4]
-        #node = message[5]
+        # status = message[4]
+        # node = message[5]
         size = message[6]
         data = message[7:7 + size]
         ProcessApplicationData(data)
+    return 0
+
 
 if __name__ == "__main__":
     sys.exit(_main(sys.argv[1:]))
