@@ -16,17 +16,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-Simple Webserver built on top of PyZwaver
-
-Usage:
-Run
-    ./webserver --serial_port=<usb-zwave-device>
-Common values for usb-zwave-device are:
-    /dev/ttyUSBx
-    /dev/ttyACMx
-Then navigate to
-    http:://localhost:55555
-in your browser.
+Simple Example
 """
 
 # python import
@@ -35,23 +25,18 @@ import logging
 import argparse
 import sys
 import time
-import traceback
-import json
 
-
-from pyzwaver import command
-from pyzwaver import zmessage
 from pyzwaver import zcontroller
 from pyzwaver import zdriver
 from pyzwaver import znodeset
-from pyzwaver import zwave
+
 
 # use --logging=none
 # to disable the tornado logging overrides caused by
 # tornado.options.parse_command_line(
 class MyFormatter(logging.Formatter):
     def __init__(self):
-        pass
+        super(MyFormatter, self).__init__()
 
     TIME_FMT = '%Y-%m-%d %H:%M:%S.%f'
 
@@ -64,6 +49,17 @@ class MyFormatter(logging.Formatter):
             record.lineno,
             record.msg % record.args)
 
+
+class Listener(object):
+
+    def __init__(self):
+        self._count = 0
+
+    def put(self, n, ts, key, values):
+        logging.info("RECEIVED [%d]: %s - %s", n, key, values)
+        self._count += 1
+
+
 def main():
     global DRIVER, CONTROLLER, NODESET
     parser = argparse.ArgumentParser(description='Process some integers.')
@@ -71,11 +67,11 @@ def main():
 
     parser.add_argument('--serial_port', type=str,
                         default="/dev/ttyUSB0",
-                       # default="/dev/ttyACM0",
+                        # default="/dev/ttyACM0",
                         help='an integer for the accumulator')
 
     args = parser.parse_args()
-    print (args)
+    print(args)
     # note: this makes sure we have at least one handler
     # logging.basicConfig(level=logging.WARNING)
     # logging.basicConfig(level=logging.ERROR)
@@ -97,11 +93,12 @@ def main():
     time.sleep(2)
     print(CONTROLLER)
     NODESET = znodeset.NodeSet(DRIVER, CONTROLLER.GetNodeId())
+    NODESET.AddListener(Listener())
     # n.InitializeExternally(CONTROLLER.props.product, CONTROLLER.props.library_type, True)
     logging.info("pinging %d nodes", len(CONTROLLER.nodes))
     for n in CONTROLLER.nodes:
-        NODESET.Ping(n, 3, False)
-
+        node = NODESET.GetNode(n)
+        node.Ping(3, False)
 
     return 0
 
