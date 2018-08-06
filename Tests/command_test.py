@@ -32,12 +32,12 @@ import sys
 # local imports
 
 from pyzwaver import command
-from pyzwaver import zwave
+from pyzwaver import zwave as z
 
 TRANSLATE = {
-    "SOF": zwave.SOF,
-    "REQU": zwave.REQUEST,
-    "RESP": zwave.RESPONSE,
+    "SOF": z.SOF,
+    "REQU": z.REQUEST,
+    "RESP": z.RESPONSE,
 }
 
 
@@ -58,7 +58,7 @@ def Hexify(t):
 def ProcessApplicationData(data):
     print("application data: ", Hexify(data))
     k = (data[0], data[1])
-    table = zwave.SUBCMD_TO_PARSE_TABLE[k[0] * 256 + k[1]]
+    table = z.SUBCMD_TO_PARSE_TABLE[k[0] * 256 + k[1]]
     print ("parse table: ", table)
 
     value = command.ParseCommand(data)
@@ -79,9 +79,9 @@ def _main(argv):
         print("incoming: ", line[:-1])
         message = [ParseToken(t) for t in token]
         print("hex: ", Hexify(message))
-        if message[0] != zwave.SOF: continue
-        if message[2] != zwave.REQUEST: continue
-        if message[3] != zwave.API_APPLICATION_COMMAND_HANDLER: continue
+        if message[0] != z.SOF: continue
+        if message[2] != z.REQUEST: continue
+        if message[3] != z.API_APPLICATION_COMMAND_HANDLER: continue
         # status = message[4]
         # node = message[5]
         size = message[6]
