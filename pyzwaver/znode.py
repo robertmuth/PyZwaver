@@ -20,142 +20,125 @@
 """
 
 import logging
-import random
-import struct
-import sys
-import threading
 import time
-import traceback
-import queue
 
 from pyzwaver import zmessage
-from pyzwaver import command
-from pyzwaver import zwave
-# from pyzwaver import zsecurity
-from pyzwaver import zdriver
+from pyzwaver import actions
+from pyzwaver import z
+from pyzwaver import znode_protocol
 
 
 def Hexify(t):
     return ["%02x" % i for i in t]
 
 
-XMIT_OPTIONS_NO_ROUTE = (zwave.TRANSMIT_OPTION_ACK |
-                         zwave.TRANSMIT_OPTION_EXPLORE)
+XMIT_OPTIONS_NO_ROUTE = (z.TRANSMIT_OPTION_ACK |
+                         z.TRANSMIT_OPTION_EXPLORE)
 
-XMIT_OPTIONS = (zwave.TRANSMIT_OPTION_ACK |
-                zwave.TRANSMIT_OPTION_AUTO_ROUTE |
-                zwave.TRANSMIT_OPTION_EXPLORE)
+XMIT_OPTIONS = (z.TRANSMIT_OPTION_ACK |
+                z.TRANSMIT_OPTION_AUTO_ROUTE |
+                z.TRANSMIT_OPTION_EXPLORE)
 
-XMIT_OPTIONS_SECURE = (zwave.TRANSMIT_OPTION_ACK |
-                       zwave.TRANSMIT_OPTION_AUTO_ROUTE)
+XMIT_OPTIONS_SECURE = (z.TRANSMIT_OPTION_ACK |
+                       z.TRANSMIT_OPTION_AUTO_ROUTE)
 
 _DYNAMIC_PROPERTY_QUERIES = [
     # Basic should be first
-    [zwave.Basic, zwave.Basic_Get],
-    [zwave.Alarm, zwave.Alarm_Get],
-    [zwave.SensorBinary, zwave.SensorBinary_Get],
-    [zwave.Battery, zwave.Battery_Get],
+    (z.Basic, z.Basic_Get),
+    (z.Alarm, z.Alarm_Get),
+    (z.SensorBinary, z.SensorBinary_Get),
+    (z.Battery, z.Battery_Get),
 
-    [zwave.Lock, zwave.Lock_Get],
-    [zwave.DoorLock, zwave.DoorLock_Get],
+    (z.Lock, z.Lock_Get),
+    (z.DoorLock, z.DoorLock_Get),
 
-    [zwave.Powerlevel, zwave.Powerlevel_Get],
-    [zwave.Protection, zwave.Protection_Get],
-    # [zwave.SensorBinary, zwave.SensorBinary_Get],
-    [zwave.SwitchBinary, zwave.SwitchBinary_Get],
-    [zwave.SwitchMultilevel, zwave.SwitchMultilevel_Get],
-    [zwave.SwitchToggleBinary, zwave.SwitchToggleBinary_Get],
+    (z.Powerlevel, z.Powerlevel_Get),
+    (z.Protection, z.Protection_Get),
+    # (zwave.SensorBinary, zwave.SensorBinary_Get),
+    (z.SwitchBinary, z.SwitchBinary_Get),
+    (z.SwitchMultilevel, z.SwitchMultilevel_Get),
+    (z.SwitchToggleBinary, z.SwitchToggleBinary_Get),
     # only v5 offer the extra parameter
-    [zwave.Indicator, zwave.Indicator_Get],
+    (z.Indicator, z.Indicator_Get),
     # get the current scene
-    [zwave.SceneActuatorConf, zwave.SceneActuatorConf_Get, 0],
-    [zwave.SensorAlarm, zwave.SensorAlarm_Get],
-    [zwave.ThermostatMode, zwave.ThermostatMode_Get]
+    (z.SceneActuatorConf, z.SceneActuatorConf_Get, {"scene": 0}),
+    (z.SensorAlarm, z.SensorAlarm_Get),
+    (z.ThermostatMode, z.ThermostatMode_Get)
 ]
 
 
 def SensorMultiLevelQueries(sensors):
     # older version
-    return ([[zwave.SensorMultilevel, zwave.SensorMultilevel_Get, None]] +
-            [[zwave.SensorMultilevel, zwave.SensorMultilevel_Get, s] for s in sensors])
+    return ([(z.SensorMultilevel, z.SensorMultilevel_Get, {})] +
+            [(z.SensorMultilevel, z.SensorMultilevel_Get, {"sensor": s})
+             for s in sensors])
 
 
 def DynamicPropertyQueriesMultiInstance(instances):
     out = []
     for i in instances:
-        out.append([zwave.MultiInstance, zwave.MultiInstance_Encap, i,
-                    zwave.SensorMultilevel, zwave.SensorMultilevel_Get])
+        out.append((z.MultiInstance, z.MultiInstance_Encap, {
+            "mode": i,
+            "command": [z.SensorMultilevel, z.SensorMultilevel_Get]}))
     return out
 
 
 def MeterQueries(scales=(0, 1, 2, 3)):
     # older versions
-    return ([[zwave.Meter, zwave.Meter_Get, None]] +
+    return ([(z.Meter, z.Meter_Get, {})] +
             # newer versions
-            [[zwave.Meter, zwave.Meter_Get, s << 3] for s in scales])
+            [(z.Meter, z.Meter_Get, {"scale": s << 3}) for s in scales])
 
 
 _STATIC_PROPERTY_QUERIES = [
-    [zwave.SensorMultilevel, zwave.SensorMultilevel_SupportedGet],
+    (z.SensorMultilevel, z.SensorMultilevel_SupportedGet),
 
-    [zwave.UserCode, zwave.UserCode_NumberGet],
-    [zwave.DoorLock, zwave.DoorLock_ConfigurationGet],
-    [zwave.DoorLockLogging, zwave.DoorLockLogging_SupportedGet],
+    (z.UserCode, z.UserCode_NumberGet),
+    (z.DoorLock, z.DoorLock_ConfigurationGet),
+    (z.DoorLockLogging, z.DoorLockLogging_SupportedGet),
 
-    [zwave.Meter, zwave.Meter_SupportedGet],
-    [zwave.SensorAlarm, zwave.SensorAlarm_SupportedGet],
-    [zwave.ThermostatMode, zwave.ThermostatMode_SupportedGet],
-    [zwave.ThermostatSetpoint, zwave.ThermostatSetpoint_SupportedGet],
-    [zwave.Version, zwave.Version_Get],
-    [zwave.SwitchMultilevel, zwave.SwitchMultilevel_SupportedGet],
-    [zwave.MultiInstance, zwave.MultiInstance_ChannelEndPointGet],
+    (z.Meter, z.Meter_SupportedGet),
+    (z.SensorAlarm, z.SensorAlarm_SupportedGet),
+    (z.ThermostatMode, z.ThermostatMode_SupportedGet),
+    (z.ThermostatSetpoint, z.ThermostatSetpoint_SupportedGet),
+    (z.Version, z.Version_Get),
+    (z.SwitchMultilevel, z.SwitchMultilevel_SupportedGet),
+    (z.MultiInstance, z.MultiInstance_ChannelEndPointGet),
 
     # device type
-    [zwave.ManufacturerSpecific,
-     zwave.ManufacturerSpecific_DeviceSpecificGet, 0],
+    (z.ManufacturerSpecific,
+     z.ManufacturerSpecific_DeviceSpecificGet, 0),
     # serial no
-    [zwave.ManufacturerSpecific,
-     zwave.ManufacturerSpecific_DeviceSpecificGet, 1],
+    (z.ManufacturerSpecific,
+     z.ManufacturerSpecific_DeviceSpecificGet, 1),
 
-    [zwave.TimeParameters, zwave.TimeParameters_Get],
-    [zwave.ZwavePlusInfo, zwave.ZwavePlusInfo_Get],
-    [zwave.SwitchAll, zwave.SwitchAll_Get],
-    [zwave.Alarm, zwave.Alarm_SupportedGet],
+    (z.TimeParameters, z.TimeParameters_Get),
+    (z.ZwavePlusInfo, z.ZwavePlusInfo_Get),
+    (z.SwitchAll, z.SwitchAll_Get),
+    (z.Alarm, z.Alarm_SupportedGet),
     # mostly static
     # [zwave.AssociationCommandConfiguration, zwave.AssociationCommandConfiguration_SupportedGet],
-    [zwave.NodeNaming, zwave.NodeNaming_Get],
-    [zwave.NodeNaming, zwave.NodeNaming_LocationGet],
-    [zwave.ColorSwitch, zwave.ColorSwitch_SupportedGet],
+    (z.NodeNaming, z.NodeNaming_Get),
+    (z.NodeNaming, z.NodeNaming_LocationGet),
+    (z.ColorSwitch, z.ColorSwitch_SupportedGet),
     # arguably dynamic
-    [zwave.Clock, zwave.Clock_Get],
-    [zwave.Firmware, zwave.Firmware_MetadataGet],
-    [zwave.Association, zwave.Association_GroupingsGet],
-    [zwave.AssociationGroupInformation, zwave.AssociationGroupInformation_InfoGet, 64, 0],
+    (z.Clock, z.Clock_Get),
+    (z.Firmware, z.Firmware_MetadataGet),
+    (z.Association, z.Association_GroupingsGet),
+    (z.AssociationGroupInformation, z.AssociationGroupInformation_InfoGet, 64, 0),
 ]
 
 
 def ColorQueries(groups):
-    return [[zwave.ColorSwitch, zwave.ColorSwitch_Get, g] for g in groups]
+    return [(z.ColorSwitch, z.ColorSwitch_Get, {"group": g}) for g in groups]
 
 
 def CommandVersionQueries(classes):
-    return [[zwave.Version, zwave.Version_CommandClassGet, c] for c in classes]
+    return [(z.Version, z.Version_CommandClassGet, {"class": c}) for c in classes]
 
 
 def MultiInstanceSupportQueries(classes):
-    return [[zwave.MultiInstance, zwave.MultiInstance_Get, c] for c in classes]
-
-
-_BAUD = [
-    "unknown_baud",
-    "9600_baud",
-    "40000_baud",
-    "100000_baud",
-    "unknown_baud",
-    "unknown_baud",
-    "unknown_baud",
-    "unknown_baud",
-]
+    return [(z.MultiInstance, z.MultiInstance_Get, {"mode": c}) for c in classes]
 
 
 def BitsToSetWithOffset(x, offset):
@@ -167,38 +150,6 @@ def BitsToSetWithOffset(x, offset):
         pos += 1
         x >>= 1
     return out
-
-
-# SensorMultilevel_Report rewrites for buggy AeonLabs sensor labs firmware.
-#  01 3a 01 15
-#  01 3a 01 0d
-#  01 3a 00 f9
-#  01 32 01 25
-#  01 32 00 f4
-
-def MaybePatchCommand(m):
-    if m[0] == zwave.MultiInstance and m[1] == zwave.MultiInstance_Encap:
-        logging.warning("received MultiInstance_Encap for instance")
-        return m[4:]
-
-    if (m[0] == zwave.SensorMultilevel and
-            m[1] == zwave.SensorMultilevel_Report and
-            m[2] == 1 and
-            ((m[3] & 7) > len(m) - 4)):
-        x = 1 << 5 | (0 << 3) | 2
-        # [49, 5, 1, 127, 1, 10] => [49, 5, 1, X, 1, 10]
-        logging.warning(
-            "fixing up SensorMultilevel_Report %s: [3] %02x-> %02x", Hexify(m), m[3], x)
-        m[3] = x
-    if (m[0] == zwave.SensorMultilevel and
-            m[1] == zwave.SensorMultilevel_Report and
-            m[2] == 1 and
-            (m[3] & 0x10) != 0):
-        x = m[3] & 0xe7
-        logging.warning(
-            "fixing up SensorMultilevel_Report %s: [3] %02x-> %02x", Hexify(m), m[3], x)
-        m[3] = x
-    return m
 
 
 def RenderValues(values):
@@ -218,17 +169,10 @@ def CompactifyParams(params):
     return out
 
 
-class _SharedNodeState:
-    """SharedNodeState is a grab bag of stuff shared by all Nodes"""
-
-    def __init__(self, message_queue: zdriver.Driver, event_cb, security_key=0, enable_secure_pairing=True):
-        self.mq = message_queue
-        self.event_cb = event_cb
-        self.security_key = security_key
-        self.enable_secure_pairing = enable_secure_pairing
-
-
 class AssociationGroup:
+    """
+    """
+
     def __init__(self, no):
         self._no = no
         self.nodes = []
@@ -258,6 +202,8 @@ class AssociationGroup:
 
 
 class NodeAssociations:
+    """
+    """
 
     def __init__(self):
         self._groups = {}
@@ -331,14 +277,14 @@ class NodeCommands:
         return len(self._version_map)
 
     def HasAlternaticeForBasicCommand(self):
-        return (zwave.SwitchBinary in self._version_map or
-                zwave.SwitchMultilevel in self._version_map)
+        return (z.SwitchBinary in self._version_map or
+                z.SwitchMultilevel in self._version_map)
 
     def SetVersion(self, value):
-        version = value[1]
+        version = value["version"]
         if version == 0:
             return
-        self._version_map[value[0]] = version
+        self._version_map[value["class"]] = version
 
     def InitializeUnversioned(self, cmd, controls, std_cmd, std_controls):
         self._controls |= set(controls)
@@ -354,12 +300,12 @@ class NodeCommands:
             if k not in self._version_map:
                 self._version_map[k] = -1
 
-        k = zwave.MultiInstance
+        k = z.MultiInstance
         if k in self._controls and k not in self._version_map:
             self._version_map[k] = -1
 
     def __str__(self):
-        return repr([(zwave.CMD_TO_STRING.get(c, "UKNOWN:%d" % c), c, v)
+        return repr([(z.CMD_TO_STRING.get(c, "UKNOWN:%d" % c), c, v)
                      for c, v in self._version_map.items()])
 
 
@@ -374,12 +320,14 @@ class NodeParameters:
         return repr(CompactifyParams(self._parameters))
 
 
+VALUE_KEY_MULTILEVEL_SWITCH = (actions.SENSOR_KIND_SWITCH_MULTILEVEL, actions.UNIT_LEVEL)
+
+
 class NodeSensors:
     def __init__(self):
         self._readings = {
-            (command.SENSOR_KIND_SWITCH_MULTILEVEL, command.UNIT_LEVEL):
-                command.Value(
-                    command.SENSOR_KIND_SWITCH_MULTILEVEL, command.UNIT_LEVEL, 0),
+            VALUE_KEY_MULTILEVEL_SWITCH:
+                actions.ValueLevel(actions.SENSOR_KIND_SWITCH_MULTILEVEL, 0),
         }
         self._supported = set()
 
@@ -400,12 +348,11 @@ class NodeSensors:
         return self._supported or self._readings
 
     def GetMultilevelSwitchLevel(self):
-        k = (command.SENSOR_KIND_SWITCH_MULTILEVEL, command.UNIT_LEVEL)
-        p = self._readings.get(k)
+        p = self._readings.get(VALUE_KEY_MULTILEVEL_SWITCH)
         return p.value
 
     def __str__(self):
-        return ("  sensors supp.:" + command.RenderSensorList(self._supported) +
+        return ("  sensors supp.:" + actions.RenderSensorList(self._supported) +
                 "  sensors:      " + RenderValues(self._readings.values()))
 
 
@@ -436,31 +383,32 @@ class NodeMeters:
         self._readings[(val.kind, val.unit)] = val
 
     def __str__(self):
-        return ("  meters supp.:" + command.RenderMeterList(self._flags & 0x1f, self._supported) +
+        return ("  meters supp.:" + actions.RenderMeterList(self._flags & 0x1f, self._supported) +
                 "  meters:      " + RenderValues(self._readings.values()))
 
 
-KEY_VERSION = (zwave.Version, zwave.Version_Report)
-KEY_MANUFACTURER_SPECIFIC = (zwave.ManufacturerSpecific, zwave.ManufacturerSpecific_Report)
-KEY_COLOR_SWITCH_SUPPORTED = (zwave.ColorSwitch, zwave.ColorSwitch_SupportedReport)
+KEY_VERSION = (z.Version, z.Version_Report)
+KEY_MANUFACTURER_SPECIFIC = (z.ManufacturerSpecific, z.ManufacturerSpecific_Report)
+KEY_COLOR_SWITCH_SUPPORTED = (z.ColorSwitch, z.ColorSwitch_SupportedReport)
 
 
 class NodeValues:
     def __init__(self):
         self._values = {
             KEY_VERSION:
-                (None, command.ValueBare(KEY_VERSION, [-1, 0, 0, 0, 0])),
+                (-1.0, actions.ValueBare(KEY_VERSION, [-1, 0, 0, 0, 0])),
             KEY_MANUFACTURER_SPECIFIC:
-                (None, command.ValueBare(KEY_MANUFACTURER_SPECIFIC, [0, 0, 0])),
+                (-1.0, actions.ValueBare(KEY_MANUFACTURER_SPECIFIC, [0, 0, 0])),
             KEY_COLOR_SWITCH_SUPPORTED:
-                (None, command.ValueBare(KEY_COLOR_SWITCH_SUPPORTED, set())),
+                (-1.0, actions.ValueBare(KEY_COLOR_SWITCH_SUPPORTED, set())),
         }
 
     def HasValue(self, key: tuple):
         return key in self._values
 
     def Set(self, key, value):
-        if value is None: return
+        if value is None:
+            return
         self._values[key] = time.time(), value
 
     def SetMap(self, key: tuple, value):
@@ -486,7 +434,7 @@ class NodeValues:
         return RenderValues(self._values.values())
 
 
-class Node:
+class ApplicationNode:
     """Node represents a single node in a zwave network.
 
     The message_queue (_shared.mq) is used to send messages to the node.
@@ -494,46 +442,23 @@ class Node:
     to the relevant Node by calling ProcessCommand() or ProcessNodeInfo().
     """
 
-    def __init__(self, n, shared: _SharedNodeState):
+    def __init__(self, n, protocol_node: znode_protocol.Node):
         assert n >= 1
-        self._shared = shared
         self.n = n
         self.name = "Node %d" % n
-        self._failed = True
-        self._is_self = False  # node is the controller
-        self._state = command.NODE_STATE_NONE
-        self._last_contact = 0.0
+        self._protocol_node = protocol_node
+        self._state = actions.NODE_STATE_NONE
         #
-        self.device_description = ""
-        self.device_type = (0, 0, 0)
-        self._protocol_version = 0
-
         self.commands = NodeCommands()
         self._secure_commands = NodeCommands()
-
         self.values = NodeValues()
         self.meters = NodeMeters()
         self.sensors = NodeSensors()
         self.parameters = NodeParameters()
         self.associations = NodeAssociations()
-        self.product = None
-        self.library_type = None
-
         self._events = {}
-        #
         self.scenes = {}
-        #
-        self.flags = set()
-        # static config
-
-        # semi static
-
-        # values:
         self.awake = True
-        self._security_queue = queue.Queue()
-
-    def IsSelf(self):
-        return self._is_self
 
     def ProductInfo(self):
         p = self.values.Get(KEY_MANUFACTURER_SPECIFIC)
@@ -558,15 +483,10 @@ class Node:
         out = [
             "NODE: %d" % self.n,
             "state: %s" % self._state,
-            "last: %s" % self.RenderLastContact(),
-            "protocol_version: %d" % self._protocol_version,
             "lib_type: %s" % self.LibraryType(),
             "sdk_version: %d:%d" % self.SDKVersion(),
             "app_version: %d:%d" % self.ApplicationVersion(),
-            "\ndevice: %d:%d:%d" % self.device_type,
-            "(%s)" % self.device_description,
             "product: %04x:%04x:%04x" % self.ProductInfo(),
-            "\nflags:        " + repr(self.flags),
         ]
         return "  ".join(out)
 
@@ -599,271 +519,62 @@ class Node:
         return {
             "#": self.n,
             "state": self._state[2:],
-            "device": "%02d:%02d:%02d" % self.device_type,
-            "product": "0x%04x:0x%04x:0x%04x  " % self.ProductInfo() + self.device_description,
+            # "device": "%02d:%02d:%02d" % self.device_type,
+            "product": "0x%04x:0x%04x:0x%04x  " % self.ProductInfo(),
             "sdk_version": "%d:%d" % self.SDKVersion(),
             "app_version": "%d:%d" % self.ApplicationVersion(),
-            "last_contact": self.RenderLastContact(),
             "lib_type": self.LibraryType(),
-            "protocol_version": self._protocol_version
         }
 
-    def RenderLastContact(self):
-        if self._last_contact == 0.0:
-            return "never"
-        d = time.time() - self._last_contact
-        if d < 120.0:
-            return "%d sec ago" % int(d)
-        return "%d min ago" % (int(d) // 60)
+    def BatchCommandSubmitFiltered(self, commands, priority, xmit):
+        for key0, key1, values in commands:
+            if not self.commands.HasCommandClass(key0):
+                continue
 
-    def IsIntialized(self):
-        """at the very least we should have received a ProcessUpdate(),
-        ProcessProtocolInfo()
-        """
-        return self.device_type[0] != 0 and self.commands.NumCommands() > 0
+            # if self._IsSecureCommand(cmd[0], cmd[1]):
+            #    self._secure_messaging.Send(cmd)
+            #    continue
 
-    def _MaybeChangeState(self, new_state):
-        old_state = self._state
-        if old_state < new_state:
-            logging.warning(
-                "[%d] state transition %s -- %s", self.n, old_state, new_state)
-            self._state = new_state
-            self._shared.event_cb(self.n, command.EVENT_STATE_CHANGE)
-        if new_state == command.NODE_STATE_DISCOVERED:
-            if old_state < new_state and self.commands.HasCommandClass(zwave.Security):
-                self._InitializeSecurity()
-            elif old_state < command.NODE_STATE_INTERVIEWED:
-                self.RefreshStaticValues()
-        else:
-            self.RefreshDynamicValues()
+            self._protocol_node.SendCommand(key0, key1, values, priority, xmit)
 
-    def _IsSecureCommand(self, cmd, sub_cmd):
-        if cmd == zwave.Security:
-            return sub_cmd in [zwave.Security_NetworkKeySet, zwave.Security_SupportedGet]
-        return self._secure_commands.HasCommandClass(cmd)
+    def BatchCommandSubmitFilteredSlow(self, commands, xmit):
+        self.BatchCommandSubmitFiltered(commands, zmessage.NodePriorityLo, xmit)
+
+    def BatchCommandSubmitFilteredFast(self, commands, xmit):
+        self.BatchCommandSubmitFiltered(commands, zmessage.NodePriorityHi, xmit)
+
+    def _IsSecureCommand(self, key0, key1):
+        if key0 == z.Security:
+            return key1 in [z.Security_NetworkKeySet, z.Security_SupportedGet]
+
+        return self._secure_commands.HasCommandClass(key0)
 
     def _InitializeSecurity(self):
         logging.error("[%d] initializing security", self.n)
         # self.RefreshStaticValues()
         self.BatchCommandSubmitFilteredSlow(
-            [[zwave.Security, zwave.Security_SchemeGet, 0]], XMIT_OPTIONS)
-
-    def InitializeExternally(self, product, library_type, is_self):
-        self._is_self = is_self
-        self._MaybeChangeState(command.NODE_STATE_INTERVIEWED)
-        self.device_description = "THIS PC CONTROLLER"
-        self.product = product
-        self.library_type = library_type
-
-    def _SetDeviceType(self, device_type):
-        self.device_type = device_type
-        k = device_type[1] * 256 + device_type[2]
-        v = zwave.GENERIC_SPECIFIC_DB.get(k)
-        if v is None:
-            logging.error(
-                "[%d] unknown generic device : %s", self.n, device_type)
-            self.device_description = "unknown device_description: %s" % (
-                device_type,)
-        else:
-            self.device_description = v[0]
-
-        # self.UpdateIsFailedNode();
+            [[z.Security, z.Security_SchemeGet, 0]], XMIT_OPTIONS)
 
     def _InitializeCommands(self, typ, cmd, controls):
         k = typ[1] * 256 + typ[2]
-        v = zwave.GENERIC_SPECIFIC_DB.get(k)
+        v = z.GENERIC_SPECIFIC_DB.get(k)
         if v is None:
             logging.error("[%d] unknown generic device : ${type}", self.n)
             return
         self.commands.InitializeUnversioned(cmd, controls, v[1], v[2])
 
-    def ProcessNodeInfo(self, ts, m):
-        self._shared.event_cb(self.n, command.EVENT_NODE_INFO)
-        self._last_contact = ts
-        m = MaybePatchCommand(m)
-        logging.warning("[%d] process node info: %s", self.n, Hexify(m))
-        cmd = []
-        cntrl = []
-        seen_marker = False
-        for i in m[3:]:
-            if i == zwave.Mark:
-                seen_marker = True
-            elif seen_marker:
-                cntrl.append(i)
-            else:
-                cmd.append(i)
-
-        typ = (m[0], m[1], m[2])
-        self._SetDeviceType(typ)
-        self._InitializeCommands(typ, cmd, cntrl)
-        self._MaybeChangeState(command.NODE_STATE_DISCOVERED)
-
-    def SecurityRequestClasses(self):
-        pass
-
-    def SecurityChangeKey(self, key):
-        logging.warning("SecurityChangeKey")
-        assert False
-        # self.BatchCommandSubmitFilteredFast(
-        #    [[zwave.Security, zwave.Security_NetworkSetKey, key]], XMIT_OPTIONS_SECURE)
-
     def StoreEvent(self, val):
         self._events[val.kind] = val
-        self._shared.event_cb(self.n, val.kind)
-
-    def LogPrefix(self, k):
-        cmd = zwave.SUBCMD_TO_STRING.get(k[0] * 256 + k[1], "Unknown_" + str(k))
-        return "[%d] %s" % (self.n, cmd)
-
-    def ProcessCommand(self, ts, data):
-        self._last_contact = time.time()
-        key = (data[0], data[1])
-        prefix = self.LogPrefix(key)
-        value = command.ParseCommand(data, prefix)
-        if value is None:
-            logging.error("%s parsing failed for %s", prefix, Hexify(data))
-            return
-
-        new_state = command.STATE_CHANGE.get(key)
-        if new_state is not None:
-            self._MaybeChangeState(new_state)
-
-        func, num_val, event = command.ACTIONS.get(key, command.NO_ACTION)
-        logging.warning("%s action: %s value: %s", prefix, event, value)
-        if func is None:
-            logging.error("%s unknown command %s", prefix, Hexify(data))
-            return
-        if num_val != -1 and num_val != len(value):
-            logging.error("%s unexpected value length: %s [want: %d]",
-                          prefix, value, num_val)
-            assert False
-        if func:
-            func(self, value, key, prefix)
-        self._shared.event_cb(self.n, event)
-
-    # elif a == command.ACTION_STORE_MAP:
-    #    val = command.GetValue(actions, value, prefix)
-    #    if val.kind not in self._values:
-    #        self._values[val.kind] = {}
-    #    self._values[val.kind][val.unit] = val
-    # elif a == command.ACTION_STORE_SCENE:
-    #    if value[0] == 0:
-    #        # TODO
-    #        #self._values[command.VALUE_ACTIVE_SCENE] = -1
-    #        pass
-    #    else:
-    #        self.scenes[value[0]] = value[1:]
-    # elif a == command.SECURITY_SCHEME:
-    #    assert len(value) == 1
-    #    if value[0] == 0:
-    #        # not paired yet start key exchange
-    #        self.SecurityChangeKey(self._shared,security_key)
-    #    else:
-    #        # already paired
-    #        self.SecurityRequestClasses()
-
-    def _ProcessProtocolInfo(self, m):
-        flags = self.flags
-        a, b, _, basic, generic, specific = struct.unpack(">BBBBBB", m)
-        self._SetDeviceType((basic, generic, specific))
-        if a & 0x80:
-            flags.add("listening")
-        if a & 0x40:
-            flags.add("routing")
-        baud = (a & 0x38) >> 3
-        flags.add(_BAUD[baud])
-        self._protocol_version = 1 + (a & 0x7)
-        if b & 0x01:
-            flags.add("security")
-        if b & 0x02:
-            flags.add("controller")
-        if b & 0x04:
-            flags.add("specific_device")
-        if b & 0x08:
-            flags.add("routing_slave")
-        if b & 0x10:
-            flags.add("beam_capable")
-        if b & 0x20:
-            flags.add("sensor_250ms")
-        if b & 0x40:
-            flags.add("sensor_1000ms")
-        if b & 0x80:
-            flags.add("optional_functionality")
-
-    # Equivalent to controller function:
-    def GetNodeProtocolInfo(self):
-        def handler(message):
-            if not message:
-                logging.error("ProtocolInfo failed")
-                return
-            payload = message[4:-1]
-            if len(payload) < 5:
-                logging.error("bad ProtocolInfo payload: %s", message)
-                return
-            self._ProcessProtocolInfo(payload)
-
-        logging.warning("[%d] GetNodeProtocolInfo", self.n)
-        self.SendCommand(
-            zwave.API_ZW_GET_NODE_PROTOCOL_INFO, [self.n], handler)
-
-    def _RequestNodeInfo(self, retries):
-        r = retries - 1
-
-        def handler(m):
-            # if we timeout  m will be None
-            if m is not None and m[4] != 0:
-                return  # success
-            logging.warning("[%d] RequestNodeInfo failed: %s",
-                            self.n, zmessage.PrettifyRawMessage(m))
-            self._RequestNodeInfo(r)
-
-        if retries > 0:
-            logging.warning("[%d] RequestNodeInfo try:%d", self.n, retries)
-            self.SendCommand(zwave.API_ZW_REQUEST_NODE_INFO, [self.n], handler)
-        else:
-            logging.error("[%d] RequestNodeInfo failed permanently", self.n)
-
-    def _UpdateIsFailedNode(self, cb):
-        if self._is_self:
-            logging.warning("[%d] skip failed check for self", self.n)
-            return
-
-        def handler(m):
-            if m is None:
-                return
-            logging.info("[%d] is failed check: %d, %s", self.n,
-                         m[4], zmessage.PrettifyRawMessage(m))
-            self._failed = m[4] != 0
-            if cb: cb(m)
-
-        self.SendCommand(zwave.API_ZW_IS_FAILED_NODE_ID, [self.n], handler)
-
-    def Ping(self, retries, force):
-        logging.warning("[%d] Ping retries %d, force: %s", self.n, retries,
-                        force)
-        if self._is_self:
-            logging.warning("[%d] ignore RequestNodeInfo for self", self.n)
-            return
-
-        self.GetNodeProtocolInfo()
-        if force:
-            self._UpdateIsFailedNode(None)
-            self._RequestNodeInfo(retries)
-        else:
-            def handler(_):
-                if not self._failed:
-                    self._RequestNodeInfo(retries)
-
-            self._UpdateIsFailedNode(handler)
 
     def ProbeNode(self):
         self.BatchCommandSubmitFilteredFast(
-            [[zwave.NoOperation, zwave.NoOperation_Set]],
+            [(z.NoOperation, z.NoOperation_Set, {})],
             XMIT_OPTIONS)
 
     #        cmd = zwave_cmd.MakeWakeUpIntervalCapabilitiesGet(
     #            self.n, xmit, driver.GetCallbackId())
     #        driver.Send(cmd, handler, "WakeUpIntervalCapabilitiesGet")
+
     def RefreshCommandVersions(self, classes):
         self.BatchCommandSubmitFilteredSlow(CommandVersionQueries(classes),
                                             XMIT_OPTIONS)
@@ -872,78 +583,76 @@ class Node:
         self.RefreshCommandVersions(range(255))
 
     def RefreshSceneActuatorConfigurations(self, scenes):
-        c = [[zwave.SceneActuatorConf, zwave.SceneActuatorConf_Get, s]
+        c = [(z.SceneActuatorConf, z.SceneActuatorConf_Get, {"group": s})
              for s in scenes]
         self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)
 
-    def RefreshAllParameters(self):
-        c = [[zwave.Configuration, zwave.Configuration_Get, p]
+    def RefreshParameters(self):
+        c = [(z.Configuration, z.Configuration_Get, {"parameter": p})
              for p in range(255)]
         self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)
 
     def SetConfigValue(self, param, size, value, request_update=True):
-        reqs = [[zwave.Configuration, zwave.Configuration_Set, param, (size, value)]]
+        reqs = [(z.Configuration, z.Configuration_Set, param, {size, value})]
         if request_update:
-            reqs += [[zwave.Configuration, zwave.Configuration_Get, param]]
+            reqs += [(z.Configuration, z.Configuration_Get, {param})]
         self.BatchCommandSubmitFilteredFast(reqs, XMIT_OPTIONS)
 
     def SetSceneConfig(self, scene, delay, extra, level, request_update=True):
         self.BatchCommandSubmitFilteredFast(
-            [[zwave.SceneActuatorConf, zwave.SceneActuatorConf_Set,
-              scene, delay, extra, level]], XMIT_OPTIONS)
+            [(z.SceneActuatorConf, z.SceneActuatorConf_Set,
+              {scene, delay, extra, level})], XMIT_OPTIONS)
         if not request_update:
             return
         self.BatchCommandSubmitFilteredFast(
-            [[zwave.SceneActuatorConf, zwave.SceneActuatorConf_Get, scene]], XMIT_OPTIONS)
+            [(z.SceneActuatorConf, z.SceneActuatorConf_Get, {scene})], XMIT_OPTIONS)
 
     def ResetMeter(self, request_update=True):
-        self.BatchCommandSubmitFilteredFast(
-            [[zwave.Meter, zwave.Meter_Reset]], XMIT_OPTIONS)
+        # TODO
+        c = [(z.Meter, z.Meter_Reset, {})]
+        self.BatchCommandSubmitFilteredFast(c, XMIT_OPTIONS)
 
     def SetBasic(self, value, request_update=True):
-        self.BatchCommandSubmitFilteredFast(
-            [[zwave.Basic, zwave.Basic_Set, value]],
-            XMIT_OPTIONS)
-        if not request_update:
-            return
-        reqs = [[zwave.Basic, zwave.Basic_Get]]
+        reqs = [(z.Basic, z.Basic_Set, {"level": value})]
+        if request_update:
+            reqs += [(z.Basic, z.Basic_Get, {})]
         self.BatchCommandSubmitFilteredFast(reqs, XMIT_OPTIONS)
 
     # Version 1 of the command class does not support `delay`
     def SetMultilevelSwitch(self, value, delay=0, request_update=True):
-        reqs = [[zwave.SwitchMultilevel, zwave.SwitchMultilevel_Set, value, delay]]
+        reqs = [(z.SwitchMultilevel, z.SwitchMultilevel_Set, {"level": value, "duration": delay})]
         if request_update:
-            reqs += [[zwave.SwitchBinary, zwave.SwitchBinary_Get],
-                     [zwave.SwitchMultilevel, zwave.SwitchMultilevel_Get]]
+            reqs += [(z.SwitchBinary, z.SwitchBinary_Get, {}),
+                     (z.SwitchMultilevel, z.SwitchMultilevel_Get, {})]
         self.BatchCommandSubmitFilteredFast(reqs, XMIT_OPTIONS)
 
     def SetBinarySwitch(self, value, request_update=True):
-        reqs = [[zwave.SwitchBinary, zwave.SwitchBinary_Set, value]]
+        reqs = [(z.SwitchBinary, z.SwitchBinary_Set, {value})]
         if request_update:
-            reqs += [[zwave.SwitchBinary, zwave.SwitchBinary_Get],
-                     [zwave.SwitchMultilevel, zwave.SwitchMultilevel_Get]]
+            reqs += [(z.SwitchBinary, z.SwitchBinary_Get, {}),
+                     (z.SwitchMultilevel, z.SwitchMultilevel_Get, {})]
         self.BatchCommandSubmitFilteredFast(reqs, XMIT_OPTIONS)
 
     def RefreshAssociations(self):
-        c = [[zwave.AssociationGroupInformation,
-              zwave.AssociationGroupInformation_InfoGet, 64, 0]]
+        c = [(z.AssociationGroupInformation,
+              z.AssociationGroupInformation_InfoGet, {64, 0})]
         for no in self.associations.GetNumbers():
-            c.append([zwave.Association, zwave.Association_Get, no])
-            c.append([zwave.AssociationGroupInformation,
-                      zwave.AssociationGroupInformation_NameGet, no])
-            c.append([zwave.AssociationGroupInformation,
-                      zwave.AssociationGroupInformation_ListGet, 0, no])
+            c.append((z.Association, z.Association_Get, {no}))
+            c.append([z.AssociationGroupInformation,
+                      z.AssociationGroupInformation_NameGet, no])
+            c.append([z.AssociationGroupInformation,
+                      z.AssociationGroupInformation_ListGet, 0, no])
 
         self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)
 
     def AssociationAdd(self, group, n):
-        reqs = [[zwave.Association, zwave.Association_Set, group, [n]],
-                [zwave.Association, zwave.Association_Get, group]]
+        reqs = [[z.Association, z.Association_Set, group, [n]],
+                [z.Association, z.Association_Get, group]]
         self.BatchCommandSubmitFilteredFast(reqs, XMIT_OPTIONS)
 
     def AssociationRemove(self, group, n):
-        reqs = [[zwave.Association, zwave.Association_Remove, group, [n]],
-                [zwave.Association, zwave.Association_Get, group]]
+        reqs = [[z.Association, z.Association_Remove, group, [n]],
+                [z.Association, z.Association_Get, group]]
         self.BatchCommandSubmitFilteredFast(reqs, XMIT_OPTIONS)
 
     def RefreshDynamicValues(self):
@@ -977,78 +686,69 @@ class Node:
 
         # This must be last as we use this as an indicator for the
         # NODE_STATE_INTERVIEWED
-        last = [zwave.ManufacturerSpecific, zwave.ManufacturerSpecific_Get]
+        last = [z.ManufacturerSpecific, z.ManufacturerSpecific_Get]
         self.BatchCommandSubmitFilteredSlow([last], XMIT_OPTIONS)
 
-    def BatchCommandSubmitFiltered(self, commands, priority, xmit):
-        for cmd in commands:
-            if not self.commands.HasCommandClass(cmd[0]):
-                continue
+    def _MaybeChangeState(self, new_state):
+        old_state = self._state
+        if old_state < new_state:
+            logging.warning(
+                "[%d] state transition %s -- %s", self.n, old_state, new_state)
+            self._state = new_state
+        if new_state == actions.NODE_STATE_DISCOVERED:
+            if old_state < new_state and self.commands.HasCommandClass(z.Security):
+                pass
+            # self._InitializeSecurity()
+            elif old_state < actions.NODE_STATE_INTERVIEWED:
+                self.RefreshStaticValues()
+        else:
+            self.RefreshDynamicValues()
 
-            if self._IsSecureCommand(cmd[0], cmd[1]):
-                self._secure_messaging.Send(cmd)
-                continue
-
-            def handler(_):
-                logging.debug("@@handler invoked")
-
-            try:
-                raw_cmd = command.AssembleCommand(cmd)
-
-            except:
-                logging.error("cannot parse: %s", cmd)
-                print("-" * 60)
-                traceback.print_exc(file=sys.stdout)
-                print("-" * 60)
-
-            m = zmessage.MakeRawCommandWithId(self.n, raw_cmd, xmit)
-            mesg = zmessage.Message(m, priority(self.n), handler, self.n)
-            self._shared.mq.SendMessage(mesg)
-
-    def BatchCommandSubmitFilteredSlow(self, commands, xmit):
-        self.BatchCommandSubmitFiltered(commands, zmessage.NodePriorityLo, xmit)
-
-    def BatchCommandSubmitFilteredFast(self, commands, xmit):
-        self.BatchCommandSubmitFiltered(commands, zmessage.NodePriorityHi, xmit)
-
-    def BatchCommandSubmitFilteredSecure(self, commands):
-        for cmd in commands:
-            assert self.CommandIsSecure(cmd)
-            self._security_queue.Enqueue(cmd)
-        self.MaybeRequestNewNonce()
-
-    def MaybeRequestNewNonce(self):
-        if len(self._security_queue) == 0:
+    def put(self, _, key0, key1, values):
+        if key0 is None:
+            self._InitializeCommands(values["type"], values["commands"], values["controls"])
+            self._MaybeChangeState(actions.NODE_STATE_DISCOVERED)
             return
 
-    def SendCommand(self, func, data, handler):
-        raw = zmessage.MakeRawMessage(func, data)
-        mesg = zmessage.Message(
-            raw, zmessage.ControllerPriority(), handler, self.n)
-        self._shared.mq.SendMessage(mesg)
+        prefix = z.SUBCMD_TO_STRING.get(key0 * 256 + key1, "Unknown_%02x:%02x" % (key0, key1))
+        if self._state < actions.NODE_STATE_DISCOVERED:
+            self._protocol_node.Ping(3, False)
 
-    def SendSecureCommand(self, func, data, handler):
-        raw = zmessage.MakeRawMessage(func, data)
-        mesg = zmessage.Message(
-            raw, zmessage.ControllerPriority(), handler, self.n)
-        self._shared.mq.SendMessage(mesg)
+        new_state = actions.STATE_CHANGE.get((key0, key1))
+        if new_state is not None:
+            self._MaybeChangeState(new_state)
+
+        func = actions.ACTIONS.get((key0, key1))
+        if func is None:
+            logging.error("%s unknown command", prefix)
+            return
+
+        func(self, key0, key1, values)
+
+        # elif a == command.ACTION_STORE_MAP:
+        #    val = command.GetValue(actions, value, prefix)
+        #    if val.kind not in self._values:
+        #        self._values[val.kind] = {}
+        #    self._values[val.kind][val.unit] = val
+        # elif a == command.ACTION_STORE_SCENE:
+        #    if value[0] == 0:
+        #        # TODO
+        #        #self._values[command.VALUE_ACTIVE_SCENE] = -1
+        #        pass
+        #    else:
+        #        self.scenes[value[0]] = value[1:]
+        # elif a == command.SECURITY_SCHEME:
+        #    assert len(value) == 1
+        #    if value[0] == 0:
+        #        # not paired yet start key exchange
+        #        self.SecurityChangeKey(self._shared,security_key)
+        #    else:
+        #        # already paired
+        #        self.SecurityRequestClasses()
+        return
 
 
-NODES_HEADERS = [
-    "#",
-    "Name",
-    "Type",
-    "Id",
-    "Chip",
-    "Proto",
-    "Lib",
-    "Last Contact",
-    "Meter",
-    "Status",
-    "Actions"]
-
-
-class NodeSet(object):
+class ApplicationNodeSet(object):
     """NodeSet represents the collection of all nodes in a zwave network.
 
     All incoming application messages from the nodes (to the controller) are arrving in the
@@ -1065,155 +765,17 @@ class NodeSet(object):
 
     """
 
-    def __init__(self, message_queue: zdriver.Driver, event_cb, refresher_interval=60.0):
-        self._shared = _SharedNodeState(message_queue, event_cb, [1] * 16)
-        self._refresh_interval = refresher_interval
-        self.nodes = {}
-        self._terminate = False
-        self._receiver_thread = threading.Thread(
-            target=self._NodesetReceiverThread,
-            name="NodeSetReceive")
-        self._receiver_thread.start()
-        if refresher_interval != 0:
-            self._refresher_thread = threading.Thread(
-                target=self._NodesetRefresherThread,
-                name="NodeRefresher")
-            self._refresher_thread.start()
-        else:
-            self._refresher_thread = None
+    def __init__(self, nodeset: znode_protocol.NodeSet):
+        self._nodeset = nodeset
+        self._nodes = {}
 
-    def AllNodes(self):
-        return self.nodes.values()
+    def GetNode(self, n):
+        node = self._nodes.get(n)
+        if node is None:
+            node = ApplicationNode(n, self._nodeset.GetNode(n))
+            self._nodes[n] = node
+        return node
 
-    def SummaryTabular(self):
-        summary = {}
-        for no, node in self.nodes.items():
-            info = {
-                "last_contact": node._last_contact,
-                "state": node._state,
-            }
-            meters = [list(k) + list(v) for (k, v) in node.meters.items()]
-            info["meters"] = meters
-            sensors = [list(k) + [v] for (k, v) in node.sensors.items()]
-
-            info["sensors"] = sensors
-            summary[no] = info
-        return summary
-
-    def Summary(self):
-        date = time.strftime("%Y/%m/%d %H:%M:%S")
-        out = []
-        for no, node in self.nodes.items():
-            name = node.name
-            last = time.strftime(
-                "%Y/%m/%d %H:%M:%S", time.localtime(node._last_contact))
-            state = node._state
-            for (k, v) in node.meters.items():
-                out.append(
-                    [date, last, no, name, state, k[0], k[1], v[0], v[1]])
-            for (k, v) in node.sensors.items():
-                out.append([date, last, no, name, state, k[0], k[1], v, 0])
-        return out
-
-    def _NodesetRefresherThread(self):
-        logging.warning("_NodesetRefresherThread started")
-        # time.sleep(self._refresh_interval)
-        time.sleep(10)
-        while not self._terminate:
-            time.sleep(10)
-            now = time.time()
-
-            def slow(node):
-                if not node._last_contact:
-                    return False
-                if node.IsSelf():
-                    return False
-                return now - node._last_contact > self._refresh_interval
-
-            candidates = [node for node in self.nodes.values() if slow(node)]
-            if candidates:
-                node = random.choice(candidates)
-                logging.warning("refreshing: [%d] %s", node.n, node.name)
-                node.RefreshDynamicValues()
-
-            def unknown(node):
-                if node.IsSelf():
-                    return False
-                return node._state == command.NODE_STATE_NONE
-
-            candidates = [
-                node for node in self.nodes.values() if unknown(node)]
-            if candidates:
-                node = random.choice(candidates)
-                logging.warning("ping: [%d] %s", node.n, node.name)
-                node.Ping(1, True)
-        logging.warning("_NodesetRefresherThread terminated")
-
-    def GetNode(self, num) -> Node:
-        if num not in self.nodes:
-            self.nodes[num] = Node(num, self._shared)
-        return self.nodes[num]
-
-    def DropNode(self, num):
-        del self.nodes[num]
-
-    def Terminate(self):
-        self._terminate = True
-        self._shared.mq.PutIncommingRawMessage(None)
-        self._receiver_thread.join()
-        if self._refresher_thread:
-            self._refresher_thread.join()
-        logging.info("NodeSet terminated")
-
-    def HandleMessage(self, ts, m):
-        # logging.info("NodeSet received: %s",  zmessage.PrettifyRawMessage(m))
-        if m[3] == zwave.API_APPLICATION_COMMAND_HANDLER:
-            _ = m[4]  # status
-            n = m[5]
-            size = m[6]
-            node = self.GetNode(n)
-            try:
-                c = [int(x) for x in m[7:7 + size]]
-                c = MaybePatchCommand(c)
-                node.ProcessCommand(ts, c)
-            except:
-                logging.error(
-                    "Exception caught: cannot parse: %s", zmessage.PrettifyRawMessage(m))
-                print("-" * 60)
-                traceback.print_exc(file=sys.stdout)
-                print("-" * 60)
-            if node._state < command.NODE_STATE_DISCOVERED:
-                node.Ping(3, True)
-        elif m[3] == zwave.API_ZW_APPLICATION_UPDATE:
-            # logging.warning("NodeSet received: %s",  zmessage.PrettifyRawMessage(m))
-            kind = m[4]
-            if kind == zwave.UPDATE_STATE_NODE_INFO_REQ_FAILED:
-                n = m[5]
-                if n != 0:
-                    logging.error(
-                        "update request failed: %s", zmessage.PrettifyRawMessage(m))
-            elif kind == zwave.UPDATE_STATE_NODE_INFO_RECEIVED:
-                # the node is awake now and/or has changed values
-                n = m[5]
-                length = m[6]
-                m = m[7: 7 + length]
-                node = self.GetNode(n)
-                node.ProcessNodeInfo(ts, m)
-            elif kind == zwave.UPDATE_STATE_SUC_ID:
-                logging.warning("succ id updated")
-            else:
-                logging.error("unknown kind: %x", kind)
-                assert False
-        else:
-            logging.error("unexpected message: %s", m)
-
-    def _NodesetReceiverThread(self):
-        logging.warning("_NodesetReceiverThread started")
-        while True:
-            ts, m = self._shared.mq.GetIncommingRawMessage()
-            if m is None:
-                break
-            if m is None:
-                break
-            self.HandleMessage(ts, m)
-        logging.warning("_NodesetReceiverThread terminated")
+    def put(self, n, ts, key, values):
+        node = self.GetNode(n)
+        node.put(ts, key, values)

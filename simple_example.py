@@ -28,7 +28,8 @@ import time
 
 from pyzwaver import zcontroller
 from pyzwaver import zdriver
-from pyzwaver import znodeset
+from pyzwaver import znode_protocol
+from pyzwaver import z
 
 
 # use --logging=none
@@ -50,13 +51,16 @@ class MyFormatter(logging.Formatter):
             record.msg % record.args)
 
 
-class Listener(object):
+class TestListener(object):
 
     def __init__(self):
         self._count = 0
 
-    def put(self, n, ts, key, values):
-        logging.info("RECEIVED [%d]: %s - %s", n, key, values)
+    def put(self, n, _, key0, key1, values):
+        name = "@NONE@"
+        if key0 is not None:
+            name = "%s  (%02:%02x)" % (z.SUBCMD_TO_STRING.get(key0 * 256 + key1), key0, key1)
+        logging.info("RECEIVED [%d]: %s - %s", n, name, values)
         self._count += 1
 
 
@@ -92,8 +96,8 @@ def main():
     CONTROLLER.UpdateRoutingInfo()
     time.sleep(2)
     print(CONTROLLER)
-    NODESET = znodeset.NodeSet(DRIVER, CONTROLLER.GetNodeId())
-    NODESET.AddListener(Listener())
+    NODESET = znode_protocol.NodeSet(DRIVER, CONTROLLER.GetNodeId())
+    NODESET.AddListener(TestListener())
     # n.InitializeExternally(CONTROLLER.props.product, CONTROLLER.props.library_type, True)
     logging.info("pinging %d nodes", len(CONTROLLER.nodes))
     for n in CONTROLLER.nodes:

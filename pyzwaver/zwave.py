@@ -895,9 +895,9 @@ SUBCMD_TO_PARSE_TABLE = {
     0x0000: [],  # Set (0)
 
     # Basic (0x20 = 32)
-    0x2001: ['B{generic}'],  # Set (1)
+    0x2001: ['B{level}'],  # Set (1)
     0x2002: [],  # Get (2)
-    0x2003: ['B{generic}'],  # Report (3)
+    0x2003: ['B{level}'],  # Report (3)
 
     # ControllerReplication (0x21 = 33)
     0x2131: ['B{seq}', 'B{group}', 'B{node}'],  # TransferGroup (49)
@@ -913,7 +913,7 @@ SUBCMD_TO_PARSE_TABLE = {
     0x2503: ['B{level}'],  # Report (3)
 
     # SwitchMultilevel (0x26 = 38)
-    0x2601: ['B{percent}', 'B{duration}'],  # Set (1)
+    0x2601: ['B{level}', 'B{duration}'],  # Set (1)
     0x2602: [],  # Get (2)
     0x2603: ['B{percent}'],  # Report (3)
     0x2604: ['B{mode}', 'L{command}'],  # StartLevelChange (4)

@@ -471,9 +471,9 @@ C("NoOperation", 0x00,
   Set=(0x0, ""))
 
 C("Basic", 0x20,
-  Set=(0x1, "B{generic}"),
+  Set=(0x1, "B{level}"),
   Get=(0x2, ""),
-  Report=(0x3, "B{generic}"))
+  Report=(0x3, "B{level}"))
 
 C("ControllerReplication", 0x21,
   TransferGroup=(0x31, "B{seq},B{group},B{node}"),
@@ -493,9 +493,9 @@ C("SwitchBinary", 0x25,
   Report=(0x3, "B{level}"))
 
 C("SwitchMultilevel", 0x26,
-  Set=(0x01, "B{percent},B{duration}"),
+  Set=(0x01, "B{level},B{duration}"),
   Get=(0x02, ""),
-  Report=(0x03, "B{percent}"),
+  Report=(0x03, "B{level}"),
   StartLevelChange=(0x04, "B{mode},L{command}"),
   StopLevelChange=(0x05, ""),
   SupportedGet=(0x06, ""),
@@ -504,7 +504,7 @@ C("SwitchMultilevel", 0x26,
 C("SwitchAll", 0x27,
   Set=(0x1, "B{mode}"),
   Get=(0x2, ""),
-  Report=(0x3, "B{level}"),
+  Report=(0x3, "B{mode}"),
   On=(0x4, ""),
   Off=(0x5, ""))
 
@@ -631,7 +631,7 @@ C("Configuration", 0x70,
 C("Alarm", 0x71,
   Get=(0x4, ""),
   Report=(0x5, "B{type},B{level}"),
-  Set=(0x6, "B{type},B{level}"),
+  Set=(0x6, "B{type},B{status}"),
   SupportedGet=(0x7, ""),
   SupportedReport=(0x8, ""),
   )
@@ -678,7 +678,7 @@ C("RemoteAssociationActivate", 0x7c)
 
 C("Battery", 0x80,
   Get=(0x2, ""),
-  Report=(0x3, "B{percent}"))
+  Report=(0x3, "B{level}"))
 
 C("Clock", 0x81,
   Set=(0x4, "B{dayhour},B{minute}"),

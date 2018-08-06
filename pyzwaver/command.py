@@ -24,7 +24,7 @@ It also contains some logic pertaining to the node state machine.
 import logging
 import re
 
-from pyzwaver import zwave
+from pyzwaver import zwave as z
 
 
 # ======================================================================
@@ -293,7 +293,7 @@ def _GetParameterDescriptors(m):
         logging.error("malformed command %s", m)
         return None
     key = m[0] * 256 + m[1]
-    return zwave.SUBCMD_TO_PARSE_TABLE[key]
+    return z.SUBCMD_TO_PARSE_TABLE[key]
 
 
 def ParseCommand(m, prefix=""):
@@ -355,7 +355,7 @@ def _MakeMeter(args):
 
 # raw_cmd: [class, subcommand, arg1, arg2, ....]
 def AssembleCommand(cmd0, cmd1, args):
-    table = zwave.SUBCMD_TO_PARSE_TABLE[cmd0 * 256 + cmd1]
+    table = z.SUBCMD_TO_PARSE_TABLE[cmd0 * 256 + cmd1]
     assert table is not None
     data = [
         cmd0,

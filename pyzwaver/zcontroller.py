@@ -24,7 +24,7 @@ import struct
 import time
 
 from pyzwaver import zdriver
-from pyzwaver import zwave
+from pyzwaver import zwave as z
 from pyzwaver import zmessage
 
 _APPLICATION_NODEINFO_LISTENING = 1
@@ -68,46 +68,46 @@ PAIRING_ACTION_DONE = 2
 PAIRING_ACTION_FAILED = 3
 PAIRING_ACTION_DONE_UPDATE = 4
 
-HANDLER_TYPE_ADD_NODE = (zwave.ADD_NODE_STATUS_TO_STRING, {
-    zwave.ADD_NODE_STATUS_LEARN_READY: PAIRING_ACTION_CONTINUE,
-    zwave.ADD_NODE_STATUS_ADDING_SLAVE: PAIRING_ACTION_CONTINUE,
-    zwave.ADD_NODE_STATUS_ADDING_CONTROLLER: PAIRING_ACTION_CONTINUE,
-    zwave.ADD_NODE_STATUS_NODE_FOUND: PAIRING_ACTION_CONTINUE,
+HANDLER_TYPE_ADD_NODE = (z.ADD_NODE_STATUS_TO_STRING, {
+    z.ADD_NODE_STATUS_LEARN_READY: PAIRING_ACTION_CONTINUE,
+    z.ADD_NODE_STATUS_ADDING_SLAVE: PAIRING_ACTION_CONTINUE,
+    z.ADD_NODE_STATUS_ADDING_CONTROLLER: PAIRING_ACTION_CONTINUE,
+    z.ADD_NODE_STATUS_NODE_FOUND: PAIRING_ACTION_CONTINUE,
 
-    zwave.ADD_NODE_STATUS_FAILED: PAIRING_ACTION_FAILED,
-    zwave.REMOVE_NODE_STATUS_NOT_INCLUSION_CONTROLLER: PAIRING_ACTION_FAILED,
+    z.ADD_NODE_STATUS_FAILED: PAIRING_ACTION_FAILED,
+    z.REMOVE_NODE_STATUS_NOT_INCLUSION_CONTROLLER: PAIRING_ACTION_FAILED,
 
-    zwave.ADD_NODE_STATUS_DONE: PAIRING_ACTION_DONE_UPDATE,
-    zwave.ADD_NODE_STATUS_PROTOCOL_DONE: PAIRING_ACTION_DONE_UPDATE,
+    z.ADD_NODE_STATUS_DONE: PAIRING_ACTION_DONE_UPDATE,
+    z.ADD_NODE_STATUS_PROTOCOL_DONE: PAIRING_ACTION_DONE_UPDATE,
 })
 
-HANDLER_TYPE_STOP = (zwave.ADD_NODE_STATUS_TO_STRING, {
-    zwave.ADD_NODE_STATUS_LEARN_READY: PAIRING_ACTION_CONTINUE,
-    zwave.ADD_NODE_STATUS_ADDING_SLAVE: PAIRING_ACTION_CONTINUE,
-    zwave.ADD_NODE_STATUS_ADDING_CONTROLLER: PAIRING_ACTION_CONTINUE,
-    zwave.ADD_NODE_STATUS_NODE_FOUND: PAIRING_ACTION_CONTINUE,
+HANDLER_TYPE_STOP = (z.ADD_NODE_STATUS_TO_STRING, {
+    z.ADD_NODE_STATUS_LEARN_READY: PAIRING_ACTION_CONTINUE,
+    z.ADD_NODE_STATUS_ADDING_SLAVE: PAIRING_ACTION_CONTINUE,
+    z.ADD_NODE_STATUS_ADDING_CONTROLLER: PAIRING_ACTION_CONTINUE,
+    z.ADD_NODE_STATUS_NODE_FOUND: PAIRING_ACTION_CONTINUE,
 
-    zwave.ADD_NODE_STATUS_FAILED: PAIRING_ACTION_DONE,
-    zwave.REMOVE_NODE_STATUS_NOT_INCLUSION_CONTROLLER: PAIRING_ACTION_DONE,
+    z.ADD_NODE_STATUS_FAILED: PAIRING_ACTION_DONE,
+    z.REMOVE_NODE_STATUS_NOT_INCLUSION_CONTROLLER: PAIRING_ACTION_DONE,
 
-    zwave.ADD_NODE_STATUS_DONE: PAIRING_ACTION_DONE,
-    zwave.ADD_NODE_STATUS_PROTOCOL_DONE: PAIRING_ACTION_DONE,
+    z.ADD_NODE_STATUS_DONE: PAIRING_ACTION_DONE,
+    z.ADD_NODE_STATUS_PROTOCOL_DONE: PAIRING_ACTION_DONE,
 })
 
-HANDLER_TYPE_REMOVE_NODE = (zwave.REMOVE_NODE_STATUS_TO_STRING, {
-    zwave.REMOVE_NODE_STATUS_LEARN_READY: PAIRING_ACTION_CONTINUE,
-    zwave.REMOVE_NODE_STATUS_REMOVING_SLAVE: PAIRING_ACTION_CONTINUE,
-    zwave.REMOVE_NODE_STATUS_NODE_FOUND: PAIRING_ACTION_CONTINUE,
-    zwave.REMOVE_NODE_STATUS_NOT_INCLUSION_CONTROLLER: PAIRING_ACTION_FAILED,
-    zwave.REMOVE_NODE_STATUS_FAILED: PAIRING_ACTION_FAILED,
-    zwave.REMOVE_NODE_STATUS_DONE: PAIRING_ACTION_DONE_UPDATE,
-    zwave.REMOVE_NODE_STATUS_REMOVING_CONTROLLER: PAIRING_ACTION_CONTINUE,
+HANDLER_TYPE_REMOVE_NODE = (z.REMOVE_NODE_STATUS_TO_STRING, {
+    z.REMOVE_NODE_STATUS_LEARN_READY: PAIRING_ACTION_CONTINUE,
+    z.REMOVE_NODE_STATUS_REMOVING_SLAVE: PAIRING_ACTION_CONTINUE,
+    z.REMOVE_NODE_STATUS_NODE_FOUND: PAIRING_ACTION_CONTINUE,
+    z.REMOVE_NODE_STATUS_NOT_INCLUSION_CONTROLLER: PAIRING_ACTION_FAILED,
+    z.REMOVE_NODE_STATUS_FAILED: PAIRING_ACTION_FAILED,
+    z.REMOVE_NODE_STATUS_DONE: PAIRING_ACTION_DONE_UPDATE,
+    z.REMOVE_NODE_STATUS_REMOVING_CONTROLLER: PAIRING_ACTION_CONTINUE,
 })
 
-HANDLER_TYPE_SET_LEARN_MODE = (zwave.LEARN_MODE_STATUS_TO_STRING, {
-    zwave.LEARN_MODE_STATUS_STARTED: PAIRING_ACTION_CONTINUE,
-    zwave.LEARN_MODE_STATUS_FAILED: PAIRING_ACTION_FAILED,
-    zwave.LEARN_MODE_STATUS_DONE: PAIRING_ACTION_DONE_UPDATE,
+HANDLER_TYPE_SET_LEARN_MODE = (z.LEARN_MODE_STATUS_TO_STRING, {
+    z.LEARN_MODE_STATUS_STARTED: PAIRING_ACTION_CONTINUE,
+    z.LEARN_MODE_STATUS_FAILED: PAIRING_ACTION_FAILED,
+    z.LEARN_MODE_STATUS_DONE: PAIRING_ACTION_DONE_UPDATE,
 })
 
 
@@ -144,13 +144,13 @@ class ControllerProperties:
 
     def SetControllerCapabilites(self, caps):
         logging.info("capabilities: %x", caps)
-        if caps & zwave.CAP_CONTROLLER_SECONDARY:
+        if caps & z.CAP_CONTROLLER_SECONDARY:
             self.attrs.add("secondary")
-        if caps & zwave.CAP_CONTROLLER_SUC:
+        if caps & z.CAP_CONTROLLER_SUC:
             self.attrs.add("suc")
-        if caps & zwave.CAP_CONTROLLER_SIS:
+        if caps & z.CAP_CONTROLLER_SIS:
             self.attrs.add("sis")
-        if caps & zwave.CAP_CONTROLLER_REAL_PRIMARY:
+        if caps & z.CAP_CONTROLLER_REAL_PRIMARY:
             self.attrs.add("real_primary")
 
     def HasApi(self, func):
@@ -161,7 +161,7 @@ class ControllerProperties:
         self.serial_api_version = serial_api_version
         self.product = (manu_id, type_id, prod_id)
         self._api_mask = api_mask
-        for func, name in zwave.API_TO_STRING.items():
+        for func, name in z.API_TO_STRING.items():
             if self.HasApi(func):
                 logging.info("has api %x %s", func, name)
 
@@ -171,11 +171,11 @@ class ControllerProperties:
         self.chip_type = chip_type
         self.version = version
         logging.info("serial caps: %x", caps)
-        if caps & zwave.SERIAL_CAP_SLAVE:
+        if caps & z.SERIAL_CAP_SLAVE:
             self.attrs.add("serial_slave")
-        if caps & zwave.SERIAL_CAP_TIMER_SUPPORT:
+        if caps & z.SERIAL_CAP_TIMER_SUPPORT:
             self.attrs.add("serial_timer")
-        if caps & zwave.SERIAL_CAP_SECONDARY:
+        if caps & z.SERIAL_CAP_SECONDARY:
             self.attrs.add("serial_secondary")
         return bits
 
@@ -243,19 +243,19 @@ class Controller:
         def handler(data):
             self.props.SetVersion(*struct.unpack(">12sB", data[4:-1]))
 
-        self.SendCommand(zwave.API_ZW_GET_VERSION, [], handler)
+        self.SendCommand(z.API_ZW_GET_VERSION, [], handler)
 
     def UpdateId(self):
         def handler(data):
             self.props.SetId(*struct.unpack(">IB", data[4:-1]))
 
-        self.SendCommand(zwave.API_ZW_MEMORY_GET_ID, [], handler)
+        self.SendCommand(z.API_ZW_MEMORY_GET_ID, [], handler)
 
     def UpdateControllerCapabilities(self):
         def handler(data):
             self.props.SetControllerCapabilites(data[4])
 
-        self.SendCommand(zwave.API_ZW_GET_CONTROLLER_CAPABILITIES, [], handler)
+        self.SendCommand(z.API_ZW_GET_CONTROLLER_CAPABILITIES, [], handler)
 
     def UpdateSerialApiGetCapabilities(self):
         """
@@ -264,7 +264,7 @@ class Controller:
         def handler(data):
             self.props.SetSerialCapabilities(*struct.unpack(">HHHH32s", data[4:-1]))
 
-        self.SendCommand(zwave.API_SERIAL_API_GET_CAPABILITIES, [], handler)
+        self.SendCommand(z.API_SERIAL_API_GET_CAPABILITIES, [], handler)
 
     def UpdateSerialApiGetInitData(self):
         """This get all the node numbers"""
@@ -273,13 +273,13 @@ class Controller:
             bits = self.props.SetInitAndReturnBits(*struct.unpack(">BBB29sBB", data[4:-1]))
             self.nodes = ExtractNodes(bits)
 
-        self.SendCommand(zwave.API_SERIAL_API_GET_INIT_DATA, [], handler)
+        self.SendCommand(z.API_SERIAL_API_GET_INIT_DATA, [], handler)
 
     def SetTimeouts(self, ack_timeout_msec, byte_timeout_msec):
         def handler(data):
             logging.info("previous timeouts: %d %d", data[4] * 10, data[5] * 10)
 
-        self.SendCommand(zwave.API_SERIAL_API_SET_TIMEOUTS,
+        self.SendCommand(z.API_SERIAL_API_SET_TIMEOUTS,
                          [ack_timeout_msec // 10, byte_timeout_msec // 10],
                          handler)
 
@@ -288,7 +288,7 @@ class Controller:
             self.succ_node = data[4]
             logging.info("suc node id: %s", data[4])
 
-        self.SendCommand(zwave.API_ZW_GET_SUC_NODE_ID, [], handler)
+        self.SendCommand(z.API_ZW_GET_SUC_NODE_ID, [], handler)
 
     def GetRandom(self, _, cb):
         def handler(data):
@@ -297,7 +297,7 @@ class Controller:
             data = data[6:6 + size]
             cb(success, data)
 
-        self.SendCommand(zwave.API_ZW_GET_RANDOM, [], handler)
+        self.SendCommand(z.API_ZW_GET_RANDOM, [], handler)
 
     def UpdateFailedNode(self, node):
         def handler(data):
@@ -306,7 +306,7 @@ class Controller:
             else:
                 self.failed_nodes.discard(node)
 
-        self.SendCommand(zwave.API_ZW_IS_FAILED_NODE_ID, [node], handler)
+        self.SendCommand(z.API_ZW_IS_FAILED_NODE_ID, [node], handler)
 
     def ReadMemory(self, offset, length, cb):
         def handler(data, _):
@@ -314,7 +314,7 @@ class Controller:
             logging.info("received %x bytes", len(data))
             cb(data)
 
-        self.SendCommand(zwave.API_ZW_READ_MEMORY,
+        self.SendCommand(z.API_ZW_READ_MEMORY,
                          [offset >> 8, offset & 0xff, length],
                          handler)
 
@@ -322,7 +322,7 @@ class Controller:
         def handler(data):
             cb(node, ExtractNodes(data[4:-1]))
 
-        self.SendCommand(zwave.API_ZW_GET_ROUTING_INFO,
+        self.SendCommand(z.API_ZW_GET_ROUTING_INFO,
                          [node, rem_bad, rem_non_repeaters, 3],
                          handler)
 
@@ -330,7 +330,7 @@ class Controller:
         def handler(_):
             pass
 
-        self.SendCommand(zwave.API_ZW_SET_PROMISCUOUS_MODE, [state], handler)
+        self.SendCommand(z.API_ZW_SET_PROMISCUOUS_MODE, [state], handler)
 
     def RequestNodeInfo(self, node, cb=None):
         """Force the generation of a zwave.API_ZW_APPLICATION_UPDATE event
@@ -341,19 +341,19 @@ class Controller:
             if cb:
                 cb(data[4])
 
-        self.SendCommand(zwave.API_ZW_REQUEST_NODE_INFO, [node], handler)
+        self.SendCommand(z.API_ZW_REQUEST_NODE_INFO, [node], handler)
 
     def RemoveFailedNode(self, node, cb):
         def handler(m):
             if not m:
                 cb(MESSAGE_TIMEOUT)
-            elif m[2] == zwave.RESPONSE:
+            elif m[2] == z.RESPONSE:
                 cb(MESSAGE_NOT_DELIVERED)
             else:
                 return cb(m[5])
 
         self.SendCommandWithId(
-            zwave.API_ZW_REMOVE_FAILED_NODE_ID, [node], handler)
+            z.API_ZW_REMOVE_FAILED_NODE_ID, [node], handler)
 
     # ============================================================
     # Routing
@@ -410,47 +410,47 @@ class Controller:
         return Handler
 
     def AddNodeToNetwork(self, event_cb):
-        mode = [zwave.ADD_NODE_ANY]
+        mode = [z.ADD_NODE_ANY]
         cb = self.FancyReceiver(ACTIVITY_ADD_NODE, HANDLER_TYPE_ADD_NODE, event_cb)
-        return self.SendCommandWithId(zwave.API_ZW_ADD_NODE_TO_NETWORK, mode, cb,
+        return self.SendCommandWithId(z.API_ZW_ADD_NODE_TO_NETWORK, mode, cb,
                                       timeout=self._pairing_timeout_sec)
 
     def StopAddNodeToNetwork(self, event_cb):
-        mode = [zwave.ADD_NODE_STOP]
+        mode = [z.ADD_NODE_STOP]
         cb = self.FancyReceiver(ACTIVITY_ADD_NODE, HANDLER_TYPE_STOP, event_cb)
-        return self.SendCommandWithId(zwave.API_ZW_ADD_NODE_TO_NETWORK, mode, cb,
+        return self.SendCommandWithId(z.API_ZW_ADD_NODE_TO_NETWORK, mode, cb,
                                       timeout=self._pairing_timeout_sec)
 
     def RemoveNodeFromNetwork(self, event_cb):
-        mode = [zwave.REMOVE_NODE_ANY]
+        mode = [z.REMOVE_NODE_ANY]
         cb = self.FancyReceiver(ACTIVITY_REMOVE_NODE, HANDLER_TYPE_REMOVE_NODE, event_cb)
-        return self.SendCommandWithId(zwave.API_ZW_REMOVE_NODE_FROM_NETWORK, mode, cb,
+        return self.SendCommandWithId(z.API_ZW_REMOVE_NODE_FROM_NETWORK, mode, cb,
                                       timeout=self._pairing_timeout_sec)
 
     def StopRemoveNodeFromNetwork(self, _):
-        mode = [zwave.REMOVE_NODE_STOP]
+        mode = [z.REMOVE_NODE_STOP]
         # NOTE: this will sometimes result in a "stray request" being sent back:
         #  SOF len:07 REQU API_ZW_REMOVE_NODE_FROM_NETWORK:4b cb:64 status:06 00 00 chk:d1
         # We just drop this message on the floor
-        return self.SendCommandWithIdNoResponse(zwave.API_ZW_REMOVE_NODE_FROM_NETWORK, mode)
+        return self.SendCommandWithIdNoResponse(z.API_ZW_REMOVE_NODE_FROM_NETWORK, mode)
 
     def SetLearnMode(self, event_cb):
-        mode = [zwave.LEARN_MODE_NWI]
+        mode = [z.LEARN_MODE_NWI]
         cb = self.FancyReceiver(ACTIVITY_SET_LEARN_MODE, HANDLER_TYPE_SET_LEARN_MODE, event_cb)
-        return self.SendCommandWithId(zwave.API_ZW_SET_LEARN_MODE, mode, cb, timeout=self._pairing_timeout_sec)
+        return self.SendCommandWithId(z.API_ZW_SET_LEARN_MODE, mode, cb, timeout=self._pairing_timeout_sec)
 
     def StopSetLearnMode(self, _):
-        mode = [zwave.LEARN_MODE_DISABLE]
-        return self.SendCommandWithIdNoResponse(zwave.API_ZW_SET_LEARN_MODE, mode)
+        mode = [z.LEARN_MODE_DISABLE]
+        return self.SendCommandWithIdNoResponse(z.API_ZW_SET_LEARN_MODE, mode)
 
     def ChangeController(self, event_cb):
-        mode = [zwave.CONTROLLER_CHANGE_START]
+        mode = [z.CONTROLLER_CHANGE_START]
         cb = self.FancyReceiver(ACTIVITY_CHANGE_CONTROLLER, HANDLER_TYPE_ADD_NODE, event_cb)
-        return self.SendCommandWithId(zwave.API_ZW_CONTROLLER_CHANGE, mode, cb, timeout=self._pairing_timeout_sec)
+        return self.SendCommandWithId(z.API_ZW_CONTROLLER_CHANGE, mode, cb, timeout=self._pairing_timeout_sec)
 
     def StopChangeController(self, _):
-        mode = [zwave.CONTROLLER_CHANGE_STOP]
-        return self.SendCommandWithIdNoResponse(zwave.API_ZW_CONTROLLER_CHANGE, mode)
+        mode = [z.CONTROLLER_CHANGE_STOP]
+        return self.SendCommandWithIdNoResponse(z.API_ZW_CONTROLLER_CHANGE, mode)
 
     # ============================================================
     # ============================================================
@@ -461,7 +461,7 @@ class Controller:
             logging.warning("controller is now initialized")
             self._state = CONTROLLER_STATE_INITIALIZED
 
-        self.SendCommand(zwave.API_SERIAL_API_APPL_NODE_INFORMATION,
+        self.SendCommand(z.API_SERIAL_API_APPL_NODE_INFORMATION,
                          [_APPLICATION_NODEINFO_LISTENING,
                           2,  # generic
                           1,  # specific
@@ -473,7 +473,7 @@ class Controller:
         def handler(message):
             cb(message[4:-1])
 
-        self.SendCommandWithId(zwave.API_ZW_SEND_NODE_INFORMATION,
+        self.SendCommandWithId(z.API_ZW_SEND_NODE_INFORMATION,
                                [dst_node, xmit],
                                handler)
 
@@ -481,13 +481,13 @@ class Controller:
         def handler(message):
             logging.warning("set default response %s", message[4:-1])
 
-        self.SendCommandWithId(zwave.API_ZW_SET_DEFAULT, [], handler)
+        self.SendCommandWithId(z.API_ZW_SET_DEFAULT, [], handler)
 
     def SoftReset(self):
         def handler(message):
             logging.warning("soft reset response %s", message[4:-1])
 
-        self.SendCommandWithId(zwave.API_SERIAL_API_SOFT_RESET, [], handler)
+        self.SendCommandWithId(z.API_SERIAL_API_SOFT_RESET, [], handler)
 
     def SendCommand(self, func, data, handler):
         raw = zmessage.MakeRawMessage(func, data)

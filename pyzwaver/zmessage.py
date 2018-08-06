@@ -24,7 +24,7 @@ import logging
 import threading
 import time
 
-from pyzwaver import zwave
+from pyzwaver import zwave as z
 
 
 # ==================================================
@@ -78,35 +78,35 @@ def PrettifyRawMessage(m):
         return "None"
 
     out = Hexify(m)
-    out[0] = zwave.FIRST_TO_STRING.get(m[0], "??")
-    if m[0] != zwave.SOF:
+    out[0] = z.FIRST_TO_STRING.get(m[0], "??")
+    if m[0] != z.SOF:
         return " ".join(out)
     out[1] = "len:" + out[1]
-    if m[2] == zwave.REQUEST:
+    if m[2] == z.REQUEST:
         out[2] = "REQU"
-    if m[2] == zwave.RESPONSE:
+    if m[2] == z.RESPONSE:
         out[2] = "RESP"
     out[-1] = "chk:" + out[-1]
     func = m[3]
-    if func in zwave.API_TO_STRING:
-        out[3] = zwave.API_TO_STRING[func] + ":" + out[3]
-    if func == zwave.API_ZW_APPLICATION_UPDATE and len(m) > 5:
+    if func in z.API_TO_STRING:
+        out[3] = z.API_TO_STRING[func] + ":" + out[3]
+    if func == z.API_ZW_APPLICATION_UPDATE and len(m) > 5:
         out[5] = "node:" + out[5]
-        if m[2] == zwave.REQUEST:
-            out[4] = zwave.UPDATE_STATE_TO_STRING[m[4]]
-    elif func == zwave.API_APPLICATION_COMMAND_HANDLER and len(m) > 8:
+        if m[2] == z.REQUEST:
+            out[4] = z.UPDATE_STATE_TO_STRING[m[4]]
+    elif func == z.API_APPLICATION_COMMAND_HANDLER and len(m) > 8:
         out[6] = "len:" + out[6]
         out[5] = "node:" + out[5]
-        s = zwave.SUBCMD_TO_STRING.get(m[7] * 256 + m[8])
+        s = z.SUBCMD_TO_STRING.get(m[7] * 256 + m[8])
         if s:
             out[7] = s + ":" + out[7]
             out[8] = "X:" + out[8]
         else:
             logging.error("did not find command %s %s  [%s]", m[7], m[8], m)
 
-    elif (func == zwave.API_ZW_ADD_NODE_TO_NETWORK or
-          func == zwave.API_ZW_REMOVE_NODE_FROM_NETWORK or
-          func == zwave.API_ZW_SET_LEARN_MODE) and len(m) > 7:
+    elif (func == z.API_ZW_ADD_NODE_TO_NETWORK or
+          func == z.API_ZW_REMOVE_NODE_FROM_NETWORK or
+          func == z.API_ZW_SET_LEARN_MODE) and len(m) > 7:
 
         if len(m) == 7:
             # sednding
@@ -116,17 +116,17 @@ def PrettifyRawMessage(m):
             # receiving
             out[4] = "cb:" + out[4]
             out[5] = "status:" + out[5]
-    elif (func == zwave.API_ZW_REQUEST_NODE_INFO or
-          func == zwave.API_ZW_GET_NODE_PROTOCOL_INFO or
-          func == zwave.API_ZW_GET_ROUTING_INFO or
-          func == zwave.API_ZW_IS_FAILED_NODE_ID) and len(m) > 4:
-        if m[2] == zwave.REQUEST and len(out) > 4:
+    elif (func == z.API_ZW_REQUEST_NODE_INFO or
+          func == z.API_ZW_GET_NODE_PROTOCOL_INFO or
+          func == z.API_ZW_GET_ROUTING_INFO or
+          func == z.API_ZW_IS_FAILED_NODE_ID) and len(m) > 4:
+        if m[2] == z.REQUEST and len(out) > 4:
             out[4] = "node:" + out[4]
-    elif func == zwave.API_ZW_ADD_NODE_TO_NETWORK:
-        out[4] = zwave.ADD_NODE_TO_STRING[m[4]]
-    elif (func == zwave.API_ZW_SEND_DATA or
-          func == zwave.API_ZW_REPLICATION_SEND_DATA) and len(m) > 7:
-        if m[2] == zwave.REQUEST:
+    elif func == z.API_ZW_ADD_NODE_TO_NETWORK:
+        out[4] = z.ADD_NODE_TO_STRING[m[4]]
+    elif (func == z.API_ZW_SEND_DATA or
+          func == z.API_ZW_REPLICATION_SEND_DATA) and len(m) > 7:
+        if m[2] == z.REQUEST:
             if len(m) == 7 or len(m) == 9:
                 out[4] = "cb:" + out[4]
                 out[5] = "status:" + out[5]
@@ -134,7 +134,7 @@ def PrettifyRawMessage(m):
                 out[4] = "node:" + out[4]
                 out[-2] = "cb:" + out[-2]
                 out[-3] = "xmit:" + out[-3]
-                s = zwave.SUBCMD_TO_STRING.get(m[6] * 256 + m[7])
+                s = z.SUBCMD_TO_STRING.get(m[6] * 256 + m[7])
                 if s:
                     out[6] = s + ":" + out[6]
                     out[7] = "X:" + out[7]
@@ -153,7 +153,7 @@ def RawMessageFuncId(data):
 def RawMessageDstNode(data):
     if len(data) < 5:
         return -1
-    if data[3] == zwave.API_ZW_SEND_DATA:
+    if data[3] == z.API_ZW_SEND_DATA:
         return data[4]
     return -1
 
@@ -161,7 +161,7 @@ def RawMessageDstNode(data):
 def RawMessageIsRequest(data):
     if len(data) < 5:
         return -1
-    return data[2] == zwave.REQUEST
+    return data[2] == z.REQUEST
 
 
 def RawMessageCommandType(data):
@@ -173,7 +173,7 @@ def RawMessageCommandType(data):
 def ExtracRawMessage(data):
     if len(data) < 5:
         return None
-    if data[0] != zwave.SOF:
+    if data[0] != z.SOF:
         return None
     length = data[1]
     # +2: includes the SOF byte and the length byte
@@ -185,49 +185,49 @@ def ExtracRawMessage(data):
 # ==================================================
 
 def MakeRawMessage(func, data):
-    out = [zwave.SOF, len(data) + 3, zwave.REQUEST, func] + data
+    out = [z.SOF, len(data) + 3, z.REQUEST, func] + data
     # check sum over everything except the first byte
-    out.append(Checksum(out) ^ zwave.SOF)
+    out.append(Checksum(out) ^ z.SOF)
     return bytes(out)
 
 
 def MakeRawMessageWithId(func, data, cb_id=None):
     if cb_id is None:
         cb_id = CallbackId()
-    out = [zwave.SOF, len(data) + 4, zwave.REQUEST, func] + data + [cb_id]
+    out = [z.SOF, len(data) + 4, z.REQUEST, func] + data + [cb_id]
     # check sum over everything except the first byte
-    out.append(Checksum(out) ^ zwave.SOF)
+    out.append(Checksum(out) ^ z.SOF)
     return bytes(out)
 
 
 def MakeRawCommandWithId(node, data, xmit, cb_id=None):
     out = [node, len(data)] + data + [xmit]
-    return MakeRawMessageWithId(zwave.API_ZW_SEND_DATA, out, cb_id)
+    return MakeRawMessageWithId(z.API_ZW_SEND_DATA, out, cb_id)
 
 
 def MakeRawReplicationCommandWithId(node, data, xmit, cb_id=None):
     out = [node, len(data)] + data + [xmit]
-    return MakeRawMessageWithId(zwave.API_ZW_REPLICATION_SEND_DATA, out, cb_id)
+    return MakeRawMessageWithId(z.API_ZW_REPLICATION_SEND_DATA, out, cb_id)
 
 
 def MakeRawCommandMultiWithId(nodes, data, xmit, cb_id=None):
     out = [len(nodes)] + nodes + [len(data)] + data + [xmit]
-    return MakeRawMessageWithId(zwave.API_ZW_SEND_DATA_MULTI, out, cb_id)
+    return MakeRawMessageWithId(z.API_ZW_SEND_DATA_MULTI, out, cb_id)
 
 
 def MakeRawCommand(node, data, xmit):
     out = [node, len(data)] + data + [xmit]
-    return MakeRawMessage(zwave.API_ZW_SEND_DATA, out)
+    return MakeRawMessage(z.API_ZW_SEND_DATA, out)
 
 
 def MakeRawReplicationSendDataWithId(node, data, xmit, cb_id=None):
     out = [node, len(data)] + data + [xmit]
-    return MakeRawMessageWithId(zwave.API_ZW_REPLICATION_SEND_DATA, out, cb_id)
+    return MakeRawMessageWithId(z.API_ZW_REPLICATION_SEND_DATA, out, cb_id)
 
 
-RAW_MESSAGE_ACK = bytes([zwave.ACK])
-RAW_MESSAGE_NAK = bytes([zwave.NAK])
-RAW_MESSAGE_CAN = bytes([zwave.CAN])
+RAW_MESSAGE_ACK = bytes([z.ACK])
+RAW_MESSAGE_NAK = bytes([z.NAK])
+RAW_MESSAGE_CAN = bytes([z.CAN])
 
 # ==================================================
 # Message
@@ -262,18 +262,18 @@ ACTION_REPORT_EQ = 10
 
 # maps inflight message type to the action taken when a matching response is received
 _RESPONSE_ACTION = {
-    zwave.API_ZW_REMOVE_FAILED_NODE_ID: [ACTION_REPORT_NE, 0],  # removal started
-    zwave.API_ZW_SET_DEFAULT: [ACTION_NONE],
+    z.API_ZW_REMOVE_FAILED_NODE_ID: [ACTION_REPORT_NE, 0],  # removal started
+    z.API_ZW_SET_DEFAULT: [ACTION_NONE],
 }
 
 _REQUEST_ACTION = {
-    zwave.API_ZW_REMOVE_FAILED_NODE_ID: [ACTION_MATCH_CBID, 7],
-    zwave.API_ZW_SET_DEFAULT: [ACTION_MATCH_CBID, 6],
+    z.API_ZW_REMOVE_FAILED_NODE_ID: [ACTION_MATCH_CBID, 7],
+    z.API_ZW_SET_DEFAULT: [ACTION_MATCH_CBID, 6],
 }
 
 _COMMANDS_WITH_NO_ACTION = [
-    zwave.API_SERIAL_API_APPL_NODE_INFORMATION,
-    zwave.API_ZW_SET_PROMISCUOUS_MODE,
+    z.API_SERIAL_API_APPL_NODE_INFORMATION,
+    z.API_ZW_SET_PROMISCUOUS_MODE,
 ]
 
 for x in _COMMANDS_WITH_NO_ACTION:
@@ -281,22 +281,22 @@ for x in _COMMANDS_WITH_NO_ACTION:
     _REQUEST_ACTION[x] = [ACTION_NONE]
 
 _COMMANDS_WITH_RESPONSE_ACTION_REPORT = [
-    zwave.API_ZW_GET_SUC_NODE_ID,
-    zwave.API_ZW_GET_VERSION,
-    zwave.API_ZW_MEMORY_GET_ID,
-    zwave.API_ZW_GET_CONTROLLER_CAPABILITIES,
-    zwave.API_SERIAL_API_GET_CAPABILITIES,
-    zwave.API_ZW_GET_RANDOM,
-    zwave.API_SERIAL_API_GET_INIT_DATA,
-    zwave.API_SERIAL_API_SET_TIMEOUTS,
-    zwave.API_ZW_GET_NODE_PROTOCOL_INFO,
-    zwave.API_ZW_IS_FAILED_NODE_ID,
-    zwave.API_ZW_GET_ROUTING_INFO,
-    zwave.API_ZW_READ_MEMORY,
-    zwave.API_SERIAL_API_SOFT_RESET,
-    zwave.API_ZW_ENABLE_SUC,
-    zwave.API_ZW_SET_SUC_NODE_ID,
-    zwave.API_ZW_REQUEST_NODE_INFO,
+    z.API_ZW_GET_SUC_NODE_ID,
+    z.API_ZW_GET_VERSION,
+    z.API_ZW_MEMORY_GET_ID,
+    z.API_ZW_GET_CONTROLLER_CAPABILITIES,
+    z.API_SERIAL_API_GET_CAPABILITIES,
+    z.API_ZW_GET_RANDOM,
+    z.API_SERIAL_API_GET_INIT_DATA,
+    z.API_SERIAL_API_SET_TIMEOUTS,
+    z.API_ZW_GET_NODE_PROTOCOL_INFO,
+    z.API_ZW_IS_FAILED_NODE_ID,
+    z.API_ZW_GET_ROUTING_INFO,
+    z.API_ZW_READ_MEMORY,
+    z.API_SERIAL_API_SOFT_RESET,
+    z.API_ZW_ENABLE_SUC,
+    z.API_ZW_SET_SUC_NODE_ID,
+    z.API_ZW_REQUEST_NODE_INFO,
 ]
 
 for x in _COMMANDS_WITH_RESPONSE_ACTION_REPORT:
@@ -304,10 +304,10 @@ for x in _COMMANDS_WITH_RESPONSE_ACTION_REPORT:
     _REQUEST_ACTION[x] = [ACTION_NONE]
 
 _COMMANDS_WITH_SIMPLE_RESPONSE_AND_REQUEST = {
-    zwave.API_ZW_SEND_DATA: [7, 9],
-    zwave.API_ZW_SEND_DATA_MULTI: [7],
-    zwave.API_ZW_SEND_NODE_INFORMATION: [7],
-    zwave.API_ZW_REPLICATION_SEND_DATA: [7],
+    z.API_ZW_SEND_DATA: [7, 9],
+    z.API_ZW_SEND_DATA_MULTI: [7],
+    z.API_ZW_SEND_NODE_INFORMATION: [7],
+    z.API_ZW_REPLICATION_SEND_DATA: [7],
 }
 
 for x, y in _COMMANDS_WITH_SIMPLE_RESPONSE_AND_REQUEST.items():
@@ -315,10 +315,10 @@ for x, y in _COMMANDS_WITH_SIMPLE_RESPONSE_AND_REQUEST.items():
     _REQUEST_ACTION[x] = [ACTION_MATCH_CBID] + y
 
 _COMMANDS_WITH_MULTI_REQUESTS = [
-    zwave.API_ZW_ADD_NODE_TO_NETWORK,
-    zwave.API_ZW_REMOVE_NODE_FROM_NETWORK,
-    zwave.API_ZW_CONTROLLER_CHANGE,
-    zwave.API_ZW_SET_LEARN_MODE,
+    z.API_ZW_ADD_NODE_TO_NETWORK,
+    z.API_ZW_REMOVE_NODE_FROM_NETWORK,
+    z.API_ZW_CONTROLLER_CHANGE,
+    z.API_ZW_SET_LEARN_MODE,
 ]
 
 for x in _COMMANDS_WITH_MULTI_REQUESTS:
@@ -477,10 +477,10 @@ class Message:
             assert False
 
     def MaybeComplete(self, ts, m):
-        if m[0] == zwave.ACK:
+        if m[0] == z.ACK:
             return self._MaybeCompleteAck(ts, m)
 
-        if m[0] != zwave.SOF:
+        if m[0] != z.SOF:
             assert False
 
         func = self.payload[3]
@@ -490,9 +490,9 @@ class Message:
                           PrettifyRawMessage(m))
             return "unexpected"
 
-        if m[2] == zwave.RESPONSE:
+        if m[2] == z.RESPONSE:
             return self._MaybeCompleteResponse(ts, m)
-        elif m[2] == zwave.REQUEST:
+        elif m[2] == z.REQUEST:
             return self._MaybeCompleteRequest(ts, m)
         else:
             assert False

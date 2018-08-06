@@ -26,7 +26,7 @@ import time
 import collections
 import queue
 
-from pyzwaver import zwave
+from pyzwaver import zwave as z
 from pyzwaver import zmessage
 
 
@@ -100,9 +100,9 @@ def _ProcessReceivedMessage(ts, inflight : zmessage.Message, m):
     into acoount.
     """
     # logging.debug("rx buffer: %s", buf)
-    if m[0] == zwave.NAK:
+    if m[0] == z.NAK:
         return DO_NOTHING, ""
-    elif m[0] == zwave.CAN:
+    elif m[0] == z.CAN:
         if inflight is None:
             logging.error("nothing to re-send after CAN")
             return DO_NOTHING, "stray"
@@ -110,24 +110,24 @@ def _ProcessReceivedMessage(ts, inflight : zmessage.Message, m):
                       zmessage.PrettifyRawMessage(inflight.payload))
         return DO_RETRY, ""
 
-    elif m[0] == zwave.ACK:
+    elif m[0] == z.ACK:
         if inflight is None:
             logging.error("nothing to re-send after ACK")
             return DO_NOTHING, "stray"
         return False, inflight.MaybeComplete(ts, m)
-    elif m[0] == zwave.SOF:
-        if zmessage.Checksum(m) != zwave.SOF:
+    elif m[0] == z.SOF:
+        if zmessage.Checksum(m) != z.SOF:
             # maybe send a CAN?
             logging.error("bad checksum")
             return DO_NOTHING, "bad-checksum"
-        if m[2] == zwave.RESPONSE:
+        if m[2] == z.RESPONSE:
             if inflight is None:
                 logging.error("nothing to re-send after RESPONSE")
                 return DO_ACK, "stray"
             return DO_ACK, inflight.MaybeComplete(ts, m)
-        elif m[2] == zwave.REQUEST:
-            if (m[3] == zwave.API_ZW_APPLICATION_UPDATE or
-                    m[3] == zwave.API_APPLICATION_COMMAND_HANDLER):
+        elif m[2] == z.REQUEST:
+            if (m[3] == z.API_ZW_APPLICATION_UPDATE or
+                    m[3] == z.API_APPLICATION_COMMAND_HANDLER):
                 return DO_PROPAGATE, ""
             else:
                 if inflight is None:
@@ -353,7 +353,7 @@ class Driver(object):
                 continue
             buf += r
             m = buf[0:1]
-            if m[0] == zwave.SOF:
+            if m[0] == z.SOF:
                 # see if we have a complete message by trying to extract it
                 m = zmessage.ExtracRawMessage(buf)
                 if not m:

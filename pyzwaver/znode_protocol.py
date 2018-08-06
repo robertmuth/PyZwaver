@@ -27,7 +27,7 @@ import traceback
 
 from pyzwaver import zmessage
 from pyzwaver import command
-from pyzwaver import zwave
+from pyzwaver import zwave as z
 # from pyzwaver import zsecurity
 from pyzwaver import zdriver
 
@@ -63,7 +63,7 @@ class Node(object):
     def SetDeviceType(self, device_type):
         self.device_type = device_type
         k = device_type[1] * 256 + device_type[2]
-        v = zwave.GENERIC_SPECIFIC_DB.get(k)
+        v = z.GENERIC_SPECIFIC_DB.get(k)
         if v is None:
             logging.error(
                 "[%d] unknown generic device : %s", self.n, device_type)
@@ -126,7 +126,7 @@ class Node(object):
 
         if retries > 0:
             logging.warning("[%d] RequestNodeInfo try:%d", self.n, retries)
-            m = zmessage.MakeRawMessage(zwave.API_ZW_REQUEST_NODE_INFO, [self.n])
+            m = zmessage.MakeRawMessage(z.API_ZW_REQUEST_NODE_INFO, [self.n])
             self._SendMessage(m, zmessage.ControllerPriority(), handler)
 
         else:
@@ -144,7 +144,7 @@ class Node(object):
             self._ProcessProtocolInfo(payload)
 
         logging.warning("[%d] GetNodeProtocolInfo", self.n)
-        m = zmessage.MakeRawMessage(zwave.API_ZW_GET_NODE_PROTOCOL_INFO, [self.n])
+        m = zmessage.MakeRawMessage(z.API_ZW_GET_NODE_PROTOCOL_INFO, [self.n])
         self._SendMessage(m, zmessage.ControllerPriority(), handler)
 
     def _UpdateIsFailedNode(self, cb):
@@ -161,7 +161,7 @@ class Node(object):
             if cb:
                 cb(m)
 
-        m = zmessage.MakeRawMessage(zwave.API_ZW_IS_FAILED_NODE_ID, [self.n])
+        m = zmessage.MakeRawMessage(z.API_ZW_IS_FAILED_NODE_ID, [self.n])
         self._SendMessage(m, zmessage.ControllerPriority(), handler)
 
     def Ping(self, retries, force):
@@ -239,14 +239,13 @@ class NodeSet(object):
         node.last_contact = ts
         try:
             data = [int(x) for x in m[7:7 + size]]
-            key = (data[0], data[1])
             # prefix = self.LogPrefix(key)
             value = command.ParseCommand(data, "[%d]" % n)
             if value is None:
                 logging.error("[%d] parsing failed for %s", n, Hexify(data))
                 return
             for l in self._listeners:
-                l.put(n, ts, key, value)
+                l.put(n, ts, data[0], data[1], value)
         except:
             logging.error(
                 "Exception caught: cannot parse: %s", zmessage.PrettifyRawMessage(m))
@@ -256,12 +255,12 @@ class NodeSet(object):
 
     def _HandleMessageApplicationUpdate(self, ts, m):
         kind = m[4]
-        if kind == zwave.UPDATE_STATE_NODE_INFO_REQ_FAILED:
+        if kind == z.UPDATE_STATE_NODE_INFO_REQ_FAILED:
             n = m[5]
             if n != 0:
                 logging.error(
                     "update request failed: %s", zmessage.PrettifyRawMessage(m))
-        elif kind == zwave.UPDATE_STATE_NODE_INFO_RECEIVED:
+        elif kind == z.UPDATE_STATE_NODE_INFO_RECEIVED:
             # the node is awake now and/or has changed values
             n = m[5]
             length = m[6]
@@ -272,7 +271,7 @@ class NodeSet(object):
             controls = []
             seen_marker = False
             for i in m[3:]:
-                if i == zwave.Mark:
+                if i == z.Mark:
                     seen_marker = True
                 elif seen_marker:
                     controls.append(i)
@@ -284,8 +283,8 @@ class NodeSet(object):
                 "controls": controls,
             }
             for l in self._listeners:
-                l.put(n, ts, None, value)
-        elif kind == zwave.UPDATE_STATE_SUC_ID:
+                l.put(n, ts, None, None, value)
+        elif kind == z.UPDATE_STATE_SUC_ID:
             logging.warning("succ id updated: needs work")
         else:
             logging.error("unknown kind: %x", kind)
@@ -297,9 +296,9 @@ class NodeSet(object):
             ts, m = self._driver.GetIncommingRawMessage()
             if m is None:
                 break
-            if m[3] == zwave.API_APPLICATION_COMMAND_HANDLER:
+            if m[3] == z.API_APPLICATION_COMMAND_HANDLER:
                 self._HandleMessageApplicationCommand(ts, m)
-            elif m[3] == zwave.API_ZW_APPLICATION_UPDATE:
+            elif m[3] == z.API_ZW_APPLICATION_UPDATE:
                 self._HandleMessageApplicationUpdate(ts, m)
             else:
                 logging.error("unhandled message: %s", zmessage.PrettifyRawMessage(m))
