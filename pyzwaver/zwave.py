@@ -915,7 +915,7 @@ SUBCMD_TO_PARSE_TABLE = {
     # SwitchMultilevel (0x26 = 38)
     0x2601: ['B{level}', 'B{duration}'],  # Set (1)
     0x2602: [],  # Get (2)
-    0x2603: ['B{percent}'],  # Report (3)
+    0x2603: ['B{level}'],  # Report (3)
     0x2604: ['B{mode}', 'L{command}'],  # StartLevelChange (4)
     0x2605: [],  # StopLevelChange (5)
     0x2606: [],  # SupportedGet (6)
@@ -924,7 +924,7 @@ SUBCMD_TO_PARSE_TABLE = {
     # SwitchAll (0x27 = 39)
     0x2701: ['B{mode}'],  # Set (1)
     0x2702: [],  # Get (2)
-    0x2703: ['B{level}'],  # Report (3)
+    0x2703: ['B{mode}'],  # Report (3)
     0x2704: [],  # On (4)
     0x2705: [],  # Off (5)
 
@@ -948,10 +948,10 @@ SUBCMD_TO_PARSE_TABLE = {
 
     # SensorBinary (0x30 = 48)
     0x3002: [],  # Get (2)
-    0x3003: ['B{active}'],  # Report (3)
+    0x3003: ['B{level}'],  # Report (3)
 
     # SensorMultilevel (0x31 = 49)
-    0x3101: [],  # SupportedGet (1)
+    0x3101: ['Y{sensor}'],  # SupportedGet (1)
     0x3102: ['R{bits}'],  # SupportedReport (2)
     0x3104: ['Y{sensor}'],  # Get (4)
     0x3105: ['B{type}', 'X{value}'],  # Report (5)
@@ -1040,7 +1040,7 @@ SUBCMD_TO_PARSE_TABLE = {
     # Alarm (0x71 = 113)
     0x7104: [],  # Get (4)
     0x7105: ['B{type}', 'B{level}'],  # Report (5)
-    0x7106: ['B{type}', 'B{level}'],  # Set (6)
+    0x7106: ['B{type}', 'B{status}'],  # Set (6)
     0x7107: [],  # SupportedGet (7)
     0x7108: [],  # SupportedReport (8)
 
@@ -1082,7 +1082,7 @@ SUBCMD_TO_PARSE_TABLE = {
 
     # Battery (0x80 = 128)
     0x8002: [],  # Get (2)
-    0x8003: ['B{percent}'],  # Report (3)
+    0x8003: ['B{level}'],  # Report (3)
 
     # Clock (0x81 = 129)
     0x8104: ['B{dayhour}', 'B{minute}'],  # Set (4)

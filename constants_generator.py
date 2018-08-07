@@ -528,10 +528,10 @@ C("SceneControllerConf", 0x2d,
 
 C("SensorBinary", 0x30,
   Get=(0x2, ""),
-  Report=(0x3, "B{active}"))
+  Report=(0x3, "B{level}"))
 
 C("SensorMultilevel", 0x31,
-  SupportedGet=(0x1, ""),
+  SupportedGet=(0x1, "Y{sensor}"),
   SupportedReport=(0x2, "R{bits}"),
   Get=(0x4, "Y{sensor}"),
   Report=(0x5, "B{type},X{value}"))
