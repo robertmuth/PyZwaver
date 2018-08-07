@@ -36,15 +36,15 @@ def ControllerPriority():
     return 1, 0, -1
 
 
-def NodePriorityHi(node):
+def NodePriorityHi(node: int) -> tuple:
     return 2, 0, node
 
 
-def NodePriorityLo(node):
+def NodePriorityLo(node: int) -> tuple:
     return 3, 0, node
 
 
-def LowestPriority():
+def LowestPriority() -> tuple:
     return 1000, 0, -1
 
 
@@ -357,7 +357,7 @@ class Message:
 
     """
 
-    def __init__(self, payload, priority, callback, node,
+    def __init__(self, payload, priority: tuple, callback, node,
                  timeout=1.0, action_requ=None, action_resp=None):
         self.payload = payload
         self.priority = priority
@@ -506,6 +506,3 @@ class Message:
 
     def __lt__(self, other):
         return self.priority < other.priority
-
-
-

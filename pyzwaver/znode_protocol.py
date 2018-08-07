@@ -72,11 +72,11 @@ class Node(object):
         else:
             self.device_description = v[0]
 
-    def _SendMessage(self, m, priority, handler):
+    def _SendMessage(self, m, priority : tuple, handler):
         mesg = zmessage.Message(m, priority, handler, self.n)
         self._driver.SendMessage(mesg)
 
-    def SendCommand(self, key0, key1, values, priority, xmit):
+    def SendCommand(self, key0, key1, values, priority: tuple, xmit :int ):
         raw_cmd = command.AssembleCommand(key0, key1, values)
 
         def handler(_):
