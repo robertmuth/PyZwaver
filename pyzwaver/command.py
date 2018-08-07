@@ -118,6 +118,8 @@ def _ParseMeter(m, index):
 # all parsers return the amount of consumed bytes or a negative number to indicate
 # success
 
+_OPTIONAL_COMPONENTS = {'b', 't'}
+
 
 def _ParseByte(m, index):
     if len(m) <= index:
@@ -242,6 +244,22 @@ def _ParseRestLittleEndianInt(m, index):
     return index + size, {"size": size, "value": _GetIntLittleEndian(m[index:index + size])}
 
 
+def _ParseOptionalTarget(m, index):
+    # we need at least two bytes
+    if len(m) <= index:
+        return index, None
+    n = m[index]
+    index += 1
+    if len(m) < index + 2 * n:
+        logging.error("not enough bytes for target")
+        return index, None
+    out = []
+    for i in range(n):
+        out.append(m[index] * 256 + m[index + 1])
+        index += 2
+    return index, out
+
+
 def _ParseSensor(m, index):
     # we need at least two bytes
     if len(m) < index + 2:
@@ -292,7 +310,6 @@ _PARSE_ACTIONS = {
     'A': _ParseStringWithLength,
     'F': _ParseStringWithLengthAndEncoding,
     'B': _ParseByte,
-    'Y': _ParseOptionalByte,
     'C': _ParseDate,
     'G': _ParseGroups,
     'N': _ParseName,
@@ -306,6 +323,8 @@ _PARSE_ACTIONS = {
     "T": _ParseBitVector,
     "U": _ParseBitVectorRest,
     "X": _ParseSensor,
+    'b': _ParseOptionalByte,
+    't': _ParseOptionalTarget,
 }
 
 
@@ -332,7 +351,7 @@ def ParseCommand(m, prefix=""):
         name = t[2:-1]
         new_index, value = _PARSE_ACTIONS[kind](m, index)
         if value is None:
-            if kind != 'y':
+            if kind not in _OPTIONAL_COMPONENTS:
                 logging.error("%s malformed message while parsing format %s %s", prefix, kind, table)
                 return None
         else:
@@ -391,7 +410,7 @@ def AssembleCommand(cmd0, cmd1, args):
         kind = t[0]
         name = t[2:-1]
         v = args.get(name)
-        if v is None and kind != 'Y':
+        if v is None and kind not in _OPTIONAL_COMPONENTS:
             logging.error("%s: %s: missing args [%s]", StringifyCommamnd(cmd0, cmd1), args, name)
             assert False
             return
@@ -400,9 +419,6 @@ def AssembleCommand(cmd0, cmd1, args):
         elif kind == 'W':
             data.append((v >> 8) & 0xff)
             data.append(v & 0xff)
-        elif kind == 'Y':
-            if v is not None:
-                data.append(v)
         elif kind == 'N':
             data.append(1)
             # for c in v:
@@ -446,6 +462,15 @@ def AssembleCommand(cmd0, cmd1, args):
             for i in range(v["size"]):
                 data += [value & 0xff]
                 value >>= 8
+        elif kind == 'b':
+            if v is not None:
+                data.append(v)
+        elif kind == 't':
+            if v is not None:
+                data.append(len(v))
+                for w in v:
+                    data.append((w >> 8) & 255)
+                    data.append(w & 255)
         else:
             logging.error("unknown parameter: ${t[0]}")
             assert False, "unreachable"
