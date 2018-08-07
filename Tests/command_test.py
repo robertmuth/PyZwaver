@@ -57,6 +57,7 @@ def Hexify(t):
 
 def ProcessApplicationData(data):
     print("application data: ", Hexify(data))
+    data = command.MaybePatchCommand(data)
     k = (data[0], data[1])
     table = z.SUBCMD_TO_PARSE_TABLE[k[0] * 256 + k[1]]
     print ("parse table: ", table)
@@ -69,7 +70,7 @@ def ProcessApplicationData(data):
 
 
 def _main(argv):
-    logging.basicConfig(level=logging.ERROR)
+    logging.basicConfig(level=logging.WARNING)
     for line in sys.stdin:
         if line.startswith("#"): continue
         token = line.split()

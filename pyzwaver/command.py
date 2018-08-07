@@ -27,8 +27,13 @@ import re
 from pyzwaver import zwave as z
 
 
+def Hexify(t):
+    return ["%02x" % i for i in t]
+
+
 def StringifyCommamnd(cmd0, cmd1):
-     return z.SUBCMD_TO_STRING.get(cmd0 * 256 + cmd1, "Unknown_%02x:%02x" % (cmd0, cmd1))
+    return z.SUBCMD_TO_STRING.get(cmd0 * 256 + cmd1, "Unknown_%02x:%02x" % (cmd0, cmd1))
+
 
 # ======================================================================
 def EventTypeToString(t):
@@ -248,8 +253,11 @@ def _ParseSensor(m, index):
     scale = (c >> 3) & 3
     size = c & 7
     if size == 3:
-            logging.error("@@@ strange size field")q
-            size = 2
+        logging.error("@@@ strange size field")
+        size = 2
+    elif size == 7:
+        logging.error("@@@ strange size field")
+        size = 1
     if len(m) < index + 1 + size:
         logging.error(
             "malformed sensor string %d %d %d", precision, scale, size)
@@ -445,3 +453,26 @@ def AssembleCommand(cmd0, cmd1, args):
     return data
 
 
+def MaybePatchCommand(m):
+    # if m[0] == z.MultiInstance and m[1] == z.MultiInstance_Encap:
+    #    logging.warning("received MultiInstance_Encap for instance")
+    #    return m[4:]
+
+    if (m[0] == z.SensorMultilevel and
+            m[1] == z.SensorMultilevel_Report and
+            m[2] == 1 and
+            ((m[3] & 7) > len(m) - 4)):
+        x = 1 << 5 | (0 << 3) | 2
+        # [49, 5, 1, 127, 1, 10] => [49, 5, 1, X, 1, 10]
+        logging.warning(
+            "fixing up SensorMultilevel_Report %s: [3] %02x-> %02x", Hexify(m), m[3], x)
+        m[3] = x
+    if (m[0] == z.SensorMultilevel and
+            m[1] == z.SensorMultilevel_Report and
+            m[2] == 1 and
+            (m[3] & 0x10) != 0):
+        x = m[3] & 0xe7
+        logging.warning(
+            "fixing up SensorMultilevel_Report %s: [3] %02x-> %02x", Hexify(m), m[3], x)
+        m[3] = x
+    return m
