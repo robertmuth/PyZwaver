@@ -27,6 +27,9 @@ import re
 from pyzwaver import zwave as z
 
 
+def StringifyCommamnd(cmd0, cmd1):
+     return z.SUBCMD_TO_STRING.get(cmd0 * 256 + cmd1, "Unknown_%02x:%02x" % (cmd0, cmd1))
+
 # ======================================================================
 def EventTypeToString(t):
     if t < len(DOOR_LOG_EVENT_TYPE):
@@ -114,6 +117,12 @@ def _ParseMeter(m, index):
 def _ParseByte(m, index):
     if len(m) <= index:
         logging.error("cannot parse byte")
+        return index, None
+    return index + 1, m[index]
+
+
+def _ParseOptionalByte(m, index):
+    if len(m) <= index:
         return index, None
     return index + 1, m[index]
 
@@ -238,6 +247,9 @@ def _ParseSensor(m, index):
     precision = (c >> 5) & 7
     scale = (c >> 3) & 3
     size = c & 7
+    if size == 3:
+            logging.error("@@@ strange size field")q
+            size = 2
     if len(m) < index + 1 + size:
         logging.error(
             "malformed sensor string %d %d %d", precision, scale, size)
@@ -272,6 +284,7 @@ _PARSE_ACTIONS = {
     'A': _ParseStringWithLength,
     'F': _ParseStringWithLengthAndEncoding,
     'B': _ParseByte,
+    'Y': _ParseOptionalByte,
     'C': _ParseDate,
     'G': _ParseGroups,
     'N': _ParseName,
@@ -310,10 +323,13 @@ def ParseCommand(m, prefix=""):
         kind = t[0]
         name = t[2:-1]
         new_index, value = _PARSE_ACTIONS[kind](m, index)
-        out[name] = value
         if value is None:
-            logging.error("%s malformed message while parsing format %s %s", prefix, kind, table)
-            return None
+            if kind != 'y':
+                logging.error("%s malformed message while parsing format %s %s", prefix, kind, table)
+                return None
+        else:
+            out[name] = value
+
         index = new_index
     return out
 
@@ -366,7 +382,11 @@ def AssembleCommand(cmd0, cmd1, args):
     for t in table:
         kind = t[0]
         name = t[2:-1]
-        v = args[name]
+        v = args.get(name)
+        if v is None and kind != 'Y':
+            logging.error("%s: %s: missing args [%s]", StringifyCommamnd(cmd0, cmd1), args, name)
+            assert False
+            return
         if kind == 'B':
             data.append(v)
         elif kind == 'W':
