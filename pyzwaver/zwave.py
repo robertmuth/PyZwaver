@@ -951,13 +951,13 @@ SUBCMD_TO_PARSE_TABLE = {
     0x3003: ['B{level}'],  # Report (3)
 
     # SensorMultilevel (0x31 = 49)
-    0x3101: ['Y{sensor}'],  # SupportedGet (1)
+    0x3101: ['b{sensor}'],  # SupportedGet (1)
     0x3102: ['R{bits}'],  # SupportedReport (2)
-    0x3104: ['Y{sensor}'],  # Get (4)
+    0x3104: ['b{sensor}'],  # Get (4)
     0x3105: ['B{type}', 'X{value}'],  # Report (5)
 
     # Meter (0x32 = 50)
-    0x3201: ['Y{scale}'],  # Get (1)
+    0x3201: ['b{scale}'],  # Get (1)
     0x3202: ['M{meter}'],  # Report (2)
     0x3203: [],  # SupportedGet (3)
     0x3204: ['B{type}', 'B{scale}'],  # SupportedReport (4)
@@ -1111,7 +1111,7 @@ SUBCMD_TO_PARSE_TABLE = {
 
     # Version (0x86 = 134)
     0x8611: [],  # Get (17)
-    0x8612: ['B{library}', 'W{protocol}', 'W{firmware}'],  # Report (18)
+    0x8612: ['B{library}', 'W{protocol}', 'W{firmware}', 'b{hardware}', 't{targets}'],  # Report (18)
     0x8613: ['B{class}'],  # CommandClassGet (19)
     0x8614: ['B{class}', 'B{version}'],  # CommandClassReport (20)
 
