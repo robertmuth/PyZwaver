@@ -24,8 +24,9 @@ import time
 
 from pyzwaver import zmessage
 from pyzwaver import actions
-from pyzwaver import z
+from pyzwaver import zwave as z
 from pyzwaver import znode_protocol
+from pyzwaver import command
 
 
 def Hexify(t):
@@ -44,26 +45,26 @@ XMIT_OPTIONS_SECURE = (z.TRANSMIT_OPTION_ACK |
 
 _DYNAMIC_PROPERTY_QUERIES = [
     # Basic should be first
-    (z.Basic, z.Basic_Get),
-    (z.Alarm, z.Alarm_Get),
-    (z.SensorBinary, z.SensorBinary_Get),
-    (z.Battery, z.Battery_Get),
+    (z.Basic, z.Basic_Get, {}),
+    (z.Alarm, z.Alarm_Get , {}),
+    (z.SensorBinary, z.SensorBinary_Get, {}),
+    (z.Battery, z.Battery_Get, {}),
 
-    (z.Lock, z.Lock_Get),
-    (z.DoorLock, z.DoorLock_Get),
+    (z.Lock, z.Lock_Get, {}),
+    (z.DoorLock, z.DoorLock_Get, {}),
 
-    (z.Powerlevel, z.Powerlevel_Get),
-    (z.Protection, z.Protection_Get),
-    # (zwave.SensorBinary, zwave.SensorBinary_Get),
-    (z.SwitchBinary, z.SwitchBinary_Get),
-    (z.SwitchMultilevel, z.SwitchMultilevel_Get),
-    (z.SwitchToggleBinary, z.SwitchToggleBinary_Get),
+    (z.Powerlevel, z.Powerlevel_Get, {}),
+    (z.Protection, z.Protection_Get, {}),
+    # (zwave.SensorBinary, zwave.SensorBinary_Get, {}),
+    (z.SwitchBinary, z.SwitchBinary_Get, {}),
+    (z.SwitchMultilevel, z.SwitchMultilevel_Get, {}),
+    (z.SwitchToggleBinary, z.SwitchToggleBinary_Get, {}),
     # only v5 offer the extra parameter
-    (z.Indicator, z.Indicator_Get),
+    (z.Indicator, z.Indicator_Get, {}),
     # get the current scene
     (z.SceneActuatorConf, z.SceneActuatorConf_Get, {"scene": 0}),
-    (z.SensorAlarm, z.SensorAlarm_Get),
-    (z.ThermostatMode, z.ThermostatMode_Get)
+    (z.SensorAlarm, z.SensorAlarm_Get, {}),
+    (z.ThermostatMode, z.ThermostatMode_Get, {})
 ]
 
 
@@ -91,41 +92,39 @@ def MeterQueries(scales=(0, 1, 2, 3)):
 
 
 _STATIC_PROPERTY_QUERIES = [
-    (z.SensorMultilevel, z.SensorMultilevel_SupportedGet),
+    (z.SensorMultilevel, z.SensorMultilevel_SupportedGet, {}),
 
-    (z.UserCode, z.UserCode_NumberGet),
-    (z.DoorLock, z.DoorLock_ConfigurationGet),
-    (z.DoorLockLogging, z.DoorLockLogging_SupportedGet),
+    (z.UserCode, z.UserCode_NumberGet, {}),
+    (z.DoorLock, z.DoorLock_ConfigurationGet, {}),
+    (z.DoorLockLogging, z.DoorLockLogging_SupportedGet, {}),
 
-    (z.Meter, z.Meter_SupportedGet),
-    (z.SensorAlarm, z.SensorAlarm_SupportedGet),
-    (z.ThermostatMode, z.ThermostatMode_SupportedGet),
-    (z.ThermostatSetpoint, z.ThermostatSetpoint_SupportedGet),
-    (z.Version, z.Version_Get),
-    (z.SwitchMultilevel, z.SwitchMultilevel_SupportedGet),
-    (z.MultiInstance, z.MultiInstance_ChannelEndPointGet),
+    (z.Meter, z.Meter_SupportedGet, {}),
+    (z.SensorAlarm, z.SensorAlarm_SupportedGet, {}),
+    (z.ThermostatMode, z.ThermostatMode_SupportedGet, {}),
+    (z.ThermostatSetpoint, z.ThermostatSetpoint_SupportedGet, {}),
+    (z.Version, z.Version_Get, {}),
+    (z.SwitchMultilevel, z.SwitchMultilevel_SupportedGet, {}),
+    (z.MultiInstance, z.MultiInstance_ChannelEndPointGet, {}),
 
     # device type
-    (z.ManufacturerSpecific,
-     z.ManufacturerSpecific_DeviceSpecificGet, 0),
+    (z.ManufacturerSpecific, z.ManufacturerSpecific_DeviceSpecificGet, {"type": 0}),
     # serial no
-    (z.ManufacturerSpecific,
-     z.ManufacturerSpecific_DeviceSpecificGet, 1),
+    (z.ManufacturerSpecific, z.ManufacturerSpecific_DeviceSpecificGet, {"type": 1}),
 
-    (z.TimeParameters, z.TimeParameters_Get),
-    (z.ZwavePlusInfo, z.ZwavePlusInfo_Get),
-    (z.SwitchAll, z.SwitchAll_Get),
-    (z.Alarm, z.Alarm_SupportedGet),
+    (z.TimeParameters, z.TimeParameters_Get, {}),
+    (z.ZwavePlusInfo, z.ZwavePlusInfo_Get, {}),
+    (z.SwitchAll, z.SwitchAll_Get, {}),
+    (z.Alarm, z.Alarm_SupportedGet, {}),
     # mostly static
     # [zwave.AssociationCommandConfiguration, zwave.AssociationCommandConfiguration_SupportedGet],
-    (z.NodeNaming, z.NodeNaming_Get),
-    (z.NodeNaming, z.NodeNaming_LocationGet),
-    (z.ColorSwitch, z.ColorSwitch_SupportedGet),
+    (z.NodeNaming, z.NodeNaming_Get, {}),
+    (z.NodeNaming, z.NodeNaming_LocationGet, {}),
+    (z.ColorSwitch, z.ColorSwitch_SupportedGet, {}),
     # arguably dynamic
-    (z.Clock, z.Clock_Get),
-    (z.Firmware, z.Firmware_MetadataGet),
-    (z.Association, z.Association_GroupingsGet),
-    (z.AssociationGroupInformation, z.AssociationGroupInformation_InfoGet, 64, 0),
+    (z.Clock, z.Clock_Get, {}),
+    (z.Firmware, z.Firmware_MetadataGet, {}),
+    (z.Association, z.Association_GroupingsGet, {}),
+    (z.AssociationGroupInformation, z.AssociationGroupInformation_InfoGet, {"mode": 64, "group": 0}),
 ]
 
 
@@ -221,8 +220,8 @@ class NodeAssociations:
         ordered = sorted([x for x in self._groups.items()])
         return [g for _, g in ordered]
 
-    def StoreCount(self, val):
-        self._count = val[0]
+    def StoreCount(self, values):
+        self._count = values["count"]
 
     def StoreNodes(self, val):
         # we do not support extra long lists
@@ -280,11 +279,11 @@ class NodeCommands:
         return (z.SwitchBinary in self._version_map or
                 z.SwitchMultilevel in self._version_map)
 
-    def SetVersion(self, value):
-        version = value["version"]
+    def SetVersion(self, values):
+        version = values["version"]
         if version == 0:
             return
-        self._version_map[value["class"]] = version
+        self._version_map[values["class"]] = version
 
     def InitializeUnversioned(self, cmd, controls, std_cmd, std_controls):
         self._controls |= set(controls)
@@ -327,14 +326,14 @@ class NodeSensors:
     def __init__(self):
         self._readings = {
             VALUE_KEY_MULTILEVEL_SWITCH:
-                actions.ValueLevel(actions.SENSOR_KIND_SWITCH_MULTILEVEL, 0),
+                actions.ValueLevelImmediate(actions.SENSOR_KIND_SWITCH_MULTILEVEL, 0),
         }
         self._supported = set()
 
     def Readings(self): return self._readings.values()
 
-    def SetSupported(self, value):
-        self._supported = BitsToSetWithOffset(value[0], 1)
+    def SetSupported(self, values):
+        self._supported = BitsToSetWithOffset(values["bits"]["value"], 1)
 
     def Supported(self):
         return self._supported
@@ -367,9 +366,9 @@ class NodeMeters:
     def HasContent(self):
         return self._supported or self._readings
 
-    def SetSupported(self, value):
-        self._flags = value[0]
-        self._supported = BitsToSetWithOffset(value[1], 0)
+    def SetSupported(self, values):
+        self._flags = values["type"]
+        self._supported = BitsToSetWithOffset(values["scale"], 0)
 
     def Supported(self):
         return self._supported
@@ -526,7 +525,12 @@ class ApplicationNode:
             "lib_type": self.LibraryType(),
         }
 
-    def BatchCommandSubmitFiltered(self, commands, priority, xmit):
+    def BatchCommandSubmitFiltered(self, commands, priority: tuple, xmit : int):
+        for c in commands:
+            if len(c) != 3:
+                logging.error("BAD COMMAND: %s", c)
+                assert False
+
         for key0, key1, values in commands:
             if not self.commands.HasCommandClass(key0):
                 continue
@@ -538,10 +542,10 @@ class ApplicationNode:
             self._protocol_node.SendCommand(key0, key1, values, priority, xmit)
 
     def BatchCommandSubmitFilteredSlow(self, commands, xmit):
-        self.BatchCommandSubmitFiltered(commands, zmessage.NodePriorityLo, xmit)
+        self.BatchCommandSubmitFiltered(commands, zmessage.NodePriorityLo(self.n), xmit)
 
     def BatchCommandSubmitFilteredFast(self, commands, xmit):
-        self.BatchCommandSubmitFiltered(commands, zmessage.NodePriorityHi, xmit)
+        self.BatchCommandSubmitFiltered(commands, zmessage.NodePriorityHi(self.n), xmit)
 
     def _IsSecureCommand(self, key0, key1):
         if key0 == z.Security:
@@ -674,9 +678,7 @@ class ApplicationNode:
 
     def RefreshStaticValues(self):
         logging.warning("[%d] RefreshStatic", self.n)
-        self.BatchCommandSubmitFilteredSlow(
-            _STATIC_PROPERTY_QUERIES,
-            XMIT_OPTIONS)
+        self.BatchCommandSubmitFilteredSlow(_STATIC_PROPERTY_QUERIES, XMIT_OPTIONS)
         self.BatchCommandSubmitFilteredSlow(
             CommandVersionQueries(self.commands.Classes()),
             XMIT_OPTIONS)
@@ -686,7 +688,7 @@ class ApplicationNode:
 
         # This must be last as we use this as an indicator for the
         # NODE_STATE_INTERVIEWED
-        last = [z.ManufacturerSpecific, z.ManufacturerSpecific_Get]
+        last = (z.ManufacturerSpecific, z.ManufacturerSpecific_Get, {})
         self.BatchCommandSubmitFilteredSlow([last], XMIT_OPTIONS)
 
     def _MaybeChangeState(self, new_state):
@@ -710,7 +712,9 @@ class ApplicationNode:
             self._MaybeChangeState(actions.NODE_STATE_DISCOVERED)
             return
 
-        prefix = z.SUBCMD_TO_STRING.get(key0 * 256 + key1, "Unknown_%02x:%02x" % (key0, key1))
+        prefix = command.StringifyCommamnd(key0, key1)
+        #logging.warning("@@@@@ %s: %s", prefix, values)
+
         if self._state < actions.NODE_STATE_DISCOVERED:
             self._protocol_node.Ping(3, False)
 
@@ -776,6 +780,6 @@ class ApplicationNodeSet(object):
             self._nodes[n] = node
         return node
 
-    def put(self, n, ts, key, values):
+    def put(self, n, ts, key0, key1, values):
         node = self.GetNode(n)
-        node.put(ts, key, values)
+        node.put(ts, key0, key1, values)

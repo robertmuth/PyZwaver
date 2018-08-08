@@ -24,7 +24,7 @@ It also contains some logic pertaining to the node state machine.
 import logging
 import re
 
-from pyzwaver import z
+from pyzwaver import zwave as z
 
 UNIT_LEVEL = "level"
 UNIT_NONE = ""
@@ -214,7 +214,8 @@ _STORE_VALUE_SCALAR_ACTIONS = [
     (z.Clock, z.Clock_Report),
 ]
 
-_STORE_VALUE_LIST_ACTIONS = [
+
+_STORE_VALUE_RAW_ACTIONS = [
     (z.Alarm, z.Alarm_SupportedReport),
     (z.Powerlevel, z.Powerlevel_Report),
     (z.SensorAlarm, z.SensorAlarm_SupportedReport),
@@ -259,29 +260,30 @@ def ValueLevel(kind, values):
     return Value(kind, UNIT_LEVEL, values["level"])
 
 
-def ValueSensorNormal(value):
-    kind = value[0]
+def ValueLevelImmediate(kind, immediate):
+    return Value(kind, UNIT_LEVEL, immediate)
+
+
+def ValueSensorNormal(values):
+    kind = values["type"]
     info = SENSOR_TYPES[kind]
-    assert len(value[1]) == 2
-    scale, reading = value[1]
+    v = values["value"]
+    scale = v["scale"]
+    reading = v["_value"]
     unit = info[1][scale]
 
     assert unit is not None
     return Value(info[0], unit, reading)
 
 
-def ValueMeterNormal(value, prefix):
-    val = value[0]
-    if len(val) != 5:
-        logging.error("%s bad meter normal %s",
-                      prefix, value)
-        return None
-    kind = val[0]
-    scale = val[1]
+def ValueMeterNormal(values):
+    v = values["meter"]
+    kind = v["type"]
+    scale = v["unit"]
     info = METER_TYPES[kind]
     unit = info[1][scale]
     assert unit is not None
-    return Value(info[0], unit, val[2], val[3], val[4])
+    return Value(info[0], unit, v["_value"], v["dt"], v["_value2"])
 
 
 def ValueBare(k, value):
@@ -296,6 +298,7 @@ def RenderMeterList(meter, values):
     return str([METER_TYPES[meter][1][x] for x in values])
 
 
+# for event triggering
 VALUE_CHANGERS = {
     (z.SceneActuatorConf, z.SceneActuatorConf_Report),
     (z.Version, z.Version_CommandClassReport),
@@ -323,12 +326,12 @@ VALUE_CHANGERS = {
 # ======================================================================
 ACTIONS = {
     (z.SceneActuatorConf, z.SceneActuatorConf_Report):
-        lambda n, v, k, p: None,
+        lambda n, k0, k1, v: None,
     #
     # COMMAND
     #
     (z.Version, z.Version_CommandClassReport):
-        lambda n, v, k, p: n.commands.SetVersion(v),
+        lambda n, k0, k1, v: n.commands.SetVersion(v),
     #
     # SENSOR
     #
@@ -352,7 +355,7 @@ ACTIONS = {
     # METER
     #
     (z.Meter, z.Meter_Report):
-        lambda n, k0, k1, v: n.meters.Set(ValueMeterNormal(v, p)),
+        lambda n, k0, k1, v: n.meters.Set(ValueMeterNormal(v)),
     (z.Meter, z.Meter_SupportedReport):
         lambda n, k0, k1, v: n.meters.SetSupported(v),
     #
@@ -391,12 +394,12 @@ ACTIONS = {
     #
     # These need a lot more work
     #
-    #(zwave.py.Security, zwave.py.Security_SchemeReport): [SECURITY_SCHEME],
-    #(zwave.py.Security, zwave.py.Security_NonceReport): [SECURITY_NONCE_RECEIVED],
-    #(zwave.py.Security, zwave.py.Security_NonceGet): [SECURITY_NONCE_REQUESTED],
-    #(zwave.py.Security, zwave.py.Security_SupportedReport): [SECURITY_SET_CLASS],
-    #(zwave.py.Security, zwave.py.Security_MessageEncap): [SECURITY_UNWRAP],
-    #(zwave.py.Security, zwave.py.Security_NetworkKeyVerify): [SECURITY_KEY_VERIFY],
+    # (zwave.py.Security, zwave.py.Security_SchemeReport): [SECURITY_SCHEME],
+    # (zwave.py.Security, zwave.py.Security_NonceReport): [SECURITY_NONCE_RECEIVED],
+    # (zwave.py.Security, zwave.py.Security_NonceGet): [SECURITY_NONCE_REQUESTED],
+    # (zwave.py.Security, zwave.py.Security_SupportedReport): [SECURITY_SET_CLASS],
+    # (zwave.py.Security, zwave.py.Security_MessageEncap): [SECURITY_UNWRAP],
+    # (zwave.py.Security, zwave.py.Security_NetworkKeyVerify): [SECURITY_KEY_VERIFY],
 
     # maps incoming API_APPLICATION_COMMAND messages to action we want to take
     # Most of the time we deal with "reports" and the action will be to
@@ -432,16 +435,21 @@ STATE_CHANGE = {
 NO_ACTION = None, None, None
 
 
+def GetSingleScalar(k0, k1, args):
+    table = z.SUBCMD_TO_PARSE_TABLE[k0 * 256 + k1]
+    assert len(table) == 1
+    name = table[0][2:-1]
+    return args[name]
+
 def PatchUpActions():
     global ACTIONS
     logging.info("PatchUpActions")
     for key in _STORE_VALUE_SCALAR_ACTIONS:
-        ACTIONS[key] = (lambda n, v, k, p: n.values.Set(k, ValueBare(k, v[0])),
-                        1, EVENT_VALUE_CHANGE)
+        ACTIONS[key] = lambda n, k0, k1, v: n.values.Set(
+            (k0, k1), ValueBare((k0, k1), GetSingleScalar(k0, k1, v)))
 
-    for key in _STORE_VALUE_LIST_ACTIONS:
-        ACTIONS[key] = (lambda n, v, k, p: n.values.Set(k, ValueBare(k, v)),
-                        -1, EVENT_VALUE_CHANGE)
+    for key in _STORE_VALUE_RAW_ACTIONS:
+        ACTIONS[key] = lambda n, k0, k1, v: n.values.Set((k0, k1), v)
 
 
 PatchUpActions()
