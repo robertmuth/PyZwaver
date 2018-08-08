@@ -25,7 +25,7 @@ import time
 from pyzwaver import zmessage
 from pyzwaver import actions
 from pyzwaver import zwave as z
-from pyzwaver import znode_protocol
+from pyzwaver import protocol_node
 from pyzwaver import command
 
 
@@ -441,7 +441,7 @@ class ApplicationNode:
     to the relevant Node by calling ProcessCommand() or ProcessNodeInfo().
     """
 
-    def __init__(self, n, protocol_node: znode_protocol.Node):
+    def __init__(self, n, protocol_node: protocol_node.Node):
         assert n >= 1
         self.n = n
         self.name = "Node %d" % n
@@ -769,7 +769,7 @@ class ApplicationNodeSet(object):
 
     """
 
-    def __init__(self, nodeset: znode_protocol.NodeSet):
+    def __init__(self, nodeset: protocol_node.NodeSet):
         self._nodeset = nodeset
         self._nodes = {}
 

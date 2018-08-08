@@ -29,7 +29,7 @@ from pyzwaver import zmessage
 from pyzwaver import command
 from pyzwaver import zwave as z
 # from pyzwaver import zsecurity
-from pyzwaver import zdriver
+from pyzwaver import driver
 
 
 def Hexify(t):
@@ -208,7 +208,7 @@ class NodeSet(object):
 
     """
 
-    def __init__(self, message_queue: zdriver.Driver, controller_n):
+    def __init__(self, message_queue: driver.Driver, controller_n):
         self._driver = message_queue
         self._controller_n = controller_n
         self._listeners = []

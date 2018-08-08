@@ -16,7 +16,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-zdriver.py contains the code interacting directly with serial device
+driver.py contains the code interacting directly with serial device
 """
 
 import logging

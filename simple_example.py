@@ -29,9 +29,9 @@ import argparse
 import sys
 import time
 
-from pyzwaver import zcontroller
-from pyzwaver import zdriver
-from pyzwaver import znode_protocol
+from pyzwaver import controller
+from pyzwaver import driver
+from pyzwaver import protocol_node
 from pyzwaver import zwave as z
 
 
@@ -90,16 +90,16 @@ def main():
         h.setFormatter(MyFormatter())
 
     logging.info("opening serial: [%s]", args.serial_port)
-    device = zdriver.MakeSerialDevice(args.serial_port)
+    device = driver.MakeSerialDevice(args.serial_port)
 
-    DRIVER = zdriver.Driver(device)
-    CONTROLLER = zcontroller.Controller(DRIVER, pairing_timeout_secs=60)
+    DRIVER = driver.Driver(device)
+    CONTROLLER = controller.Controller(DRIVER, pairing_timeout_secs=60)
     CONTROLLER.Initialize()
     CONTROLLER.WaitUntilInitialized()
     CONTROLLER.UpdateRoutingInfo()
     time.sleep(2)
     print(CONTROLLER)
-    NODESET = znode_protocol.NodeSet(DRIVER, CONTROLLER.GetNodeId())
+    NODESET = protocol_node.NodeSet(DRIVER, CONTROLLER.GetNodeId())
     NODESET.AddListener(TestListener())
     # n.InitializeExternally(CONTROLLER.props.product, CONTROLLER.props.library_type, True)
     logging.info("pinging %d nodes", len(CONTROLLER.nodes))
