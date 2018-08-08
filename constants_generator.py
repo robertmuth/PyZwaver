@@ -417,8 +417,11 @@ ALLOWED_PARAMETER_FORMATS = {
     "W{protocol}",
     "W{type}",
     "X{value}",
-    "Y{scale}",  # optional byte
-    "Y{sensor}",  # optional byte
+    # optional
+    "t{targets}",
+    "b{scale}",
+    "b{sensor}",
+    "b{hardware}",
 }
 
 
@@ -531,13 +534,13 @@ C("SensorBinary", 0x30,
   Report=(0x3, "B{level}"))
 
 C("SensorMultilevel", 0x31,
-  SupportedGet=(0x1, "Y{sensor}"),
+  SupportedGet=(0x1, "b{sensor}"),
   SupportedReport=(0x2, "R{bits}"),
-  Get=(0x4, "Y{sensor}"),
+  Get=(0x4, "b{sensor}"),
   Report=(0x5, "B{type},X{value}"))
 
 C("Meter", 0x32,
-  Get=(0x1, "Y{scale}"),
+  Get=(0x1, "b{scale}"),
   Report=(0x2, "M{meter}"),
   SupportedGet=(0x3, ""),
   SupportedReport=(0x4, "B{type},B{scale}"),
@@ -708,7 +711,7 @@ C("Association", 0x85,
 
 C("Version", 0x86,
   Get=(0x11, ""),
-  Report=(0x12, "B{library},W{protocol},W{firmware}"),
+  Report=(0x12, "B{library},W{protocol},W{firmware},b{hardware},t{targets}"),
   CommandClassGet=(0x13, "B{class}"),
   CommandClassReport=(0x14, "B{class},B{version}"))
 
