@@ -16,10 +16,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-Simple Example
-
-Establishes a connection to all nodes.
-Does not "interview" them
+Advanced Example
 """
 
 # python import
@@ -33,6 +30,7 @@ from pyzwaver import zcontroller
 from pyzwaver import zdriver
 from pyzwaver import znode_protocol
 from pyzwaver import zwave as z
+from pyzwaver import znode
 
 
 # use --logging=none
@@ -62,13 +60,14 @@ class TestListener(object):
     def put(self, n, _, key0, key1, values):
         name = "@NONE@"
         if key0 is not None:
-            name = "%s  (%02:%02x)" % (z.SUBCMD_TO_STRING.get(key0 * 256 + key1), key0, key1)
+            name = "%s  (%02x:%02x)" % (z.SUBCMD_TO_STRING.get(key0 * 256 + key1), key0, key1)
         logging.info("RECEIVED [%d]: %s - %s", n, name, values)
         self._count += 1
 
 
 def main():
-    global DRIVER, CONTROLLER, NODESET
+    global DRIVER, CONTROLLER, PROTOCOL_NODESET, APPLICATION_NODESET
+
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument("--verbosity", help="increase output verbosity")
 
@@ -84,8 +83,8 @@ def main():
     # logging.basicConfig(level=logging.ERROR)
 
     logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-    # logger.setLevel(logging.ERROR)
+    #logger.setLevel(logging.INFO)
+    logger.setLevel(logging.WARN)
     for h in logger.handlers:
         h.setFormatter(MyFormatter())
 
@@ -99,12 +98,14 @@ def main():
     CONTROLLER.UpdateRoutingInfo()
     time.sleep(2)
     print(CONTROLLER)
-    NODESET = znode_protocol.NodeSet(DRIVER, CONTROLLER.GetNodeId())
-    NODESET.AddListener(TestListener())
+    PROTOCOL_NODESET = znode_protocol.NodeSet(DRIVER, CONTROLLER.GetNodeId())
+    APPLICATION_NODESET = znode.ApplicationNodeSet(PROTOCOL_NODESET)
+
+    PROTOCOL_NODESET.AddListener(APPLICATION_NODESET)
     # n.InitializeExternally(CONTROLLER.props.product, CONTROLLER.props.library_type, True)
     logging.info("pinging %d nodes", len(CONTROLLER.nodes))
     for n in CONTROLLER.nodes:
-        node = NODESET.GetNode(n)
+        node = PROTOCOL_NODESET.GetNode(n)
         node.Ping(3, False)
 
     return 0

@@ -123,8 +123,7 @@ _OPTIONAL_COMPONENTS = {'b', 't'}
 
 def _ParseByte(m, index):
     if len(m) <= index:
-        logging.error("cannot parse byte")
-        return index, None
+        raise ValueError("cannot parse byte")
     return index + 1, m[index]
 
 
@@ -136,8 +135,7 @@ def _ParseOptionalByte(m, index):
 
 def _ParseWord(m, index):
     if len(m) <= index + 1:
-        logging.error("cannot parse word")
-        return index, None
+        raise ValueError("cannot parse word")
     return index + 2, m[index] * 256 + m[index + 1]
 
 
@@ -186,8 +184,7 @@ def _ParseGroups(m, index):
     misc = m[index]
     count = misc & 0x3f
     if len(m) < index + 1 + count * 7:
-        logging.error("malformed groups section: %d (%d)", len(m), count)
-        return index, None
+        raise ValueError("malformed groups section: %d (%d)" % (len(m), count))
     groups = []
     index += 1
     for i in range(count):
@@ -212,8 +209,7 @@ def _ParseBitVectorRest(m, index):
 def _ParseNonce(m, index):
     size = 8
     if len(m) < index + size:
-        logging.error("malformed nonce:")
-        return index, None
+        raise ValueError("malformed nonce:")
     return index + size, m[index:index + size]
 
 
@@ -251,8 +247,7 @@ def _ParseOptionalTarget(m, index):
     n = m[index]
     index += 1
     if len(m) < index + 2 * n:
-        logging.error("not enough bytes for target")
-        return index, None
+        raise ValueError("not enough bytes for target")
     out = []
     for i in range(n):
         out.append(m[index] * 256 + m[index + 1])
@@ -263,8 +258,7 @@ def _ParseOptionalTarget(m, index):
 def _ParseSensor(m, index):
     # we need at least two bytes
     if len(m) < index + 2:
-        logging.error("malformed sensor string")
-        return index, None
+        raise ValueError("malformed sensor string")
 
     c = m[index]
     precision = (c >> 5) & 7
@@ -277,9 +271,8 @@ def _ParseSensor(m, index):
         logging.error("@@@ strange size field")
         size = 1
     if len(m) < index + 1 + size:
-        logging.error(
-            "malformed sensor string %d %d %d", precision, scale, size)
-        return index
+        raise ValueError("malformed sensor string precision:%d scale:%d size:%d" %
+                         (precision, scale, size))
     mantissa = m[index + 1: index + 1 + size]
     value = _GetSignedValue(mantissa) / pow(10, precision)
     return index + 1 + size, {"exp": precision, "scale": scale, "mantissa": mantissa,
@@ -341,8 +334,7 @@ def ParseCommand(m, prefix=""):
     table = _GetParameterDescriptors(m)
 
     if table is None:
-        logging.error("%s unknown command", prefix)
-        return []
+        raise ValueError("unknown command")
 
     out = {}
     index = 2
@@ -352,8 +344,7 @@ def ParseCommand(m, prefix=""):
         new_index, value = _PARSE_ACTIONS[kind](m, index)
         if value is None:
             if kind not in _OPTIONAL_COMPONENTS:
-                logging.error("%s malformed message while parsing format %s %s", prefix, kind, table)
-                return None
+                raise ValueError("missing value for %s" % name)
         else:
             out[name] = value
 
@@ -377,6 +368,8 @@ def _MakeValue(conf, value):
 
 
 def _MakeDate(date):
+    if len(date) != 6:
+        raise ValueError("bad date parameter of length %d" % len(date))
     return [date[0] // 256, date[0] % 256, date[1], date[2], date[3], date[4], date[5]]
 
 
@@ -411,9 +404,7 @@ def AssembleCommand(cmd0, cmd1, args):
         name = t[2:-1]
         v = args.get(name)
         if v is None and kind not in _OPTIONAL_COMPONENTS:
-            logging.error("%s: %s: missing args [%s]", StringifyCommamnd(cmd0, cmd1), args, name)
-            assert False
-            return
+            raise ValueError("missing args for [%s]" % name)
         if kind == 'B':
             data.append(v)
         elif kind == 'W':
@@ -425,23 +416,17 @@ def AssembleCommand(cmd0, cmd1, args):
             # out.append(ord(c))
         elif kind == 'K':
             if len(v) != 16:
-                logging.error("bad key parameter: ${v}")
-                assert False
+                raise ValueError("bad key parameter of length %d" % len(v))
             data += v
         elif kind == 'D':
             data += v
-        elif kind == 'S':
-            logging.info("unknown parameter: ${t[0]}")
-            assert False, "unreachable"
-            # for c in v:
-            # out.append(ord(c))
         elif kind == 'L':
             data += v
         elif kind == 'C':
             data += _MakeDate(v)
         elif kind == 'O':
             if len(v) != 8:
-                logging.error("bad nonce parameter: ${v}")
+                raise ValueError("bad nonce parameter of length %d" % len(v))
             data += v
         elif kind == 'V':
             size = v["size"]
@@ -472,8 +457,7 @@ def AssembleCommand(cmd0, cmd1, args):
                     data.append((w >> 8) & 255)
                     data.append(w & 255)
         else:
-            logging.error("unknown parameter: ${t[0]}")
-            assert False, "unreachable"
+            raise ValueError("unknown parameter  type: %s" % kind)
 
     return data
 

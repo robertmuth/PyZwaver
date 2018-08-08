@@ -77,7 +77,16 @@ class Node(object):
         self._driver.SendMessage(mesg)
 
     def SendCommand(self, key0, key1, values, priority: tuple, xmit :int ):
-        raw_cmd = command.AssembleCommand(key0, key1, values)
+        try:
+            raw_cmd = command.AssembleCommand(key0, key1, values)
+        except:
+            logging.error("cannot assemble command for %s %s %s",
+                          command.StringifyCommamnd(key0, key1),
+                          z.SUBCMD_TO_PARSE_TABLE[key0 * 256 + key1],
+                          values)
+            print("-" * 60)
+            traceback.print_exc(file=sys.stdout)
+            print("-" * 60)
 
         def handler(_):
             logging.debug("@@handler invoked")
@@ -239,6 +248,7 @@ class NodeSet(object):
         node.last_contact = ts
         try:
             data = [int(x) for x in m[7:7 + size]]
+            data = command.MaybePatchCommand(data)
             # prefix = self.LogPrefix(key)
             value = command.ParseCommand(data, "[%d]" % n)
             if value is None:
@@ -247,8 +257,7 @@ class NodeSet(object):
             for l in self._listeners:
                 l.put(n, ts, data[0], data[1], value)
         except:
-            logging.error(
-                "Exception caught: cannot parse: %s", zmessage.PrettifyRawMessage(m))
+            logging.error("[%d] cannot parse: %s", n, zmessage.PrettifyRawMessage(m))
             print("-" * 60)
             traceback.print_exc(file=sys.stdout)
             print("-" * 60)

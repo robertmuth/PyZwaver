@@ -113,3 +113,6 @@ SOF len:0c REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:02 len:06 SensorMulti
 SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:03 Association_GroupingsReport:85 X:06 01 chk:7a
 SOF len:0c REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:16 len:06 SensorMultilevel_Report:31 X:05 01 3b 01 2e chk:c6
 SOF len:0c REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:16 len:06 SensorMultilevel_Report:31 X:05 01 37 01 2b chk:cf
+# bad
+#SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:16 len:04 ManufacturerSpecific_Report:72 X:05 00 86 chk:12
+SOF len:0c REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:16 len:06 SensorMultilevel_Report:31 X:05 01 3e 01 34 chk:d9
