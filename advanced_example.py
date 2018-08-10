@@ -25,6 +25,7 @@ import logging
 import argparse
 import sys
 import time
+import signal
 
 from pyzwaver import controller
 from pyzwaver import driver
@@ -104,10 +105,29 @@ def main():
     PROTOCOL_NODESET.AddListener(APPLICATION_NODESET)
     # n.InitializeExternally(CONTROLLER.props.product, CONTROLLER.props.library_type, True)
     logging.info("pinging %d nodes", len(CONTROLLER.nodes))
+
     for n in CONTROLLER.nodes:
         node = PROTOCOL_NODESET.GetNode(n)
         node.Ping(3, False)
 
+    def signal_handler(sig, frame):
+       print("Control-C pressed. Node dump:")
+       for n in CONTROLLER.nodes:
+            print(APPLICATION_NODESET.GetNode(n))
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+    not_ready = CONTROLLER.nodes.copy()
+    while not_ready:
+        interviewed = set()
+        for n in not_ready:
+            node = APPLICATION_NODESET.GetNode(n)
+            if node.IsInterviewed():
+                    interviewed.add(node)
+        time.sleep(2.0)
+        for node in interviewed:
+            print(node)
+            not_ready.remove(node.n)
     return 0
 
 

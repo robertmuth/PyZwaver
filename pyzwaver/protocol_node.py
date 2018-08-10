@@ -53,12 +53,21 @@ class Node(object):
         self.n = n
         self._is_controller = is_controller
         self._driver = driver
-        self.last_contact = -1
+        self.last_contact = 0
         self.flags = set()
         self.device_type = None
         self.device_description = ""
         self.protocol_version = -1
         self.failed = False
+
+    def __str__(self):
+        out = [
+            "NODE: %d" % self.n,
+            "last-contact: %s" % self.last_contact,
+            "flags %s" % self.flags,
+            "device: %s(%s)" % (self.device_type, self.device_description),
+        ]
+        return "  ".join(out)
 
     def SetDeviceType(self, device_type):
         self.device_type = device_type
@@ -213,7 +222,6 @@ class NodeSet(object):
         self._controller_n = controller_n
         self._listeners = []
         self._nodes = {}
-        self._terminate = False
         self._receiver_thread = threading.Thread(target=self._NodesetReceiverThread,
                                                  name="NodeSetReceive")
         self._receiver_thread.start()
@@ -234,12 +242,6 @@ class NodeSet(object):
     def DropNode(self, n):
         del self._nodes[n]
 
-    def Terminate(self):
-        self._terminate = True
-        self._driver.SendMessage(None)
-        self._receiver_thread.join()
-        logging.info("NodeSet terminated")
-
     def _HandleMessageApplicationCommand(self, ts, m):
         _ = m[4]  # status
         n = m[5]
@@ -254,13 +256,15 @@ class NodeSet(object):
             if value is None:
                 logging.error("[%d] parsing failed for %s", n, Hexify(data))
                 return
-            for l in self._listeners:
-                l.put(n, ts, data[0], data[1], value)
         except:
             logging.error("[%d] cannot parse: %s", n, zmessage.PrettifyRawMessage(m))
             print("-" * 60)
             traceback.print_exc(file=sys.stdout)
             print("-" * 60)
+            return
+
+        for l in self._listeners:
+            l.put(n, ts, data[0], data[1], value)
 
     def _HandleMessageApplicationUpdate(self, ts, m):
         kind = m[4]

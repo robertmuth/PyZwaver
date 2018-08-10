@@ -401,9 +401,7 @@ ALLOWED_PARAMETER_FORMATS = {
     "N{name}",
     "O{nonce}",
     "R{bits}",
-    "T{alarm}",
-    "U{thermo}",
-    "U{bits}",
+    "T{bits}",
     "V{value}",
     "W{firmware}",
     "W{checksum}",
@@ -550,7 +548,7 @@ C("ColorSwitch", 0x33,
   Get=(0x3, "B{group}"),
   Report=(0x4, "B{group},B{level}"),
   SupportedGet=(0x1, ""),
-  SupportedReport=(0x2, "U{bits}"),
+  SupportedReport=(0x2, "R{bits}"),
   # Set=(0x5,
   # StartLevelChange=(0x6,
   # StopLevelChange=(0x7,
@@ -561,7 +559,7 @@ C("ThermostatMode", 0x40,
   Get=(0x2, ""),
   Report=(0x3, "B{thermo}"),
   SupportedGet=(0x4, ""),
-  SupportedReport=(0x5, "U{thermo}"),
+  SupportedReport=(0x5, "R{bits}"),
   )
 
 C("ThermostatSetpoint", 0x43,
@@ -569,7 +567,7 @@ C("ThermostatSetpoint", 0x43,
   Get=(0x2, "B{thermo}"),
   Report=(0x3, "B{thermo},X{value}"),
   SupportedGet=(0x4, ""),
-  SupportedReport=(0x5, "U{thermo}"),
+  SupportedReport=(0x5, "R{bits}"),
   )
 
 C("DoorLockLogging", 0x4C,
@@ -724,7 +722,7 @@ C("SensorAlarm", 0x9c,
   Get=(0x1, "B{alarm}"),
   Report=(0x2, "B{node},B{alarm}"),
   SupportedGet=(0x3, ""),
-  SupportedReport=(0x4, "T{alarm}"))
+  SupportedReport=(0x4, "T{bits}"))
 
 C("SilenceAlarm", 0x9d,
   )

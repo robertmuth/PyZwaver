@@ -93,7 +93,7 @@ DO_RETRY = "DO_RETRY"
 DO_PROPAGATE = "DO_PROPAGATE"
 
 
-def _ProcessReceivedMessage(ts, inflight : zmessage.Message, m):
+def _ProcessReceivedMessage(ts, inflight: zmessage.Message, m):
     """
     Process an message arriving at the driver and determines
     the course of action taking the current inflight message
@@ -217,8 +217,9 @@ class Driver(object):
         self._device = serialDevice
         self._out_queue = MessageQueueOut()  # stuff being send to the stick
 
-        self._raw_history = []
-        self._history = []  # a message is copied into this once if makes it into _inflight.
+        self._raw_history = []  # type: List[tuple]
+        # a message is copied into this once if makes it into _inflight.
+        self._history = []   # type: List[zmessage.Message]
         self._device_idle = True
         self._terminate = False  # True if we want to shut things down
         self._in_queue = queue.Queue()  # stuff coming from the stick unrelated to _inflight
@@ -284,6 +285,7 @@ class Driver(object):
 
         """
         self._terminate = True
+        self._in_queue.put((time.time(), None))
         self.SendMessage(zmessage.Message(None, zmessage.LowestPriority(), lambda _: None, None))
         logging.info("Driver terminated")
 
@@ -316,7 +318,8 @@ class Driver(object):
         while not self._terminate:
             inflight = self._out_queue.get()
             if inflight.payload is None:
-                inflight.callback(None)
+                if inflight._callback:
+                    inflight._callback(None)
                 continue
             self._inflight = inflight
             self._RecordInflight(inflight)

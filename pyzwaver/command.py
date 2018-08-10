@@ -36,10 +36,10 @@ def StringifyCommamnd(cmd0, cmd1):
 
 
 # ======================================================================
-def EventTypeToString(t):
-    if t < len(DOOR_LOG_EVENT_TYPE):
-        return DOOR_LOG_EVENT_TYPE[t]
-    return "@UNKNOWN_EVENT[%d]@" % t
+# def EventTypeToString(t):
+#    if t < len(DOOR_LOG_EVENT_TYPE):
+#        return DOOR_LOG_EVENT_TYPE[t]
+#    return "@UNKNOWN_EVENT[%d]@" % t
 
 
 # ======================================================================
@@ -170,16 +170,6 @@ def _ParseListRest(m, index):
     return index + size, m[index:index + size]
 
 
-def _ExtractBitVector(data, offset):
-    bits = set()
-    for i in range(len(data)):
-        b = data[i]
-        for j in range(8):
-            if b & (1 << j) != 0:
-                bits.add(j + i * 8 + offset)
-    return bits
-
-
 def _ParseGroups(m, index):
     misc = m[index]
     count = misc & 0x3f
@@ -194,16 +184,6 @@ def _ParseGroups(m, index):
         groups.append((num, profile, event))
         index += 7
     return index, groups
-
-
-def _ParseBitVector(m, index):
-    size = m[index]
-    return index + 1 + size, _ExtractBitVector(m[index + 1:index + 1 + size], 0)
-
-
-def _ParseBitVectorRest(m, index):
-    # size = len(m) - index
-    return len(m), _ExtractBitVector(m[index:], 0)
 
 
 def _ParseNonce(m, index):
@@ -237,6 +217,12 @@ def _GetIntBigEndian(m):
 
 def _ParseRestLittleEndianInt(m, index):
     size = len(m) - index
+    return index + size, {"size": size, "value": _GetIntLittleEndian(m[index:index + size])}
+
+
+def _ParseSizedLittleEndianInt(m, index):
+    size = m[index]
+    index += 1
     return index + size, {"size": size, "value": _GetIntLittleEndian(m[index:index + size])}
 
 
@@ -313,8 +299,7 @@ _PARSE_ACTIONS = {
     "M": _ParseMeter,
     "O": _ParseNonce,
     "D": _ParseDataRest,  # as Uint8List
-    "T": _ParseBitVector,
-    "U": _ParseBitVectorRest,
+    "T": _ParseSizedLittleEndianInt,
     "X": _ParseSensor,
     'b': _ParseOptionalByte,
     't': _ParseOptionalTarget,

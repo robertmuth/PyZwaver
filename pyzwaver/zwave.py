@@ -965,7 +965,7 @@ SUBCMD_TO_PARSE_TABLE = {
 
     # ColorSwitch (0x33 = 51)
     0x3301: [],  # SupportedGet (1)
-    0x3302: ['U{bits}'],  # SupportedReport (2)
+    0x3302: ['R{bits}'],  # SupportedReport (2)
     0x3303: ['B{group}'],  # Get (3)
     0x3304: ['B{group}', 'B{level}'],  # Report (4)
 
@@ -974,13 +974,13 @@ SUBCMD_TO_PARSE_TABLE = {
     0x4002: [],  # Get (2)
     0x4003: ['B{thermo}'],  # Report (3)
     0x4004: [],  # SupportedGet (4)
-    0x4005: ['U{thermo}'],  # SupportedReport (5)
+    0x4005: ['R{bits}'],  # SupportedReport (5)
 
     # ThermostatSetpoint (0x43 = 67)
     0x4302: ['B{thermo}'],  # Get (2)
     0x4303: ['B{thermo}', 'X{value}'],  # Report (3)
     0x4304: [],  # SupportedGet (4)
-    0x4305: ['U{thermo}'],  # SupportedReport (5)
+    0x4305: ['R{bits}'],  # SupportedReport (5)
 
     # DoorLockLogging (0x4c = 76)
     0x4c01: [],  # SupportedGet (1)
@@ -1142,5 +1142,5 @@ SUBCMD_TO_PARSE_TABLE = {
     0x9c01: ['B{alarm}'],  # Get (1)
     0x9c02: ['B{node}', 'B{alarm}'],  # Report (2)
     0x9c03: [],  # SupportedGet (3)
-    0x9c04: ['T{alarm}'],  # SupportedReport (4)
+    0x9c04: ['T{bits}'],  # SupportedReport (4)
 }

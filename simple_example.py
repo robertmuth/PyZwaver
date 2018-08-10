@@ -107,6 +107,12 @@ def main():
         node = NODESET.GetNode(n)
         node.Ping(3, False)
 
+    time.sleep(3)
+    print("Node List:")
+    for n in CONTROLLER.nodes:
+        print(NODESET.GetNode(n))
+    DRIVER.Terminate()
+
     return 0
 
 
