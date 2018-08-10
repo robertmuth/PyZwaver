@@ -40,48 +40,6 @@ NODE_STATE_DISCOVERED = "2_Discovered"
 # info an versions)
 NODE_STATE_INTERVIEWED = "3_Interviewed"
 
-# ======================================================================
-SENSOR_VALUES = {
-    # (z.SensorMultilevel, z.SensorMultilevel_Report),
-    z.SwitchBinary_Report,
-    z.Battery_Report,
-    z.SensorBinary_Report,
-    z.SwitchToggleBinary_Report,
-    z.SwitchMultilevel_Report,
-    z.Basic_Report,
-}
-
-EVENT_VALUES = [
-    z.Alarm_Report,
-    z.Alarm_Set,
-    z.WakeUp_Notification,
-    z.Basic_Get,
-    z.Hail_Hail,
-]
-
-# for event triggering
-VALUE_CHANGERS = {
-    z.SceneActuatorConf_Report,
-    z.Version_CommandClassReport,
-    z.SensorMultilevel_Report,
-    z.SensorMultilevel_SupportedReport,
-    z.SwitchBinary_Report,
-    z.Battery_Report,
-    z.SensorBinary, z.SensorBinary_Report,
-    z.SwitchToggleBinary, z.SwitchToggleBinary_Report,
-    z.SwitchMultilevel, z.SwitchMultilevel_Report,
-    z.Basic_Report,
-    z.Meter_Report,
-    z.Meter_SupportedReport,
-    z.Configuration_Report,
-    z.Association_GroupingsReport,
-    z.Association_Report,
-    z.AssociationGroupInformation_NameReport,
-    z.AssociationGroupInformation_InfoReport,
-    z.AssociationGroupInformation_ListReport,
-    z.ColorSwitch_Report,
-}
-
 
 def _AssociationSubkey(v):
     return v["group"]
@@ -219,69 +177,6 @@ def BitsToSetWithOffset(x, offset):
     return out
 
 
-def RenderValues(values):
-    return str([str(v) for v in sorted(values)])
-
-
-def CompactifyParams(params):
-    out = []
-    last = [-1, -1, -1, -1]  # range start, range end, size, value
-    for k in sorted(params.keys()):
-        a, b = params[k]
-        if last[2] != a or last[3] != b or last[1] != k - 1:
-            last = [k, k, a, b]
-            out.append(last)
-        else:
-            last[1] = k  # increment range end
-    return out
-
-
-class AssociationGroup:
-    """
-    """
-
-    def __init__(self, no):
-        self._no = no
-        self.nodes = []
-        self.capacity = 0
-        self.name = ""
-        self._profile = None
-        self._event = None
-        self._commands = None
-
-    def SetNodes(self, capacity, nodes):
-        self.capacity = capacity
-        self.nodes = nodes
-
-    def SetMeta(self, profile, event):
-        self._profile = profile
-        self._event = event
-
-    def SetName(self, name):
-        self.name = name
-
-    def SetCommands(self, commands):
-        self._commands = commands
-
-    def __str__(self):
-        return "Group %d [%s]  profile:%d  event:%d  cmds:%s  capacity:%d  nodes:%s" % (
-            self._no, self.name, self._profile, self._event, self._commands, self.capacity, self.nodes)
-
-
-class NodeSensors:
-
-    def __str__(self):
-        return ("  sensors supp.:" + RenderSensorList(self._supported) +
-                "  sensors:      " + RenderValues(self._readings.values()))
-
-
-class NodeMeters:
-
-    def __str__(self):
-        return ("  meters supp.:" + RenderMeterList(self._flags & 0x1f, self._supported) +
-                "  meters:      " + RenderValues(self._readings.values()))
-
-
 class NodeValues:
     _NO_VALUE = 0, {}
 
@@ -306,13 +201,13 @@ class NodeValues:
             self._maps[key] = m
         m[subkey] = ts, value
 
-    def Get(self, key: tuple):
+    def Get(self, key: tuple) -> map:
         v = self._values.get(key)
         if v is not None:
             return v[1]
         return None
 
-    def GetMap(self, key: tuple):
+    def GetMap(self, key: tuple) -> map:
         return self._maps.get(key, {})
 
     def ColorSwitchSupported(self):
@@ -430,7 +325,28 @@ class NodeValues:
         return v.get("library", 0), v.get("protocol", 0), v.get("firmware", 0), v.get("hardware", 0)
 
     def __str__(self):
-        return RenderValues(self._values.values())
+        out = []
+        out.append("  values:")
+        for x in self.Values():
+            out.append("    " + str(x))
+        out.append("  configuration:")
+        for x in self.Configuration():
+            out.append("    " + str(x))
+        out.append("  commands:")
+        for x in self.CommandVersions():
+            out.append("    " + str(x))
+        out.append("  associations:")
+        for x in self.Associations():
+            out.append("    " + str(x))
+        if self.MeterSupported():
+            out.append("  meters:")
+            for x in self.Meters():
+                out.append("    " + str(x))
+        if self.SensorSupported():
+            out.append("  sensors:")
+            for x in self.Sensors():
+                out.append("    " + str(x))
+        return "\n".join(out)
 
 
 class ApplicationNode:
@@ -439,11 +355,11 @@ class ApplicationNode:
     Application level messages are passed to it via put()
     """
 
-    def __init__(self, n, protocol_node: protocol_node.Node):
+    def __init__(self, n, proto_node: protocol_node.Node):
         assert n >= 1
         self.n = n
         self.name = "Node %d" % n
-        self._protocol_node = protocol_node
+        self._protocol_node = proto_node
         self._state = NODE_STATE_NONE
         self._controls = set()
         #
@@ -491,41 +407,7 @@ class ApplicationNode:
         return "  ".join(out)
 
     def __str__(self):
-        out = [self.BasicString()]
-        # self._values.get(VALUE_PROUCT, DEFAULT_PRODUCT))
-        #         out.append("  control: %s" % (
-        #             [(zwave_cmd.CommandToString(c)) for c in self.control]))
-        #         out.append("  configuration: " + repr(self.configuration))
-        #         out.append("  scenes:       " + repr(self.scenes))
-        #         meter = {zwave_cmd.GetMeterUnits(*k): v for k, v in self.meter.items()}
-        # sensor = {zwave_cmd.GetSensorUnits(*k): v for k, v in
-        # self.sensor.items()}
-
-        # if self.values.HaseterContent():
-        #    out.append(str(self.meters))
-        # if self.sensors.HasContent():
-        #    out.append(str(self.sensors))
-        out.append("  values:")
-        for x in self.values.Values():
-            out.append("    " + str(x))
-        out.append("  configuration:")
-        for x in self.values.Configuration():
-            out.append("    " + str(x))
-        out.append("  commands:")
-        for x in self.values.CommandVersions():
-            out.append("    " + str(x))
-        out.append("  associations:")
-        for x in self.values.Associations():
-            out.append("    " + str(x))
-        if self.values.MeterSupported():
-            out.append("  meters:")
-            for x in self.values.Meters():
-                out.append("    " + str(x))
-        if self.values.SensorSupported():
-            out.append("  sensors:")
-            for x in self.values.Sensors():
-                out.append("    " + str(x))
-        return "\n".join(out)
+        return self.BasicString() + "\n" + str(self.values)
 
     def BatchCommandSubmitFiltered(self, commands, priority: tuple, xmit: int):
         for c in commands:
@@ -613,7 +495,7 @@ class ApplicationNode:
     def ResetMeter(self, request_update=True):
         # TODO
         c = [(z.Meter_Reset, {})]
-        #if not request_update:
+        # if not request_update:
         #    c += [(z.Meter_Get, {})]
         self.BatchCommandSubmitFilteredFast(c, XMIT_OPTIONS)
 
