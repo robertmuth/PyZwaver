@@ -452,8 +452,7 @@ def MaybePatchCommand(m):
     #    logging.warning("received MultiInstance_Encap for instance")
     #    return m[4:]
 
-    if (m[0] == z.SensorMultilevel and
-            m[1] == z.SensorMultilevel_Report and
+    if ((m[0], m[1]) == z.SensorMultilevel_Report and
             m[2] == 1 and
             ((m[3] & 7) > len(m) - 4)):
         x = 1 << 5 | (0 << 3) | 2
@@ -461,8 +460,7 @@ def MaybePatchCommand(m):
         logging.warning(
             "fixing up SensorMultilevel_Report %s: [3] %02x-> %02x", Hexify(m), m[3], x)
         m[3] = x
-    if (m[0] == z.SensorMultilevel and
-            m[1] == z.SensorMultilevel_Report and
+    if ((m[0], m[1]) == z.SensorMultilevel_Report and
             m[2] == 1 and
             (m[3] & 0x10) != 0):
         x = m[3] & 0xe7

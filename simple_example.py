@@ -59,10 +59,10 @@ class TestListener(object):
     def __init__(self):
         self._count = 0
 
-    def put(self, n, _, key0, key1, values):
+    def put(self, n, _, key, values):
         name = "@NONE@"
-        if key0 is not None:
-            name = "%s  (%02:%02x)" % (z.SUBCMD_TO_STRING.get(key0 * 256 + key1), key0, key1)
+        if key[0] is not None:
+            name = "%s  (%02:%02x)" % (z.SUBCMD_TO_STRING.get(key[0] * 256 + key[1]), key[0], key[1])
         logging.info("RECEIVED [%d]: %s - %s", n, name, values)
         self._count += 1
 

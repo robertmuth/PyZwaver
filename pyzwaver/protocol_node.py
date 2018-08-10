@@ -85,13 +85,14 @@ class Node(object):
         mesg = zmessage.Message(m, priority, handler, self.n)
         self._driver.SendMessage(mesg)
 
-    def SendCommand(self, key0, key1, values, priority: tuple, xmit: int):
+    def SendCommand(self, key, values, priority: tuple, xmit: int):
         try:
-            raw_cmd = command.AssembleCommand(key0, key1, values)
+            raw_cmd = command.AssembleCommand(key[0], key[1], values)
+            raw_cmd = command.AssembleCommand(key[0], key[1], values)
         except:
             logging.error("cannot assemble command for %s %s %s",
                           command.StringifyCommamnd(key0, key1),
-                          z.SUBCMD_TO_PARSE_TABLE[key0 * 256 + key1],
+                          z.SUBCMD_TO_PARSE_TABLE[key[0] * 256 + key[1]],
                           values)
             print("-" * 60)
             traceback.print_exc(file=sys.stdout)
@@ -265,7 +266,7 @@ class NodeSet(object):
             return
 
         for l in self._listeners:
-            l.put(n, ts, data[0], data[1], value)
+            l.put(n, ts, (data[0], data[1]), value)
 
     def _HandleMessageApplicationUpdate(self, ts, m):
         kind = m[4]
@@ -297,7 +298,7 @@ class NodeSet(object):
                 "controls": controls,
             }
             for l in self._listeners:
-                l.put(n, ts, None, None, value)
+                l.put(n, ts, (None, None), value)
         elif kind == z.UPDATE_STATE_SUC_ID:
             logging.warning("succ id updated: needs work")
         else:
