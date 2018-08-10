@@ -29,7 +29,7 @@ from Crypto.Cipher import AES
 
 from pyzwaver import zmessage
 from pyzwaver import command
-from pyzwaver import zwave
+from pyzwaver import z
 
 _DEFAULT_NETWORK_KEY = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 
@@ -41,7 +41,7 @@ _AUTH_SECRET = [0x55] * 16
 
 _NONCE_TIMEOUT_SEC = 5.0
 
-_NONCE_GET_RAW = [zwave.Security, zwave.Security_NonceGet]
+_NONCE_GET_RAW = [z.Security, z.Security_NonceGet]
 
 
 def Crypt(key, data, iv_orig):
@@ -158,10 +158,10 @@ class SecureQueue:
         wrapped = self._security.Wrap(raw,
                                       nonce.value,
                                       self.GetRandomList(8),
-                                      zwave.Security_MessageEncap,
+                                      z.Security_MessageEncap,
                                       self._controller,
                                       self._node)
-        if cmd[0] == zwave.Security and cmd[1] == zwave.Security_NetworkKeySet:
+        if cmd[0] == z.Security and cmd[1] == z.Security_NetworkKeySet:
             self.SetKey(cmd[2])
 
-        return [zwave.Security, zwave.Security_MessageEncap, wrapped];
+        return [z.Security, z.Security_MessageEncap, wrapped];
