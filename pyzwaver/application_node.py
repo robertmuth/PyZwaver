@@ -25,6 +25,7 @@ from pyzwaver import zmessage
 from pyzwaver import zwave as z
 from pyzwaver import protocol_node
 from pyzwaver import command
+from pyzwaver import value
 
 
 def Hexify(t):
@@ -90,7 +91,7 @@ _COMMANDS_WITH_MAP_VALUES = {
     z.Version_CommandClassReport: lambda v: v["class"],
     z.Meter_Report: lambda v: (v["meter"]["type"], v["meter"]["unit"]),
     z.Configuration_Report: lambda v: v["parameter"],
-    z.SensorMultilevel_Report: lambda v: (v["type"], v["value"]["scale"]),
+    z.SensorMultilevel_Report: lambda v: (v["type"], v["value"]["unit"]),
     z.Association_Report: _AssociationSubkey,
     z.AssociationGroupInformation_NameReport: _AssociationSubkey,
     z.AssociationGroupInformation_InfoReport: _AssociationSubkey,
@@ -195,15 +196,15 @@ _STATIC_PROPERTY_QUERIES = [
 ]
 
 
-def ColorQueries(groups):
+def _ColorQueries(groups):
     return [(z.ColorSwitch_Get, {"group": g}) for g in groups]
 
 
-def CommandVersionQueries(classes):
+def _CommandVersionQueries(classes):
     return [(z.Version_CommandClassGet, {"class": c}) for c in classes]
 
 
-def MultiInstanceSupportQueries(classes):
+def _MultiInstanceSupportQueries(classes):
     return [(z.MultiInstance_Get, {"mode": c}) for c in classes]
 
 
@@ -393,12 +394,12 @@ class NodeValues:
 
     def Sensors(self):
         m = self.GetMap(z.SensorMultilevel_Report)
-        return sorted([(key, val)
+        return sorted([(key, value.GetSensorMeta(val), val)
                        for key, (_, val) in m.items()])
 
     def Meters(self):
         m = self.GetMap(z.Meter_Report)
-        return sorted([(key, val)
+        return sorted([(key, value.GetMeterMeta(val), val)
                        for key, (_, val) in m.items()])
 
     def Associations(self):
@@ -578,7 +579,7 @@ class ApplicationNode:
     #        driver.Send(cmd, handler, "WakeUpIntervalCapabilitiesGet")
 
     def RefreshCommandVersions(self, classes):
-        self.BatchCommandSubmitFilteredSlow(CommandVersionQueries(classes),
+        self.BatchCommandSubmitFilteredSlow(_CommandVersionQueries(classes),
                                             XMIT_OPTIONS)
 
     def RefreshAllCommandVersions(self):
@@ -665,17 +666,17 @@ class ApplicationNode:
         c = (_DYNAMIC_PROPERTY_QUERIES +
              SensorMultiLevelQueries(self.values.SensorSupported()) +
              MeterQueries(self.values.MeterSupported()) +
-             ColorQueries(self.values.ColorSwitchSupported()))
+             _ColorQueries(self.values.ColorSwitchSupported()))
         self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)
 
     def RefreshStaticValues(self):
         logging.warning("[%d] RefreshStatic", self.n)
         self.BatchCommandSubmitFilteredSlow(_STATIC_PROPERTY_QUERIES, XMIT_OPTIONS)
         self.BatchCommandSubmitFilteredSlow(
-            CommandVersionQueries(self.values.Classes()),
+            _CommandVersionQueries(self.values.Classes()),
             XMIT_OPTIONS)
         self.BatchCommandSubmitFilteredSlow(
-            MultiInstanceSupportQueries(self.values.Classes()),
+            _MultiInstanceSupportQueries(self.values.Classes()),
             XMIT_OPTIONS)
 
         # This must be last as we use this as an indicator for the

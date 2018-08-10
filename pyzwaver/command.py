@@ -36,13 +36,6 @@ def StringifyCommamnd(cmd0, cmd1):
 
 
 # ======================================================================
-# def EventTypeToString(t):
-#    if t < len(DOOR_LOG_EVENT_TYPE):
-#        return DOOR_LOG_EVENT_TYPE[t]
-#    return "@UNKNOWN_EVENT[%d]@" % t
-
-
-# ======================================================================
 def _GetSignedValue(data):
     value = 0
     negative = (data[0] & 0x80) != 0
@@ -248,7 +241,7 @@ def _ParseSensor(m, index):
 
     c = m[index]
     precision = (c >> 5) & 7
-    scale = (c >> 3) & 3
+    unit = (c >> 3) & 3
     size = c & 7
     if size == 3:
         logging.error("@@@ strange size field")
@@ -257,11 +250,11 @@ def _ParseSensor(m, index):
         logging.error("@@@ strange size field")
         size = 1
     if len(m) < index + 1 + size:
-        raise ValueError("malformed sensor string precision:%d scale:%d size:%d" %
-                         (precision, scale, size))
+        raise ValueError("malformed sensor string precision:%d unit:%d size:%d" %
+                         (precision, unit, size))
     mantissa = m[index + 1: index + 1 + size]
     value = _GetSignedValue(mantissa) / pow(10, precision)
-    return index + 1 + size, {"exp": precision, "scale": scale, "mantissa": mantissa,
+    return index + 1 + size, {"exp": precision, "unit": unit, "mantissa": mantissa,
                               "_value": value}
 
 
@@ -360,7 +353,7 @@ def _MakeDate(date):
 
 def _MakeSensor(args):
     m = args["mantissa"]
-    c = args["exp"] << 5 | args["scale"] << 3 | len(m)
+    c = args["exp"] << 5 | args["unit"] << 3 | len(m)
     return [c] + m
 
 
