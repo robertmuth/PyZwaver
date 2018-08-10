@@ -113,7 +113,11 @@ def main():
     def signal_handler(sig, frame):
        print("Control-C pressed. Node dump:")
        for n in CONTROLLER.nodes:
-            print(APPLICATION_NODESET.GetNode(n))
+           node = APPLICATION_NODESET.GetNode(n)
+           print(node)
+           node.RefreshStaticValues()
+           node.RefreshDynamicValues()
+           node.RefreshAssociations()
 
     signal.signal(signal.SIGINT, signal_handler)
 
@@ -124,6 +128,7 @@ def main():
             node = APPLICATION_NODESET.GetNode(n)
             if node.IsInterviewed():
                     interviewed.add(node)
+                    node.RefreshAssociations()
         time.sleep(2.0)
         for node in interviewed:
             print(node)

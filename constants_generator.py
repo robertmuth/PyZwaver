@@ -584,7 +584,7 @@ C("AssociationGroupInformation", 0x59,
   NameGet=(0x1, "B{group}"),
   NameReport=(0x2, "B{group},A{name}"),
   InfoGet=(0x3, "B{mode},B{group}"),
-  InfoReport=(0x4, "G{groups}"),
+  InfoReport=(0x4, "B{mode},B{group},G{groups}"),
   ListGet=(0x5, "B{mode},B{group}"),
   ListReport=(0x6, "B{group},A{commands}"),
   )

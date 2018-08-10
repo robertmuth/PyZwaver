@@ -279,6 +279,13 @@ KEY_COLOR_SWITCH_SUPPORTED = (z.ColorSwitch, z.ColorSwitch_SupportedReport)
 KEY_VERSION_COMMAND_CLASS = (z.Version, z.Version_CommandClassReport)
 KEY_ASSOCIATION_GROUPINGS = (z.Association, z.Association_GroupingsReport)
 KEY_ASSOCIATION = (z.Association, z.Association_Report)
+KEY_CONFIGURATION = (z.Configuration, z.Configuration_Report)
+KEY_ASSOCIATION_GROUP_INFOMATION_NAME = (z.AssociationGroupInformation,
+                                         z.AssociationGroupInformation_NameReport)
+KEY_ASSOCIATION_GROUP_INFOMATION_INFO = (z.AssociationGroupInformation,
+                                         z.AssociationGroupInformation_InfoReport)
+KEY_ASSOCIATION_GROUP_INFOMATION_LIST = (z.AssociationGroupInformation,
+                                         z.AssociationGroupInformation_ListReport)
 
 
 class NodeSensors:
@@ -397,9 +404,34 @@ class NodeValues:
         return sorted([(cls, z.CMD_TO_STRING.get(cls, "UKNOWN:%d" % cls), val["version"])
                        for cls, (_, val) in m.items()])
 
+    def Configuration(self):
+        m = self.GetMap(KEY_CONFIGURATION)
+        return sorted([(no, val["size"], val["value"]) for no, (_, val) in m.items()])
+
     def Values(self):
         return sorted([(key, command.StringifyCommamnd(*key), val)
                        for key, (_, val) in self._values.items()])
+
+    def Associations(self):
+        groups = self.GetMap(KEY_ASSOCIATION)
+        infos = self.GetMap(KEY_ASSOCIATION_GROUP_INFOMATION_INFO)
+        lists = self.GetMap(KEY_ASSOCIATION_GROUP_INFOMATION_LIST)
+        names = self.GetMap(KEY_ASSOCIATION_GROUP_INFOMATION_NAME)
+        all = set(groups.keys())
+        all |= infos.keys()
+        all |= lists.keys()
+        all |= names.keys()
+
+        def foo(m, k):
+            e = m.get(k)
+            if e is None:
+                return None
+            return e[1]
+
+        out = []
+        for n in sorted(all):
+            out.append((n, foo(groups, n), foo(names, n), foo(infos, n), foo(lists, n)))
+        return out
 
     def Versions(self):
         v = self.Get(KEY_VERSION)
@@ -486,14 +518,15 @@ class ApplicationNode:
         out.append("  values:")
         for x in self.values.Values():
             out.append("    " + str(x))
-        # out.append("  events:       " + repr(self._events))
-        # out.append("  parameters:")
-        # out.append(str(self.parameters))
+        out.append("  configuration:")
+        for x in self.values.Configuration():
+            out.append("    " + str(x))
         out.append("  commands:")
         for x in self.values.CommandVersions():
             out.append("    " + str(x))
         out.append("  associations:")
-        # out.append(str(self.associations))
+        for x in self.values.Associations():
+            out.append("    " + str(x))
         return "\n".join(out)
 
     def BatchCommandSubmitFiltered(self, commands, priority: tuple, xmit: int):
@@ -606,15 +639,17 @@ class ApplicationNode:
         self.BatchCommandSubmitFilteredFast(reqs, XMIT_OPTIONS)
 
     def RefreshAssociations(self):
-        c = [(z.AssociationGroupInformation,
-              z.AssociationGroupInformation_InfoGet, {64, 0})]
+        c = []
         for no in self.values.ListAssociationGroupNumbers():
-            c.append((z.Association, z.Association_Get, {no}))
-            c.append([z.AssociationGroupInformation,
-                      z.AssociationGroupInformation_NameGet, no])
-            c.append([z.AssociationGroupInformation,
-                      z.AssociationGroupInformation_ListGet, 0, no])
-
+            v = {"group": no}
+            c.append((z.Association, z.Association_Get, v))
+            c.append((z.AssociationGroupInformation,
+                      z.AssociationGroupInformation_NameGet, v))
+            v = {"group": no, "mode": 0}
+            c.append((z.AssociationGroupInformation,
+                      z.AssociationGroupInformation_ListGet, v))
+            c.append((z.AssociationGroupInformation,
+                      z.AssociationGroupInformation_InfoGet, v))
         self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)
 
     def AssociationAdd(self, group, n):

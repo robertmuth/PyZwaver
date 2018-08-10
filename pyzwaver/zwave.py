@@ -992,7 +992,7 @@ SUBCMD_TO_PARSE_TABLE = {
     0x5901: ['B{group}'],  # NameGet (1)
     0x5902: ['B{group}', 'A{name}'],  # NameReport (2)
     0x5903: ['B{mode}', 'B{group}'],  # InfoGet (3)
-    0x5904: ['G{groups}'],  # InfoReport (4)
+    0x5904: ['B{mode}', 'B{group}', 'G{groups}'],  # InfoReport (4)
     0x5905: ['B{mode}', 'B{group}'],  # ListGet (5)
     0x5906: ['B{group}', 'A{commands}'],  # ListReport (6)
 
