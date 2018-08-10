@@ -40,45 +40,45 @@ NODE_STATE_DISCOVERED = "2_Discovered"
 NODE_STATE_INTERVIEWED = "3_Interviewed"
 
 # ======================================================================
-SENSOR_VALUES = [
+SENSOR_VALUES = {
     # (z.SensorMultilevel, z.SensorMultilevel_Report),
-    (z.SwitchBinary, z.SwitchBinary_Report),
-    (z.Battery, z.Battery_Report),
-    (z.SensorBinary, z.SensorBinary_Report),
-    (z.SwitchToggleBinary, z.SwitchToggleBinary_Report),
-    (z.SwitchMultilevel, z.SwitchMultilevel_Report),
-    (z.Basic, z.Basic_Report),
-]
+    z.SwitchBinary_Report,
+    z.Battery_Report,
+    z.SensorBinary_Report,
+    z.SwitchToggleBinary_Report,
+    z.SwitchMultilevel_Report,
+    z.Basic_Report,
+}
 
 EVENT_VALUES = [
-    (z.Alarm, z.Alarm_Report),
-    (z.Alarm, z.Alarm_Set),
-    (z.WakeUp, z.WakeUp_Notification),
-    (z.Basic, z.Basic_Get),
-    (z.Hail, z.Hail_Hail),
+    z.Alarm_Report,
+    z.Alarm_Set,
+    z.WakeUp_Notification,
+    z.Basic_Get,
+    z.Hail_Hail,
 ]
 
 # for event triggering
 VALUE_CHANGERS = {
-    (z.SceneActuatorConf, z.SceneActuatorConf_Report),
-    (z.Version, z.Version_CommandClassReport),
-    (z.SensorMultilevel, z.SensorMultilevel_Report),
-    (z.SensorMultilevel, z.SensorMultilevel_SupportedReport),
-    (z.SwitchBinary, z.SwitchBinary_Report),
-    (z.Battery, z.Battery_Report),
-    (z.SensorBinary, z.SensorBinary_Report),
-    (z.SwitchToggleBinary, z.SwitchToggleBinary_Report),
-    (z.SwitchMultilevel, z.SwitchMultilevel_Report),
-    (z.Basic, z.Basic_Report),
-    (z.Meter, z.Meter_Report),
-    (z.Meter, z.Meter_SupportedReport),
-    (z.Configuration, z.Configuration_Report),
-    (z.Association, z.Association_GroupingsReport),
-    (z.Association, z.Association_Report),
-    (z.AssociationGroupInformation, z.AssociationGroupInformation_NameReport),
-    (z.AssociationGroupInformation, z.AssociationGroupInformation_InfoReport),
-    (z.AssociationGroupInformation, z.AssociationGroupInformation_ListReport),
-    (z.ColorSwitch, z.ColorSwitch_Report),
+    z.SceneActuatorConf_Report,
+    z.Version_CommandClassReport,
+    z.SensorMultilevel_Report,
+    z.SensorMultilevel_SupportedReport,
+    z.SwitchBinary_Report,
+    z.Battery_Report,
+    z.SensorBinary, z.SensorBinary_Report,
+    z.SwitchToggleBinary, z.SwitchToggleBinary_Report,
+    z.SwitchMultilevel, z.SwitchMultilevel_Report,
+    z.Basic_Report,
+    z.Meter_Report,
+    z.Meter_SupportedReport,
+    z.Configuration_Report,
+    z.Association_GroupingsReport,
+    z.Association_Report,
+    z.AssociationGroupInformation_NameReport,
+    z.AssociationGroupInformation_InfoReport,
+    z.AssociationGroupInformation_ListReport,
+    z.ColorSwitch_Report,
 }
 
 
@@ -192,7 +192,6 @@ _STATIC_PROPERTY_QUERIES = [
     (z.Clock_Get, {}),
     (z.Firmware_MetadataGet, {}),
     (z.Association_GroupingsGet, {}),
-    (z.AssociationGroupInformation_InfoGet, {"mode": 64, "group": 0}),
 ]
 
 
@@ -386,22 +385,21 @@ class NodeValues:
 
     def Configuration(self):
         m = self.GetMap(z.Configuration_Report)
-        return sorted([(no, val["size"], val["value"]) for no, (_, val) in m.items()])
+        return sorted([(no, val["value"]["size"], val["value"]["value"]) for no, (_, val) in m.items()])
 
     def Values(self):
         return sorted([(key, command.StringifyCommamnd(*key), val)
                        for key, (_, val) in self._values.items()])
 
     def Sensors(self):
-        # TODO:
-        return []
+        m = self.GetMap(z.SensorMultilevel_Report)
+        return sorted([(key, val)
+                       for key, (_, val) in m.items()])
 
     def Meters(self):
-        # TODO:
-        return []
-        m = self.GetMap(z.Configuration_Report)
-        return sorted([(key, command.StringifyCommamnd(*key), val)
-                       for key, (_, val) in self._values.items()])
+        m = self.GetMap(z.Meter_Report)
+        return sorted([(key, val)
+                       for key, (_, val) in m.items()])
 
     def Associations(self):
         groups = self.GetMap(z.Association_Report)
@@ -519,9 +517,11 @@ class ApplicationNode:
         for x in self.values.Associations():
             out.append("    " + str(x))
         if self.values.MeterSupported():
+            out.append("  meters:")
             for x in self.values.Meters():
                 out.append("    " + str(x))
         if self.values.SensorSupported():
+            out.append("  sensors:")
             for x in self.values.Sensors():
                 out.append("    " + str(x))
         return "\n".join(out)
@@ -612,6 +612,8 @@ class ApplicationNode:
     def ResetMeter(self, request_update=True):
         # TODO
         c = [(z.Meter_Reset, {})]
+        #if not request_update:
+        #    c += [(z.Meter_Get, {})]
         self.BatchCommandSubmitFilteredFast(c, XMIT_OPTIONS)
 
     def SetBasic(self, value, request_update=True):
