@@ -81,11 +81,11 @@ class Node(object):
         else:
             self.device_description = v[0]
 
-    def _SendMessage(self, m, priority : tuple, handler):
+    def _SendMessage(self, m, priority: tuple, handler):
         mesg = zmessage.Message(m, priority, handler, self.n)
         self._driver.SendMessage(mesg)
 
-    def SendCommand(self, key0, key1, values, priority: tuple, xmit :int ):
+    def SendCommand(self, key0, key1, values, priority: tuple, xmit: int):
         try:
             raw_cmd = command.AssembleCommand(key0, key1, values)
         except:
@@ -96,6 +96,7 @@ class Node(object):
             print("-" * 60)
             traceback.print_exc(file=sys.stdout)
             print("-" * 60)
+            return
 
         def handler(_):
             logging.debug("@@handler invoked")

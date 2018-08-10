@@ -20,10 +20,8 @@
 """
 
 import logging
-import time
 
 from pyzwaver import zmessage
-from pyzwaver import actions
 from pyzwaver import zwave as z
 from pyzwaver import protocol_node
 from pyzwaver import command
@@ -32,6 +30,78 @@ from pyzwaver import command
 def Hexify(t):
     return ["%02x" % i for i in t]
 
+
+NODE_STATE_NONE = "0_None"
+NODE_STATE_INCLUDED = "1_Included"
+# discovered means we have the command classes
+NODE_STATE_DISCOVERED = "2_Discovered"
+# interviewed means we have received product info (including most static
+# info an versions)
+NODE_STATE_INTERVIEWED = "3_Interviewed"
+
+# ======================================================================
+SENSOR_VALUES = [
+    # (z.SensorMultilevel, z.SensorMultilevel_Report),
+    (z.SwitchBinary, z.SwitchBinary_Report),
+    (z.Battery, z.Battery_Report),
+    (z.SensorBinary, z.SensorBinary_Report),
+    (z.SwitchToggleBinary, z.SwitchToggleBinary_Report),
+    (z.SwitchMultilevel, z.SwitchMultilevel_Report),
+    (z.Basic, z.Basic_Report),
+]
+
+EVENT_VALUES = [
+    (z.Alarm, z.Alarm_Report),
+    (z.Alarm, z.Alarm_Set),
+    (z.WakeUp, z.WakeUp_Notification),
+    (z.Basic, z.Basic_Get),
+    (z.Hail, z.Hail_Hail),
+]
+
+# for event triggering
+VALUE_CHANGERS = {
+    (z.SceneActuatorConf, z.SceneActuatorConf_Report),
+    (z.Version, z.Version_CommandClassReport),
+    (z.SensorMultilevel, z.SensorMultilevel_Report),
+    (z.SensorMultilevel, z.SensorMultilevel_SupportedReport),
+    (z.SwitchBinary, z.SwitchBinary_Report),
+    (z.Battery, z.Battery_Report),
+    (z.SensorBinary, z.SensorBinary_Report),
+    (z.SwitchToggleBinary, z.SwitchToggleBinary_Report),
+    (z.SwitchMultilevel, z.SwitchMultilevel_Report),
+    (z.Basic, z.Basic_Report),
+    (z.Meter, z.Meter_Report),
+    (z.Meter, z.Meter_SupportedReport),
+    (z.Configuration, z.Configuration_Report),
+    (z.Association, z.Association_GroupingsReport),
+    (z.Association, z.Association_Report),
+    (z.AssociationGroupInformation, z.AssociationGroupInformation_NameReport),
+    (z.AssociationGroupInformation, z.AssociationGroupInformation_InfoReport),
+    (z.AssociationGroupInformation, z.AssociationGroupInformation_ListReport),
+    (z.ColorSwitch, z.ColorSwitch_Report),
+}
+
+
+def _AssociationSubkey(v):
+    return v["group"]
+
+
+_COMMANDS_WITH_MAP_VALUES = {
+    (z.Version, z.Version_CommandClassReport): lambda v: v["class"],
+    (z.Meter, z.Meter_Report): lambda v: (v["meter"]["type"], v["meter"]["unit"]),
+    (z.Configuration, z.Configuration_Report): lambda v: v["parameter"],
+    (z.SensorMultilevel, z.SensorMultilevel_Report): lambda v: (v["type"], v["value"]["scale"]),
+    (z.Association, z.Association_Report): _AssociationSubkey,
+    (z.AssociationGroupInformation, z.AssociationGroupInformation_NameReport): _AssociationSubkey,
+    (z.AssociationGroupInformation, z.AssociationGroupInformation_InfoReport): _AssociationSubkey,
+    (z.AssociationGroupInformation, z.AssociationGroupInformation_ListReport): _AssociationSubkey,
+    (z.UserCode, z.UserCode_Report): lambda v: v["user"]
+}
+
+_COMMANDS_WITH_SPECIAL_ACTIONS = {
+    (z.ManufacturerSpecific, z.ManufacturerSpecific_Report):
+        lambda node, _: node._MaybeChangeState(NODE_STATE_INTERVIEWED),
+}
 
 XMIT_OPTIONS_NO_ROUTE = (z.TRANSMIT_OPTION_ACK |
                          z.TRANSMIT_OPTION_EXPLORE)
@@ -214,14 +284,14 @@ KEY_ASSOCIATION = (z.Association, z.Association_Report)
 class NodeSensors:
 
     def __str__(self):
-        return ("  sensors supp.:" + actions.RenderSensorList(self._supported) +
+        return ("  sensors supp.:" + RenderSensorList(self._supported) +
                 "  sensors:      " + RenderValues(self._readings.values()))
 
 
 class NodeMeters:
 
     def __str__(self):
-        return ("  meters supp.:" + actions.RenderMeterList(self._flags & 0x1f, self._supported) +
+        return ("  meters supp.:" + RenderMeterList(self._flags & 0x1f, self._supported) +
                 "  meters:      " + RenderValues(self._readings.values()))
 
 
@@ -235,19 +305,19 @@ class NodeValues:
     def HasValue(self, key: tuple):
         return key in self._values
 
-    def Set(self, key: tuple, value):
+    def Set(self, ts, key: tuple, value):
         if value is None:
             return
-        self._values[key] = time.time(), value
+        self._values[key] = ts, value
 
-    def SetMapEntry(self, key: tuple, subkey, value):
+    def SetMapEntry(self, ts, key: tuple, subkey, value):
         if value is None:
             return
         m = self._maps.get(key)
         if m is None:
             m = {}
             self._maps[key] = m
-        m[subkey] = time.time(), value
+        m[subkey] = ts, value
 
     def Get(self, key: tuple):
         v = self._values.get(key)
@@ -342,11 +412,9 @@ class NodeValues:
 
 
 class ApplicationNode:
-    """Node represents a single node in a zwave network.
+    """ApplicationNode represents a single node in a zwave network at the application level.
 
-    The message_queue (_shared.mq) is used to send messages to the node.
-    Message from the node are send to the NodeSet first which dispatches them
-    to the relevant Node by calling ProcessCommand() or ProcessNodeInfo().
+    Application level messages are passed to it via put()
     """
 
     def __init__(self, n, protocol_node: protocol_node.Node):
@@ -354,7 +422,7 @@ class ApplicationNode:
         self.n = n
         self.name = "Node %d" % n
         self._protocol_node = protocol_node
-        self._state = actions.NODE_STATE_NONE
+        self._state = NODE_STATE_NONE
         self._controls = set()
         #
         self.values = NodeValues()
@@ -364,7 +432,7 @@ class ApplicationNode:
         return self._protocol_node._is_controller
 
     def IsInterviewed(self):
-        return self._state == actions.NODE_STATE_INTERVIEWED
+        return self._state == NODE_STATE_INTERVIEWED
 
     def __lt__(self, other):
         return self.n < other.n
@@ -374,20 +442,21 @@ class ApplicationNode:
         self._controls |= set(std_controls)
 
         NO_VERSION = {"version": -1}
+        ts = 0.0
         for k in cmd:
             if not self.values.HasCommandClass(k):
-                self.values.SetMapEntry(KEY_VERSION_COMMAND_CLASS, k, NO_VERSION)
+                self.values.SetMapEntry(ts, KEY_VERSION_COMMAND_CLASS, k, NO_VERSION)
         for k in controls:
             if not self.values.HasCommandClass(k):
-                self.values.SetMapEntry(KEY_VERSION_COMMAND_CLASS, k, NO_VERSION)
+                self.values.SetMapEntry(ts, KEY_VERSION_COMMAND_CLASS, k, NO_VERSION)
         for k in std_cmd:
             if not self.values.HasCommandClass(k):
-                self.values.SetMapEntry(KEY_VERSION_COMMAND_CLASS, k, NO_VERSION)
+                self.values.SetMapEntry(ts, KEY_VERSION_COMMAND_CLASS, k, NO_VERSION)
 
         k = z.MultiInstance
         if k in self._controls:
             if not self.values.HasCommandClass(k):
-                self.values.SetMapEntry(KEY_VERSION_COMMAND_CLASS, k, NO_VERSION)
+                self.values.SetMapEntry(ts, KEY_VERSION_COMMAND_CLASS, k, NO_VERSION)
 
     def BasicString(self):
         out = [
@@ -415,7 +484,7 @@ class ApplicationNode:
         # if self.sensors.HasContent():
         #    out.append(str(self.sensors))
         out.append("  values:")
-        for x in  self.values.Values():
+        for x in self.values.Values():
             out.append("    " + str(x))
         # out.append("  events:       " + repr(self._events))
         # out.append("  parameters:")
@@ -424,10 +493,8 @@ class ApplicationNode:
         for x in self.values.CommandVersions():
             out.append("    " + str(x))
         out.append("  associations:")
-        #out.append(str(self.associations))
+        # out.append(str(self.associations))
         return "\n".join(out)
-
-
 
     def BatchCommandSubmitFiltered(self, commands, priority: tuple, xmit: int):
         for c in commands:
@@ -598,43 +665,37 @@ class ApplicationNode:
             logging.warning(
                 "[%d] state transition %s -- %s", self.n, old_state, new_state)
             self._state = new_state
-        if new_state == actions.NODE_STATE_DISCOVERED:
+        if new_state == NODE_STATE_DISCOVERED:
             if old_state < new_state and self.values.HasCommandClass(z.Security):
                 pass
             # self._InitializeSecurity()
-            elif old_state < actions.NODE_STATE_INTERVIEWED:
+            elif old_state < NODE_STATE_INTERVIEWED:
                 self.RefreshStaticValues()
         else:
             self.RefreshDynamicValues()
 
-    def put(self, _, key0, key1, values):
+    def put(self, ts, key0, key1, values):
 
         if key0 is None:
             self._InitializeCommands(values["type"], values["commands"], values["controls"])
-            self._MaybeChangeState(actions.NODE_STATE_DISCOVERED)
+            self._MaybeChangeState(NODE_STATE_DISCOVERED)
             return
 
-        prefix = command.StringifyCommamnd(key0, key1)
+        key = (key0, key1)
 
-        if self._state < actions.NODE_STATE_DISCOVERED:
+        if self._state < NODE_STATE_DISCOVERED:
             self._protocol_node.Ping(3, False)
 
-        new_state = actions.STATE_CHANGE.get((key0, key1))
-        if new_state is not None:
-            self._MaybeChangeState(new_state)
+        special = _COMMANDS_WITH_SPECIAL_ACTIONS.get(key)
+        if special:
+            special(self, values)
 
-        func = actions.ACTIONS.get((key0, key1))
-        if func is None:
-            logging.error("%s unknown command", prefix)
-            return
+        key_ex = _COMMANDS_WITH_MAP_VALUES.get(key)
+        if key_ex:
+            self.values.SetMapEntry(ts, key, key_ex(values), values)
+        else:
+            self.values.Set(ts, key, values)
 
-        func(self, key0, key1, values)
-
-        # elif a == command.ACTION_STORE_MAP:
-        #    val = command.GetValue(actions, value, prefix)
-        #    if val.kind not in self._values:
-        #        self._values[val.kind] = {}
-        #    self._values[val.kind][val.unit] = val
         # elif a == command.ACTION_STORE_SCENE:
         #    if value[0] == 0:
         #        # TODO

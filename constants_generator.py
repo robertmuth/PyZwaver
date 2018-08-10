@@ -365,6 +365,7 @@ ALLOWED_PARAMETER_FORMATS = {
     "B{generic}",
     "B{group}",
     "B{level}",
+    "B{user}",
     "B{library}",
     "B{min}",
     "B{minute}",
@@ -617,8 +618,8 @@ C("DoorLock", 0x62,
 
 C("UserCode", 0x63,
   Set=(0x1, ""),  # TODO
-  Get=(0x2, "B{count}"),
-  Report=(0x3, "B{count},B{status},D{code}"),
+  Get=(0x2, "B{user}"),
+  Report=(0x3, "B{user},B{status},D{code}"),
   NumberGet=(0x4, ""),
   NumberReport=(0x5, "B{count}"),
   )

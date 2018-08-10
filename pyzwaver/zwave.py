@@ -1027,8 +1027,8 @@ SUBCMD_TO_PARSE_TABLE = {
 
     # UserCode (0x63 = 99)
     0x6301: [],  # Set (1)
-    0x6302: ['B{count}'],  # Get (2)
-    0x6303: ['B{count}', 'B{status}', 'D{code}'],  # Report (3)
+    0x6302: ['B{user}'],  # Get (2)
+    0x6303: ['B{user}', 'B{status}', 'D{code}'],  # Report (3)
     0x6304: [],  # NumberGet (4)
     0x6305: ['B{count}'],  # NumberReport (5)
 

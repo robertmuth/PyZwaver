@@ -316,10 +316,10 @@ class Driver(object):
         logging.warning("_DriverSendingThread started")
         lock = threading.Lock()
         while not self._terminate:
-            inflight = self._out_queue.get()
+            inflight = self._out_queue.get() # type: zmessage.Message
             if inflight.payload is None:
-                if inflight._callback:
-                    inflight._callback(None)
+                inflight.Start(time.time(), lock)
+                inflight.Complete(time.time(), None, zmessage.MESSAGE_STATE_COMPLETED)
                 continue
             self._inflight = inflight
             self._RecordInflight(inflight)
