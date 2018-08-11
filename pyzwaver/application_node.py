@@ -470,6 +470,7 @@ class ApplicationNode:
                                             XMIT_OPTIONS)
 
     def RefreshAllCommandVersions(self):
+        logging.warning("RefreshAllCommandVersions")
         self.RefreshCommandVersions(range(255))
 
     def RefreshSceneActuatorConfigurations(self, scenes):
@@ -477,6 +478,7 @@ class ApplicationNode:
         self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)
 
     def RefreshAllParameters(self):
+        logging.warning("RefreshAllParameter")
         c = [(z.Configuration_Get, {"parameter": p})
              for p in range(255)]
         self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)

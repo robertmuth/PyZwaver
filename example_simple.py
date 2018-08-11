@@ -106,8 +106,9 @@ def main():
     for n in CONTROLLER.nodes:
         node = NODESET.GetNode(n)
         node.Ping(3, False)
+        time.sleep(0.5)
 
-    time.sleep(3)
+    time.sleep(2.0)
     print("Node List:")
     for n in CONTROLLER.nodes:
         print(NODESET.GetNode(n))

@@ -109,6 +109,7 @@ def main():
     for n in CONTROLLER.nodes:
         node = PROTOCOL_NODESET.GetNode(n)
         node.Ping(5, False)
+        time.sleep(0.5)
 
     def signal_handler(sig, frame):
        print("Control-C pressed. Node dump:")

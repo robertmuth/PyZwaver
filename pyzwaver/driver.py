@@ -193,7 +193,7 @@ class MessageQueueOut:
         return message
 
     def __str__(self):
-        return str(self._per_node_size)
+        return "Per node queue length: " + str(self._per_node_size)
 
 
 class Driver(object):
@@ -239,6 +239,7 @@ class Driver(object):
 
     def __str__(self):
         out = [str(self._out_queue),
+               "inflight: " + str(self._inflight),
                MessageStatsString(self._history)]
         return "\n".join(out)
 

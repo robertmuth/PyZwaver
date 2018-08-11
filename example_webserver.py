@@ -142,7 +142,7 @@ var currentNode = "0";
 
 var gEventHistory = ["", "", "", "", "", ""];
 
-var gDebug = 0;
+var gDebug = 1;
 // "enums" for tabs
 const TAB_CONTROLLER = "tab-controller";
 const TAB_ALL_NODES = "tab-all-nodes";
@@ -452,14 +452,23 @@ def TimeFormatMs(t):
 # A few globals
 # ======================================================================
 
-DRIVER = None
-CONTROLLER = None  # type: controller.Controller
-PROTOCOL_NODESET = None
-APPLICATION_NODESET = None
+DRIVER: driver.Driver = None
+CONTROLLER: controller.Controller = None
+PROTOCOL_NODESET: protocol_node.NodeSet = None
+APPLICATION_NODESET: application_node.ApplicationNodeSet = None
 DB = None
 
 # ======================================================================
-# WebSocket
+# WebSocket Stuff
+#
+# The webserver sends updates to the browser
+#  d:  RenderDriver()
+#  S:  event
+#  A:  action
+#  l:
+#  c:  RenderController()
+#  o#: RenderNode()
+#
 # ======================================================================
 
 SOCKETS = set()
@@ -475,25 +484,40 @@ def SendToSocket(mesg):
 class NodeUpdater(object):
 
     def __init__(self):
-        self.nodes_to_update = set()
-        self.update_controller = False
-        timerThread = threading.Thread(target=self._refresh_thread())
+        self._nodes_to_update = set()
+        self._update_controller = False
+        timerThread = threading.Thread(target=self._refresh_thread)
         timerThread.daemon = True
         timerThread.start()
 
     def _refresh_thread(self):
-        if self.update_controller:
-            SendToSocket("d:" + RenderDriver())
-            self.update_controller = False
-        for n in self.nodes_to_update:
-            node = APPLICATION_NODESET.GetNode(n)
-            SendToSocket(("o%d:" % n) + RenderNode(node))
-        time.sleep(1.0)
+        logging.warning("Refresher thread started")
+        count = 0
+        while True:
+            if self._update_controller:
+                SendToSocket("d:" + RenderDriver())
+            if not APPLICATION_NODESET:
+                continue
+            for n in self._nodes_to_update:
+                node = APPLICATION_NODESET.GetNode(n)
+                SendToSocket(("o%d:" % n) + RenderNode(node))
+            self._update_controller = False
+            self._nodes_to_update.clear()
+            if count % 20 == 0:
+                for n in CONTROLLER.nodes:
+                    node = APPLICATION_NODESET.GetNode(n)
+                    if node.state < application_node.NODE_STATE_DISCOVERED:
+                        node.protocol_node.Ping(3, False)
+                        time.sleep(0.5)
+                    elif node.state < application_node.NODE_STATE_INTERVIEWED:
+                        node.RefreshStaticValues()
+            count += 1
+            time.sleep(1.0)
 
     def put(self, n, ts, key, values):
         # SendToSocket("E:[%d] %s" % (n, "@NO EVENT@"))
-        self.nodes_to_update.add(n)
-        self.update_controller = True
+        self._nodes_to_update.add(n)
+        self._update_controller = True
 
 
 def ControllerEventCallback(action, event):
@@ -597,8 +621,6 @@ def RenderReading(kind, unit, val):
             unit = "% (rel. hum.)"
 
     return "%.1f%s" % (v, unit)
-
-
 
 
 def RenderAllReadings(values1, values2):
@@ -821,7 +843,7 @@ def RenderAssociationGroup(node: application_node.ApplicationNode, no, group, na
 
 def RenderNodeCommandClasses(node: application_node.ApplicationNode):
     out = ["<h2>Command Classes</h2>",
-           MakeNodeButton(node, "refresh_commands", "Probe"),
+           MakeNodeButton(node, "refresh_commands", "Probe All"),
            "<p>",
            "<table>",
            ]
@@ -833,23 +855,21 @@ def RenderNodeCommandClasses(node: application_node.ApplicationNode):
 
 def RenderNodeAssociations(node: application_node.ApplicationNode):
     out = ["<h2>Associations</h2>",
-           MakeNodeButton(node, "refresh_assoc", "Probe"),
            "<p>",
            "<table>",
            ]
     for no, group, info, lst, name in node.values.Associations():
         if group:
-            out.append(RenderAssociationGroup(node, no, group,info, lst, name))
+            out.append(RenderAssociationGroup(node, no, group, info, lst, name))
     out += ["</table>"]
     return out
-
 
 
 def RenderNodeParameters(node: application_node.ApplicationNode):
     compact = value.CompactifyParams(node.values.Configuration())
     out = ["<h2>Configuration</h2>",
-           MakeNodeButton(node, "refresh_parameters", "Probe"),
-           "<br>",
+           MakeNodeButton(node, "refresh_parameters", "Probe All"),
+           "&nbsp;",
            MakeNodeButtonInputConfig(node, "change_parameter/", "Change"),
            "no <input id=num type='number' name='no' value=0 min=1 max=232 style='width: 3em'>",
            "size <select id=size name='size'>",
@@ -893,11 +913,14 @@ def RenderNode(node: application_node.ApplicationNode):
         MakeNodeButton(node, "ping", "Ping Node"),
         "&nbsp;",
         MakeNodeButton(node, "refresh_dynamic", "Refresh Dynamic"),
+          "&nbsp;",
+        MakeNodeButton(node, "refresh_semistatic", "Refresh Semi Static"),
         "&nbsp;",
         MakeNodeButton(node, "refresh_static", "Refresh Static"),
         "&nbsp;",
         MakeNodeButtonInput(node, "set_name/", "Change Name"),
         "<input type=text value='%s'>" % DB.GetNodeName(node.n),
+        "<p>"
         "<h2>Readings</h2>",
     ]
     out += RenderAllReadings(node.values.Sensors(), node.values.Meters())
@@ -926,7 +949,7 @@ class NodeActionHandler(BaseHandler):
         token = path[0].split("/")
         logging.warning("NODE ACTION> %s", token)
         num = int(token.pop(0))
-        node = APPLICATION_NODESET.GetNode(num)
+        node: application_node.ApplicationNode = APPLICATION_NODESET.GetNode(num)
         cmd = token.pop(0)
         try:
             if cmd == "basic":
@@ -943,10 +966,10 @@ class NodeActionHandler(BaseHandler):
                 node.protocol_node.Ping(3, True)
             elif cmd == "refresh_static":
                 node.RefreshStaticValues()
+            elif cmd == "refresh_semistatic":
+                node.RefreshSemiStatic()
             elif cmd == "refresh_dynamic":
                 node.RefreshDynamicValues()
-            elif cmd == "refresh_assoc":
-                node.RefreshAssociations()
             elif cmd == "refresh_commands":
                 node.RefreshAllCommandVersions()
             elif cmd == "refresh_parameters":
@@ -1150,11 +1173,8 @@ def main():
     PROTOCOL_NODESET.AddListener(APPLICATION_NODESET)
     PROTOCOL_NODESET.AddListener(NodeUpdater())
 
-    # n = NODESET.GetNode(CONTROLLER.GetNodeId())
     # TODO n.InitializeExternally(CONTROLLER.props.product, CONTROLLER.props.library_type, True)
-    for n in CONTROLLER.nodes:
-        node = PROTOCOL_NODESET.GetNode(n)
-        node.Ping(5, False)
+
 
     logging.warning("listening on port %d", OPTIONS.port)
     application.listen(OPTIONS.port)

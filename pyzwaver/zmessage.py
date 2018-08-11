@@ -436,7 +436,7 @@ class Message:
             assert self._callback is not None
             if not self._callback(m):
                 return "continue"
-            return self._CompleteNoMessage(MESSAGE_STATE_COMPLETED)
+            return self._CompleteNoMessage(ts, MESSAGE_STATE_COMPLETED)
         elif self.action_requ[0] == ACTION_MATCH_CBID:
             if m[4] != cbid:
                 logging.error("[%d] %s unexpected call back id: %s",
