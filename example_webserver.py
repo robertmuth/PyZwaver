@@ -70,7 +70,6 @@ HTML = """
 <div id=menu>
 <button class=menu onclick='HandleTab(event)' data-param='tab-controller'>Controller</button>
 <button class=menu onclick='HandleTab(event)' data-param='tab-all-nodes'>Nodes</button>
-<button class=menu onclick='HandleTab(event)' data-param='tab-status'>Status</button>
 <button class=menu onclick='HandleTab(event)' data-param='tab-logs'>Logs</button>
 <button class=menu onclick='HandleTab(event)' data-param='tab-slow'>Slow</button>
 <button class=menu onclick='HandleTab(event)' data-param='tab-failed'>Failed</button>
@@ -82,7 +81,6 @@ Simple demo app using the pyzwaver library
 <div class=tab id=tab-controller></div>
 <div class=tab id=tab-all-nodes></div>
 <div class=tab id=tab-one-node></div>
-<div class=tab id=tab-status></div>
 <div class=tab id=tab-logs>
     <!-- see http://www.listjs.com/ -->
     <div id="driverlog">
@@ -142,12 +140,11 @@ var currentNode = "0";
 
 var gEventHistory = ["", "", "", "", "", ""];
 
-var gDebug = 1;
+var gDebug = 0;
 // "enums" for tabs
 const TAB_CONTROLLER = "tab-controller";
 const TAB_ALL_NODES = "tab-all-nodes";
 const TAB_ONE_NODE = "tab-one-node";
-const TAB_STATUS = "tab-status";
 const TAB_LOGS = "tab-logs";
 const TAB_SLOW = "tab-slow";
 const TAB_FAILED = "tab-failed";
@@ -160,11 +157,11 @@ var tabToDisplay = {};
 tabToDisplay[TAB_CONTROLLER] = function() {return "/display/controller"; };
 tabToDisplay[TAB_ALL_NODES] =  function() {return "/display/nodes"; };
 tabToDisplay[TAB_ONE_NODE] = function() {return "/display/node/" + currentNode; };
-tabToDisplay[TAB_STATUS] = function() {return "/display/status"; };
 tabToDisplay[TAB_LOGS] = function() {return "/display/logs"; };
 tabToDisplay[TAB_SLOW] = function() {return "/display/slow"; };
 tabToDisplay[TAB_FAILED] = function() {return "/display/failed"; };
 
+//  List visualization using the http://listjs.com/
 const listLog = new List('driverlog', {valueNames: [ 't', 'c', 'd', 'm' ]});
 const listSlow = new List('driverslow', {valueNames: [ 'd', 't', 'm' ]});
 const listFailed = new List('driverfailed', {valueNames: [ 'd', 't', 'm' ]});
@@ -185,43 +182,45 @@ function SocketMessageHandler(e) {
     if (gDebug) console.log("socket: " + tag);
 
     if (tag == "A") {
+         // ACTION
          document.getElementById(ACTIVITY_FIELD).innerHTML = val;
     } else if (tag == "S") {
+         // STATUS
          document.getElementById(STATUS_FIELD).innerHTML = val;
     } else if (tag == "E") {
          gEventHistory.push(val);
          gEventHistory.shift();
          document.getElementById(HISTORY_FIELD).innerHTML = gEventHistory.join("\\n");
     } else if (tag == "c") {
-         var tab =  document.getElementById(TAB_CONTROLLER);
-         tab.innerHTML = val;
-    } else if (tag == "s") {
-         var tab = document.getElementById(TAB_STATUS);
-         tab.innerHTML = val;
+         // CONTROLLER
+         document.getElementById(TAB_CONTROLLER).innerHTML = val;
     } else if (tag == "l") {
+         // LOGS (list)
          var values = JSON.parse(val);
          listLog.clear();
          listLog.add(values);
     } else if (tag == "b") {
+         // BAD (list)
          var values = JSON.parse(val);
          listSlow.clear();
          listSlow.add(values);
     } else if (tag == "f") {
+         // FAILED (list)
          var values = JSON.parse(val);
          listFailed.clear();
          listFailed.add(values);
     } else if (tag == "a") {
-         var tab = document.getElementById(TAB_ALL_NODES);
-         tab.innerHTML = val;
+         // ALL-NODES
+         document.getElementById(TAB_ALL_NODES).innerHTML = val;
     } else if (tag[0] == "o") {
+        // ONE-NODE
         var node = tag.slice(1);
         if (node == currentNode) {
-            tab = document.getElementById(TAB_ONE_NODE);
-            tab.innerHTML = val;
+            document.getElementById(TAB_ONE_NODE).innerHTML = val;
         }
     } else if (tag == "d") {
-         var tab = document.getElementById(DRIVE_FIELD);
-         tab.innerHTML = val;
+         // DRIVER
+         document.getElementById(DRIVE_FIELD).innerHTML = val;
     }
 }
 
@@ -600,6 +599,7 @@ def MakeNodeRange(node: application_node.ApplicationNode, action, lo, hi):
     return s % (node.n, action, lo, hi, node.values.GetMultilevelSwitchLevel())
 
 
+# TODO
 def RenderReading(kind, unit, val):
     v = val["value"]["_value"]
     if kind == value.SENSOR_KIND_BATTERY:
@@ -649,16 +649,14 @@ def ClassSpecificNodeButtons(node: application_node.ApplicationNode):
     return out
 
 
-def MakeTableRowForNode(node: application_node.ApplicationNode, status_only, is_failed):
+def MakeTableRowForNode(node: application_node.ApplicationNode, is_failed):
     global DB
     readings = RenderAllReadings(node.values.Sensors(),
                                  node.values.Meters())
     buttons = []
-    if not status_only:
-        if not node.IsSelf():
-            buttons.append(MakeNodeButton(node, "ping", "Ping"))
-            buttons.append(MakeNodeButton(node, "refresh_dynamic", "Refresh"))
-        buttons += ClassSpecificNodeButtons(node)
+    if not node.IsSelf():
+        buttons.append(MakeNodeButton(node, "ping", "Ping"))
+    buttons += ClassSpecificNodeButtons(node)
 
     pnode = node.protocol_node
     state = node.state[2:]
@@ -688,7 +686,7 @@ def MakeTableRowForNode(node: application_node.ApplicationNode, status_only, is_
         "</tr>"]
 
 
-def RenderNodes(as_status):
+def RenderNodes():
     global PROTOCOL_NODESET, CONTROLLER
     out = [
         "<table class=nodes>"
@@ -698,7 +696,7 @@ def RenderNodes(as_status):
     for node in sorted(APPLICATION_NODESET.nodes.values()):
         if node.n not in nodes:
             continue
-        out.append("\n".join(MakeTableRowForNode(node, as_status, node.n in failed)))
+        out.append("\n".join(MakeTableRowForNode(node, node.n in failed)))
     out.append("</table>")
     return "\n".join(out)
 
@@ -788,9 +786,7 @@ class DisplayHandler(BaseHandler):
         cmd = token.pop(0)
         try:
             if cmd == "nodes":
-                SendToSocket("a:" + RenderNodes(False))
-            elif cmd == "status":
-                SendToSocket("s:" + RenderNodes(True))
+                SendToSocket("a:" + RenderNodes())
             elif cmd == "driver":
                 SendToSocket("d:" + RenderDriver())
             elif cmd == "logs":
@@ -803,7 +799,7 @@ class DisplayHandler(BaseHandler):
             elif cmd == "controller":
                 SendToSocket("c:" + RenderController())
             elif cmd == "node":
-                num = int(token.pop(0));
+                num = int(token.pop(0))
                 if num == 0:
                     logging.error("no current node")
                 else:
@@ -967,7 +963,7 @@ class NodeActionHandler(BaseHandler):
             elif cmd == "refresh_static":
                 node.RefreshStaticValues()
             elif cmd == "refresh_semistatic":
-                node.RefreshSemiStatic()
+                node.RefreshSemiStaticValues()
             elif cmd == "refresh_dynamic":
                 node.RefreshDynamicValues()
             elif cmd == "refresh_commands":
@@ -1008,6 +1004,7 @@ def BalanceNodes(m):
     for n in list(APPLICATION_NODESET.nodes.keys()):
         if n not in CONTROLLER.nodes:
             logging.warning("dropping %d", n)
+            # TODO:
             APPLICATION_NODESET.DropNode(n)
     for n in CONTROLLER.nodes:
         if n not in APPLICATION_NODESET.nodes:
@@ -1102,7 +1099,7 @@ HANDLERS = [
 # tornado.options.parse_command_line(
 class MyFormatter(logging.Formatter):
     def __init__(self):
-        pass
+        super().__init__()
 
     TIME_FMT = '%Y-%m-%d %H:%M:%S.%f'
 
@@ -1174,7 +1171,6 @@ def main():
     PROTOCOL_NODESET.AddListener(NodeUpdater())
 
     # TODO n.InitializeExternally(CONTROLLER.props.product, CONTROLLER.props.library_type, True)
-
 
     logging.warning("listening on port %d", OPTIONS.port)
     application.listen(OPTIONS.port)
