@@ -40,6 +40,7 @@ import sys
 import time
 import traceback
 import json
+import threading
 
 import tornado.autoreload
 import tornado.ioloop
@@ -48,11 +49,13 @@ import tornado.web
 import tornado.websocket
 
 from pyzwaver import command
+from pyzwaver import value
 from pyzwaver import zmessage
-from pyzwaver import zcontroller
-from pyzwaver import zdriver
-from pyzwaver import znode
-from pyzwaver import zwave
+from pyzwaver import controller
+from pyzwaver import driver
+from pyzwaver import protocol_node
+from pyzwaver import application_node
+from pyzwaver import zwave as z
 
 HTML = """
 <html>
@@ -435,15 +438,25 @@ tornado.options.define("serial_port",
 
 OPTIONS = tornado.options.options
 
+
+# ======================================================================
+def TimeFormat(t):
+    return  time.strftime("%H:%M:%S", time.localtime(t))
+
+
+def TimeFormatMs(t):
+    ms = ".%03d" % int(1000 * (t - math.floor(t)))
+    return  TimeFormatMs(r) + ms
+
 # ======================================================================
 # A few globals
 # ======================================================================
 
 DRIVER = None
-CONTROLLER = None
-NODESET = None
+CONTROLLER = None  # type: controller.Controller
+PROTOCOL_NODESET = None
+APPLICATION_NODESET = None
 DB = None
-MQ = None
 # ======================================================================
 # WebSocker
 # ======================================================================
@@ -458,19 +471,33 @@ def SendToSocket(mesg):
     # logging.error("Sending to socket done: %d", len(SOCKETS))
 
 
-def NodeEventCallback(n, event):
-    SendToSocket("E:[%d] %s" % (n, event))
-    if event == command.EVENT_VALUE_CHANGE:
-        SendToSocket("E:[%d] %s" % (n, event))
-        node = NODESET.GetNode(n)
-        SendToSocket("o%d:" % n + RenderNode(node))
-        SendToSocket("d:" + RenderDriver())
+class NodeUpdater(object):
 
+    def __init__(self):
+        self.nodes_to_update = set()
+        self.update_controller = False
+        timerThread = threading.Thread(target=self._refresh_thread())
+        timerThread.daemon = True
+        timerThread.start()
+
+    def _refresh_thread(self):
+        if self.update_controller:
+            SendToSocket("d:" + RenderDriver())
+            self.update_controller = False
+        for n in self.nodes_to_update:
+            node = APPLICATION_NODESET.GetNode(n)
+            SendToSocket(("o%d:" % n) + RenderNode(node))
+        time.sleep(1.0)
+
+    def put(self, n, ts, key, values):
+        #SendToSocket("E:[%d] %s" % (n, "@NO EVENT@"))
+        self.nodes_to_update.add(n)
+        self.update_controller = True
 
 def ControllerEventCallback(action, event):
     SendToSocket("S:" + event)
     SendToSocket("A:" + action)
-    if event == zcontroller.EVENT_UPDATE_COMPLETE:
+    if event == controller.EVENT_UPDATE_COMPLETE:
         SendToSocket("c:" + RenderController())
 
 
@@ -541,38 +568,40 @@ def MakeControllerButton(action, label):
     return MakeButton("HandleUrl", "/controller/%s" % action, label)
 
 
-def MakeNodeRange(node, action, lo, hi):
+def MakeNodeRange(node: application_node.ApplicationNode, action, lo, hi):
     s = ("<input onchange='HandleChange(event)' data-param='/node/%d/%s/' class='multilevel' "
          "type=range min=%f max=%f value='%f'>")
-    return s % (node.n, action, lo, hi, node.sensors.GetMultilevelSwitchLevel())
+    return s % (node.n, action, lo, hi, node.values.GetMultilevelSwitchLevel())
 
 
 def RenderReading(value):
     v = value.value
     kind = value.kind
     unit = value.unit
-    if kind == command.SENSOR_KIND_BATTERY:
+    if kind == value.SENSOR_KIND_BATTERY:
         if v == 100:
             return ""
         else:
             unit = "% (battery)"
-    elif kind == command.SENSOR_KIND_BASIC:
+    elif kind == value.SENSOR_KIND_BASIC:
         return ""
-    elif kind == command.SENSOR_KIND_SWITCH_MULTILEVEL:
+    elif kind == value.SENSOR_KIND_SWITCH_MULTILEVEL:
         unit = "% (dimmer)"
-    elif kind == command.SENSOR_KIND_SWITCH_BINARY:
+    elif kind == value.SENSOR_KIND_SWITCH_BINARY:
         if v == 0:
             return "Off"
         else:
             return "On"
     else:
-        if kind == command.SENSOR_KIND_RELATIVE_HUMIDITY and unit == "%":
+        if kind == value.SENSOR_KIND_RELATIVE_HUMIDITY and unit == "%":
             unit = "% (rel. hum.)"
 
     return "%.1f%s" % (v, unit)
 
 
 def RenderAllReadings(values1, values2):
+    # TODO
+    return []
     seen = set()
     out = []
     for v in sorted(values1):
@@ -580,38 +609,43 @@ def RenderAllReadings(values1, values2):
         if v.unit:
             seen.add(v.unit)
     for v in sorted(values2):
-        if v.unit in seen: continue
+        if v.unit in seen:
+            continue
         out.append("<span class=reading>" + RenderReading(v) + "</span>")
     return out
 
 
-def ClassSpecificNodeButtons(node):
+def ClassSpecificNodeButtons(node: application_node.ApplicationNode):
     out = []
-    if node.commands.HasCommandClass(zwave.SwitchBinary):
+    if node.values.HasCommandClass(z.SwitchBinary):
         out.append(MakeNodeButton(node, "binary_switch/0", "Off"))
         out.append(MakeNodeButton(node, "binary_switch/255", "On"))
-    if node.commands.HasCommandClass(zwave.SwitchMultilevel):
+    if node.values.HasCommandClass(z.SwitchMultilevel):
         out.append(MakeNodeRange(node, "multilevel_switch", 0, 100)),
-    if node.commands.HasCommandClass(zwave.Meter):
+    if node.values.HasCommandClass(z.Meter):
         # reset
         pass
     return out
 
 
-def MakeTableRowForNode(node, status_only, is_failed):
+def MakeTableRowForNode(node:application_node.ApplicationNode, status_only, is_failed):
     global DB
-    readings = RenderAllReadings(node.sensors.Readings(),
-                                 node.meters.Readings())
+    readings = RenderAllReadings(node.values.Sensors(),
+                                 node.values.Meters())
     buttons = []
     if not status_only:
         if not node.IsSelf():
             buttons.append(MakeNodeButton(node, "ping", "Ping"))
             buttons.append(MakeNodeButton(node, "refresh_dynamic", "Refresh"))
         buttons += ClassSpecificNodeButtons(node)
-    basic = node.BasicInfo()
+
+    pnode = node.protocol_node
+    state = node.state
+    if pnode.failed:
+        state = "FAILED"
+
     name = DB.GetNodeName(node.n)
-    if is_failed:
-        basic["state"] = "FAILED"
+
     action = "HandleTabNode"
     param = str(node.n)
     # if node.IsSelf():
@@ -627,21 +661,22 @@ def MakeTableRowForNode(node, status_only, is_failed):
         #
         "<tr>",
         "<td>" + " ".join(buttons) + "</td>",
-        "<td class=no>node: %(#)d</td>" % basic,
-        "<td class=state>%(last_contact)s (%(state)s)</td>" % basic,
-        "<td class=product>%(product)s</td>" % basic,
+        "<td class=no>node: %d</td>" % node.n,
+        "<td class=state>%s (%s)</td>" % (TimeFormat(pnode.last_contact), state),
+        "<td class=product>%s (%s)</td>" % (pnode.device_type, pnode.device_type),
         "</tr>"]
 
 
 def RenderNodes(as_status):
-    global NODESET, CONTROLLER
+    global PROTOCOL_NODESET, CONTROLLER
     out = [
         "<table class=nodes>"
     ]
     nodes = CONTROLLER.nodes
     failed = CONTROLLER.failed_nodes
-    for node in sorted(NODESET.nodes.values()):
-        if node.n not in nodes: continue
+    for node in sorted(APPLICATION_NODESET.nodes.values()):
+        if node.n not in nodes:
+            continue
         out.append("\n".join(MakeTableRowForNode(node, as_status, node.n in failed)))
     out.append("</table>")
     return "\n".join(out)
@@ -684,7 +719,7 @@ def RenderDriver():
 def DriverLogs():
     global DRIVER
     out = []
-    for t, sent, m, comment in DRIVER.history._raw_history:
+    for t, sent, m, comment in DRIVER._raw_history:
         ms = ".%03d" % int(1000 * (t - math.floor(t)))
         t = time.strftime("%H:%M:%S", time.localtime(t)) + ms
         d = sent and "=>" or "<="
@@ -696,11 +731,11 @@ def DriverLogs():
 def DriverSlow():
     global DRIVER
     out = []
-    for m in DRIVER.history._history:
+    for m in DRIVER._history:
         if not m.end: continue
         dur = int(1000.0 * (m.end - m.start))
         if dur < 300: continue
-        d = "%4d%s" % (dur, "*" if m.aborted else " ")
+        d = "%4d%s" % (dur, "*" if m.WasAborted() else " ")
         t = m.start
         ms = ".%03d" % int(1000 * (t - math.floor(t)))
         t = time.strftime("%H:%M:%S", time.localtime(t)) + ms
@@ -712,9 +747,11 @@ def DriverSlow():
 def DriverBad():
     global DRIVER
     out = []
-    for m in DRIVER.history._history:
-        if not m.end: continue
-        if not m.aborted: continue
+    for m in DRIVER._history:
+        if not m.end:
+            continue
+        if not m.WasAborted():
+            continue
         dur = int(1000.0 * (m.end - m.start))
         d = "%4d" % dur
         t = m.start
@@ -754,7 +791,7 @@ class DisplayHandler(BaseHandler):
                 if num == 0:
                     logging.error("no current node")
                 else:
-                    node = NODESET.GetNode(num)
+                    node = APPLICATION_NODESET.GetNode(num)
                     SendToSocket("o%d:" % num + RenderNode(node))
             else:
                 logging.error("unknown command %s", token)
@@ -766,89 +803,89 @@ class DisplayHandler(BaseHandler):
         self.finish()
 
 
-def RenderAssociationGroup(node: znode.Node, group: znode.AssociationGroup):
-    no = group._no
-    out = ["<tr>"
-           "<th>", "Group %d %s [%d]:" % (no, group.name, group.capacity), "</th>",
-           "<td>",
-           ]
-    for n in group.nodes:
-        out += ["%d" % n,
-                MakeNodeButton(node, "association_remove/%d/%d" % (no, n), "X", "remove"),
-                "&nbsp;"]
+# def RenderAssociationGroup(node: application_node.ApplicationNode, group: application_node.AssociationGroup):
+#     no = group._no
+#     out = ["<tr>"
+#            "<th>", "Group %d %s [%d]:" % (no, group.name, group.capacity), "</th>",
+#            "<td>",
+#            ]
+#     for n in group.nodes:
+#         out += ["%d" % n,
+#                 MakeNodeButton(node, "association_remove/%d/%d" % (no, n), "X", "remove"),
+#                 "&nbsp;"]
+#
+#     out += ["</td>",
+#             "<td>",
+#             MakeNodeButtonInput(node, "association_add/%d/" % no, "Add Node"),
+#             "<input type=number min=0 max=232 value=0>",
+#             "</td>",
+#             "</tr>"]
+#     return "".join(out)
+#
+#
+# def RenderNodeCommandClasses(node):
+#     out = ["<h2>Command Classes</h2>",
+#            MakeNodeButton(node, "refresh_commands", "Probe"),
+#            "<p>",
+#            "<table>",
+#            ]
+#     for cls, version in node.commands.CommandVersions():
+#         name = "%s [%d]" % (z.CMD_TO_STRING.get(cls, "UKNOWN:%d" % cls), cls)
+#         out += ["<tr><td>", name, "</td><td>", str(version), "</td></tr>"]
+#     out += ["</table>"]
+#     return out
+#
+#
+# def RenderNodeAssociations(node: application_node.ApplicationNode):
+#     out = ["<h2>Associations</h2>",
+#            MakeNodeButton(node, "refresh_assoc", "Probe"),
+#            "<p>",
+#            "<table>",
+#            ]
+#     for group in node.associations.Groups():
+#         out.append(RenderAssociationGroup(node, group))
+#     out += ["</table>"]
+#     return out
+#
+#
+# def RenderNodeParameters(node: application_node.ApplicationNode):
+#     compact = application_node.CompactifyParams(node.parameters._parameters)
+#     out = ["<h2>Configuration</h2>",
+#            MakeNodeButton(node, "refresh_parameters", "Probe"),
+#            "<br>",
+#            MakeNodeButtonInputConfig(node, "change_parameter/", "Change"),
+#            "no <input id=num type='number' name='no' value=0 min=1 max=232 style='width: 3em'>",
+#            "size <select id=size name='size'>",
+#            "<option value='1'>1</option>",
+#            "<option value='2'>2</option>",
+#            "<option value='4'>4</option>",
+#            "</select>",
+#            "value <input id=value type='number' name='val' value=0 style='width: 7em'>",
+#            "<p>",
+#            "<table>",
+#            ]
+#     for a, b, c, d in sorted(compact):
+#         r = str(a)
+#         if a != b:
+#             r += " - " + str(b)
+#         out += ["<tr><td>", r, "</td><td>", "[%d]" % c, "</td><td>", str(d), "</td></tr>"]
+#     out += ["</table>"]
+#     return out
+#
+#
+# def RenderMiscValues(node):
+#     out = ["<h2>Misc Values</h2>",
+#            "<table>",
+#            ]
+#     for _, _, v in node.values.GetAllTuples():
+#         out += ["<tr><td>", v.kind, "</td><td>", repr(v.value), "</td></tr>"]
+#     out += ["</table>",
+#             "<p>",
+#             ]
+#     return out
+#
 
-    out += ["</td>",
-            "<td>",
-            MakeNodeButtonInput(node, "association_add/%d/" % no, "Add Node"),
-            "<input type=number min=0 max=232 value=0>",
-            "</td>",
-            "</tr>"]
-    return "".join(out)
-
-
-def RenderNodeCommandClasses(node):
-    out = ["<h2>Command Classes</h2>",
-           MakeNodeButton(node, "refresh_commands", "Probe"),
-           "<p>",
-           "<table>",
-           ]
-    for cls, version in node.commands.CommandVersions():
-        name = "%s [%d]" % (zwave.CMD_TO_STRING.get(cls, "UKNOWN:%d" % cls), cls)
-        out += ["<tr><td>", name, "</td><td>", str(version), "</td></tr>"]
-    out += ["</table>"]
-    return out
-
-
-def RenderNodeAssociations(node: znode.Node):
-    out = ["<h2>Associations</h2>",
-           MakeNodeButton(node, "refresh_assoc", "Probe"),
-           "<p>",
-           "<table>",
-           ]
-    for group in node.associations.Groups():
-        out.append(RenderAssociationGroup(node, group))
-    out += ["</table>"]
-    return out
-
-
-def RenderNodeParameters(node: znode.Node):
-    compact = znode.CompactifyParams(node.parameters._parameters)
-    out = ["<h2>Configuration</h2>",
-           MakeNodeButton(node, "refresh_parameters", "Probe"),
-           "<br>",
-           MakeNodeButtonInputConfig(node, "change_parameter/", "Change"),
-           "no <input id=num type='number' name='no' value=0 min=1 max=232 style='width: 3em'>",
-           "size <select id=size name='size'>",
-           "<option value='1'>1</option>",
-           "<option value='2'>2</option>",
-           "<option value='4'>4</option>",
-           "</select>",
-           "value <input id=value type='number' name='val' value=0 style='width: 7em'>",
-           "<p>",
-           "<table>",
-           ]
-    for a, b, c, d in sorted(compact):
-        r = str(a)
-        if a != b:
-            r += " - " + str(b)
-        out += ["<tr><td>", r, "</td><td>", "[%d]" % c, "</td><td>", str(d), "</td></tr>"]
-    out += ["</table>"]
-    return out
-
-
-def RenderMiscValues(node):
-    out = ["<h2>Misc Values</h2>",
-           "<table>",
-           ]
-    for _, _, v in node.values.GetAllTuples():
-        out += ["<tr><td>", v.kind, "</td><td>", repr(v.value), "</td></tr>"]
-    out += ["</table>",
-            "<p>",
-            ]
-    return out
-
-
-def RenderNode(node):
+def RenderNode(node: application_node.ApplicationNode):
     global DB
     out = [
         "<pre>%s</pre>\n" % node.BasicString(),
@@ -862,15 +899,17 @@ def RenderNode(node):
         "<input type=text value='%s'>" % DB.GetNodeName(node.n),
         "<h2>Readings</h2>",
     ]
-    out += RenderAllReadings(node.sensors.Readings(), node.meters.Readings())
+    out += RenderAllReadings(node.values.Sensors(), node.values.Meters())
     out += ["<p>"]
     out += ClassSpecificNodeButtons(node)
 
-    columns = [RenderNodeCommandClasses(node),
-               RenderNodeParameters(node),
-               RenderNodeAssociations(node),
-               RenderMiscValues(node),
-               ]
+    columns = [
+        #RenderNodeCommandClasses(node),
+        #RenderNodeParameters(node),
+        #RenderNodeAssociations(node),
+        #RenderMiscValues(node),
+    ]
+
 
     out += ["<table class=node-sections width='100%'>",
             "<tr>"
@@ -885,11 +924,11 @@ class NodeActionHandler(BaseHandler):
     """Single Node Actions"""
 
     def get(self, *path):
-        global NODESET, DB
+        global APPLICATION_NODESET, DB
         token = path[0].split("/")
         logging.warning("NODE ACTION> %s", token)
         num = int(token.pop(0))
-        node = NODESET.GetNode(num)
+        node = APPLICATION_NODESET.GetNode(num)
         cmd = token.pop(0)
         try:
             if cmd == "basic":
@@ -903,7 +942,7 @@ class NodeActionHandler(BaseHandler):
                 node.SetMultilevelSwitch(p)
             elif cmd == "ping":
                 # force it
-                node.Ping(3, True)
+                node.protocol_node.Ping(3, True)
             elif cmd == "refresh_static":
                 node.RefreshStaticValues()
             elif cmd == "refresh_dynamic":
@@ -942,15 +981,15 @@ class NodeActionHandler(BaseHandler):
 
 def BalanceNodes(m):
     logging.warning("balancing contoller %s vs nodeset %s",
-                    repr(CONTROLLER.nodes), repr(set(NODESET.nodes.keys())))
+                    repr(CONTROLLER.nodes), repr(set(PROTOCOL_NODESET.nodes.keys())))
 
     # note, we are modifying NODESET.nodes while iterating
-    for n in list(NODESET.nodes.keys()):
+    for n in list(APPLICATION_NODESET.nodes.keys()):
         if n not in CONTROLLER.nodes:
             logging.warning("dropping %d", n)
-            NODESET.DropNode(n)
+            APPLICATION_NODESET.DropNode(n)
     for n in CONTROLLER.nodes:
-        if n not in NODESET.nodes:
+        if n not in APPLICATION_NODESET.nodes:
             logging.warning("request node info for %d", n)
             CONTROLLER.RequestNodeInfo(n)
 
@@ -993,7 +1032,7 @@ class ControllerActionHandler(BaseHandler):
                 logging.error("Controller hard reset requires program restart")
                 sys.exit(1)
             elif cmd == "refresh":
-                CONTROLLER.Update()
+                CONTROLLER.Update(None)
             else:
                 logging.error("unsupported command: %s", repr(token))
         except:
@@ -1013,8 +1052,8 @@ class JsonHandler(BaseHandler):
 
     @tornado.web.asynchronous
     def get(self):
-        global NODESET, DB
-        summary = NODESET.SummaryTabular()
+        global APPLICATION_NODESET, DB
+        summary = APPLICATION_NODESET.SummaryTabular()
         for no, row in summary.items():
             row.name = DB.GetNodeName(no)
         self.write(json.dumps(summary, sort_keys=True, indent=4))
@@ -1073,7 +1112,7 @@ class Db:
 
 
 def main():
-    global DRIVER, CONTROLLER, NODESET, DB, MQ
+    global DRIVER, CONTROLLER, PROTOCOL_NODESET, APPLICATION_NODESET, DB
     # note: this makes sure we have at least one handler
     # logging.basicConfig(level=logging.WARNING)
     # logging.basicConfig(level=logging.ERROR)
@@ -1081,7 +1120,7 @@ def main():
     tornado.options.parse_command_line()
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
-    # logger.setLevel(logging.WARNING)
+    logger.setLevel(logging.WARNING)
     # logger.setLevel(logging.ERROR)
     for h in logger.handlers:
         h.setFormatter(MyFormatter())
@@ -1098,23 +1137,26 @@ def main():
     )
 
     logging.info("opening serial")
-    device = zdriver.MakeSerialDevice(OPTIONS.serial_port)
+    device = driver.MakeSerialDevice(OPTIONS.serial_port)
 
-    DRIVER = zdriver.Driver(device)
-    NODESET = znode.NodeSet(DRIVER, NodeEventCallback, OPTIONS.node_auto_refresh_secs)
-    CONTROLLER = zcontroller.Controller(DRIVER, pairing_timeout_secs=OPTIONS.pairing_timeout_secs)
+    DRIVER = driver.Driver(device)
+    CONTROLLER = controller.Controller(DRIVER, pairing_timeout_secs=OPTIONS.pairing_timeout_secs)
     CONTROLLER.Initialize()
     CONTROLLER.WaitUntilInitialized()
     CONTROLLER.UpdateRoutingInfo()
     time.sleep(2)
     print(CONTROLLER)
+    PROTOCOL_NODESET = protocol_node.NodeSet(DRIVER, CONTROLLER.GetNodeId())
+    APPLICATION_NODESET = application_node.ApplicationNodeSet(PROTOCOL_NODESET)
 
-    n = NODESET.GetNode(CONTROLLER.GetNodeId())
-    n.InitializeExternally(CONTROLLER.props.product, CONTROLLER.props.library_type, True)
+    PROTOCOL_NODESET.AddListener(APPLICATION_NODESET)
+    PROTOCOL_NODESET.AddListener(NodeUpdater())
 
-    for num in CONTROLLER.nodes:
-        n = NODESET.GetNode(num)
-        n.Ping(3, False)
+    # n = NODESET.GetNode(CONTROLLER.GetNodeId())
+    # TODO n.InitializeExternally(CONTROLLER.props.product, CONTROLLER.props.library_type, True)
+    for n in CONTROLLER.nodes:
+        node = PROTOCOL_NODESET.GetNode(n)
+        node.Ping(3, False)
 
     logging.warning("listening on port %d", OPTIONS.port)
     application.listen(OPTIONS.port)

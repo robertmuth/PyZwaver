@@ -223,7 +223,7 @@ class NodeSet(object):
         self._driver = message_queue
         self._controller_n = controller_n
         self._listeners = []
-        self._nodes = {}
+        self.nodes = {}
         self._receiver_thread = threading.Thread(target=self._NodesetReceiverThread,
                                                  name="NodeSetReceive")
         self._receiver_thread.start()
@@ -232,17 +232,17 @@ class NodeSet(object):
         self._listeners.append(l)
 
     def GetNode(self, n):
-        node = self._nodes.get(n)
+        node = self.nodes.get(n)
         if node is None:
             node = Node(n, n == self._controller_n, self._driver)
-            self._nodes[n] = node
+            self.nodes[n] = node
         return node
 
     def GetNodesExceptController(self):
-        return [node.n for node in self._nodes.values() if node.n != self._controller_n]
+        return [node.n for node in self.nodes.values() if node.n != self._controller_n]
 
     def DropNode(self, n):
-        del self._nodes[n]
+        del self.nodes[n]
 
     def _HandleMessageApplicationCommand(self, ts, m):
         _ = m[4]  # status

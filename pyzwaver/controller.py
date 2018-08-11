@@ -546,4 +546,4 @@ class Controller:
         self.UpdateSerialApiGetInitData()
         for n in self.nodes:
             self.UpdateFailedNode(n)
-        self.SendBarrierCommand(lambda x: cb(ACTIVITY_CONTROLLER_UPDATE, EVENT_UPDATE_COMPLETE))
+        self.SendBarrierCommand(cb)

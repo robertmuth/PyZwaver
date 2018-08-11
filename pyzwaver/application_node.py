@@ -178,7 +178,6 @@ def BitsToSetWithOffset(x, offset):
 
 
 class NodeValues:
-    _NO_VALUE = 0, {}
 
     def __init__(self):
         self._values = {}
@@ -359,18 +358,18 @@ class ApplicationNode:
         assert n >= 1
         self.n = n
         self.name = "Node %d" % n
-        self._protocol_node = proto_node
-        self._state = NODE_STATE_NONE
+        self.protocol_node = proto_node
+        self.state = NODE_STATE_NONE
         self._controls = set()
         #
         self.values = NodeValues()
         self.scenes = {}
 
     def IsSelf(self):
-        return self._protocol_node._is_controller
+        return self.protocol_node._is_controller
 
     def IsInterviewed(self):
-        return self._state == NODE_STATE_INTERVIEWED
+        return self.state == NODE_STATE_INTERVIEWED
 
     def __lt__(self, other):
         return self.n < other.n
@@ -399,7 +398,7 @@ class ApplicationNode:
     def BasicString(self):
         out = [
             "NODE: %d" % self.n,
-            "state: %s" % self._state[2:],
+            "state: %s" % self.state[2:],
             "version: %d:%d:%d:%d" % self.values.Versions(),
             "product: %04x:%04x:%04x" % self.values.ProductInfo(),
             "groups: %d" % len(self.values.ListAssociationGroupNumbers()),
@@ -423,7 +422,7 @@ class ApplicationNode:
             #    self._secure_messaging.Send(cmd)
             #    continue
 
-            self._protocol_node.SendCommand(key, values, priority, xmit)
+            self.protocol_node.SendCommand(key, values, priority, xmit)
 
     def BatchCommandSubmitFilteredSlow(self, commands, xmit):
         self.BatchCommandSubmitFiltered(commands, zmessage.NodePriorityLo(self.n), xmit)
@@ -567,11 +566,11 @@ class ApplicationNode:
         self.BatchCommandSubmitFilteredSlow([last], XMIT_OPTIONS)
 
     def _MaybeChangeState(self, new_state):
-        old_state = self._state
+        old_state = self.state
         if old_state < new_state:
             logging.warning(
                 "[%d] state transition %s -- %s", self.n, old_state, new_state)
-            self._state = new_state
+            self.state = new_state
         if new_state == NODE_STATE_DISCOVERED:
             if old_state < new_state and self.values.HasCommandClass(z.Security):
                 pass
@@ -588,8 +587,8 @@ class ApplicationNode:
             self._MaybeChangeState(NODE_STATE_DISCOVERED)
             return
 
-        if self._state < NODE_STATE_DISCOVERED:
-            self._protocol_node.Ping(3, False)
+        if self.state < NODE_STATE_DISCOVERED:
+            self.protocol_node.Ping(3, False)
 
         special = _COMMANDS_WITH_SPECIAL_ACTIONS.get(key)
         if special:
@@ -638,13 +637,13 @@ class ApplicationNodeSet(object):
 
     def __init__(self, nodeset: protocol_node.NodeSet):
         self._nodeset = nodeset
-        self._nodes = {}
+        self.nodes = {}
 
     def GetNode(self, n):
-        node = self._nodes.get(n)
+        node = self.nodes.get(n)
         if node is None:
             node = ApplicationNode(n, self._nodeset.GetNode(n))
-            self._nodes[n] = node
+            self.nodes[n] = node
         return node
 
     def put(self, n, ts, key, values):
