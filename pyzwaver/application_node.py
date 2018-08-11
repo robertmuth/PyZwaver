@@ -276,7 +276,8 @@ class NodeValues:
     def CommandVersions(self):
         m = self.GetMap(z.Version_CommandClassReport)
         return sorted([(cls, z.CMD_TO_STRING.get(cls, "UKNOWN:%d" % cls), val["version"])
-                       for cls, (_, val) in m.items()])
+                       for cls, (_, val) in m.items()
+                       if val["version"] != 0])
 
     def Configuration(self):
         m = self.GetMap(z.Configuration_Report)

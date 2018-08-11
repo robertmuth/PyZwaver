@@ -441,12 +441,13 @@ OPTIONS = tornado.options.options
 
 # ======================================================================
 def TimeFormat(t):
-    return  time.strftime("%H:%M:%S", time.localtime(t))
+    return time.strftime("%H:%M:%S", time.localtime(t))
 
 
 def TimeFormatMs(t):
     ms = ".%03d" % int(1000 * (t - math.floor(t)))
-    return  TimeFormatMs(r) + ms
+    return TimeFormat(t) + ms
+
 
 # ======================================================================
 # A few globals
@@ -457,8 +458,9 @@ CONTROLLER = None  # type: controller.Controller
 PROTOCOL_NODESET = None
 APPLICATION_NODESET = None
 DB = None
+
 # ======================================================================
-# WebSocker
+# WebSocket
 # ======================================================================
 
 SOCKETS = set()
@@ -490,9 +492,10 @@ class NodeUpdater(object):
         time.sleep(1.0)
 
     def put(self, n, ts, key, values):
-        #SendToSocket("E:[%d] %s" % (n, "@NO EVENT@"))
+        # SendToSocket("E:[%d] %s" % (n, "@NO EVENT@"))
         self.nodes_to_update.add(n)
         self.update_controller = True
+
 
 def ControllerEventCallback(action, event):
     SendToSocket("S:" + event)
@@ -628,7 +631,7 @@ def ClassSpecificNodeButtons(node: application_node.ApplicationNode):
     return out
 
 
-def MakeTableRowForNode(node:application_node.ApplicationNode, status_only, is_failed):
+def MakeTableRowForNode(node: application_node.ApplicationNode, status_only, is_failed):
     global DB
     readings = RenderAllReadings(node.values.Sensors(),
                                  node.values.Meters())
@@ -640,7 +643,7 @@ def MakeTableRowForNode(node:application_node.ApplicationNode, status_only, is_f
         buttons += ClassSpecificNodeButtons(node)
 
     pnode = node.protocol_node
-    state = node.state
+    state = node.state[2:]
     if pnode.failed:
         state = "FAILED"
 
@@ -663,7 +666,7 @@ def MakeTableRowForNode(node:application_node.ApplicationNode, status_only, is_f
         "<td>" + " ".join(buttons) + "</td>",
         "<td class=no>node: %d</td>" % node.n,
         "<td class=state>%s (%s)</td>" % (TimeFormat(pnode.last_contact), state),
-        "<td class=product>%s (%s)</td>" % (pnode.device_type, pnode.device_type),
+        "<td class=product>%s (%s)</td>" % (pnode.device_description, pnode.device_type),
         "</tr>"]
 
 
@@ -720,8 +723,7 @@ def DriverLogs():
     global DRIVER
     out = []
     for t, sent, m, comment in DRIVER._raw_history:
-        ms = ".%03d" % int(1000 * (t - math.floor(t)))
-        t = time.strftime("%H:%M:%S", time.localtime(t)) + ms
+        t = TimeFormatMs(t)
         d = sent and "=>" or "<="
         m = zmessage.PrettifyRawMessage(m)
         out.append({"t": t, "c": comment, "d": d, "m": m})
@@ -736,9 +738,7 @@ def DriverSlow():
         dur = int(1000.0 * (m.end - m.start))
         if dur < 300: continue
         d = "%4d%s" % (dur, "*" if m.WasAborted() else " ")
-        t = m.start
-        ms = ".%03d" % int(1000 * (t - math.floor(t)))
-        t = time.strftime("%H:%M:%S", time.localtime(t)) + ms
+        t = TimeFormatMs(m.start)
         m = zmessage.PrettifyRawMessage(m.payload)
         out.append({"d": d, "t": t, "m": m})
     return out
@@ -754,9 +754,7 @@ def DriverBad():
             continue
         dur = int(1000.0 * (m.end - m.start))
         d = "%4d" % dur
-        t = m.start
-        ms = ".%03d" % int(1000 * (t - math.floor(t)))
-        t = time.strftime("%H:%M:%S", time.localtime(t)) + ms
+        t = TimeFormatMs(m.start)
         m = zmessage.PrettifyRawMessage(m.payload)
         out.append({"d": d, "t": t, "m": m})
     return out
@@ -823,17 +821,16 @@ class DisplayHandler(BaseHandler):
 #     return "".join(out)
 #
 #
-# def RenderNodeCommandClasses(node):
-#     out = ["<h2>Command Classes</h2>",
-#            MakeNodeButton(node, "refresh_commands", "Probe"),
-#            "<p>",
-#            "<table>",
-#            ]
-#     for cls, version in node.commands.CommandVersions():
-#         name = "%s [%d]" % (z.CMD_TO_STRING.get(cls, "UKNOWN:%d" % cls), cls)
-#         out += ["<tr><td>", name, "</td><td>", str(version), "</td></tr>"]
-#     out += ["</table>"]
-#     return out
+def RenderNodeCommandClasses(node: application_node.ApplicationNode):
+    out = ["<h2>Command Classes</h2>",
+           MakeNodeButton(node, "refresh_commands", "Probe"),
+           "<p>",
+           "<table>",
+           ]
+    for cls, name, version in node.values.CommandVersions():
+        out += ["<tr><td>%s [%d]</td><td>%d</td></tr>" % (name, cls, version)]
+    out += ["</table>"]
+    return out
 #
 #
 # def RenderNodeAssociations(node: application_node.ApplicationNode):
@@ -904,12 +901,11 @@ def RenderNode(node: application_node.ApplicationNode):
     out += ClassSpecificNodeButtons(node)
 
     columns = [
-        #RenderNodeCommandClasses(node),
-        #RenderNodeParameters(node),
-        #RenderNodeAssociations(node),
-        #RenderMiscValues(node),
+        RenderNodeCommandClasses(node),
+        # RenderNodeParameters(node),
+        # RenderNodeAssociations(node),
+        # RenderMiscValues(node),
     ]
-
 
     out += ["<table class=node-sections width='100%'>",
             "<tr>"
