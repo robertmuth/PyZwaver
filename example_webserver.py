@@ -599,40 +599,28 @@ def MakeNodeRange(node: application_node.ApplicationNode, action, lo, hi):
     return s % (node.n, action, lo, hi, node.values.GetMultilevelSwitchLevel())
 
 
-# TODO
 def RenderReading(kind, unit, val):
-    v = val["value"]["_value"]
-    if kind == value.SENSOR_KIND_BATTERY:
-        if v == 100:
-            return ""
-        else:
-            unit = "% (battery)"
-    elif kind == value.SENSOR_KIND_BASIC:
+    if kind == value.SENSOR_KIND_BATTERY and val == 100:
         return ""
-    elif kind == value.SENSOR_KIND_SWITCH_MULTILEVEL:
-        unit = "% (dimmer)"
     elif kind == value.SENSOR_KIND_SWITCH_BINARY:
-        if v == 0:
+        if val == 0:
             return "Off"
         else:
             return "On"
-    else:
-        if kind == value.SENSOR_KIND_RELATIVE_HUMIDITY and unit == "%":
-            unit = "% (rel. hum.)"
 
-    return "%.1f%s" % (v, unit)
+    elif kind == value.SENSOR_KIND_RELATIVE_HUMIDITY and unit == "%":
+        unit = "% (rel. hum.)"
+    return "%.1f%s" % (val, unit)
 
 
-def RenderAllReadings(values1, values2):
+def RenderReadings(readings):
     seen = set()
     out = []
-    for key, (kind, unit), val in sorted(values1):
-        out.append("<span class=reading>" + RenderReading(kind, unit, val) + "</span>")
-        seen.add(unit)
-    for key, (kind, unit), val in sorted(values2):
+    for key, kind, unit, val in sorted(readings):
         if unit in seen:
             continue
         out.append("<span class=reading>" + RenderReading(kind, unit, val) + "</span>")
+        seen.add(unit)
     return out
 
 
@@ -651,8 +639,8 @@ def ClassSpecificNodeButtons(node: application_node.ApplicationNode):
 
 def MakeTableRowForNode(node: application_node.ApplicationNode, is_failed):
     global DB
-    readings = RenderAllReadings(node.values.Sensors(),
-                                 node.values.Meters())
+    readings = node.values.Sensors() + node.values.Meters() + node.values.MiscSensors()
+
     buttons = []
     if not node.IsSelf():
         buttons.append(MakeNodeButton(node, "ping", "Ping"))
@@ -675,7 +663,7 @@ def MakeTableRowForNode(node: application_node.ApplicationNode, is_failed):
         "<td class=name>",
         MakeButton(action, param, name, cls="details"),
         "</td>",
-        "<td colspan=3 class=readings>%s</td>" % " ".join(readings),
+        "<td colspan=3 class=readings>%s</td>" % " ".join(RenderReadings(readings)),
         "</tr>",
         #
         "<tr>",
@@ -909,7 +897,7 @@ def RenderNode(node: application_node.ApplicationNode):
         MakeNodeButton(node, "ping", "Ping Node"),
         "&nbsp;",
         MakeNodeButton(node, "refresh_dynamic", "Refresh Dynamic"),
-          "&nbsp;",
+        "&nbsp;",
         MakeNodeButton(node, "refresh_semistatic", "Refresh Semi Static"),
         "&nbsp;",
         MakeNodeButton(node, "refresh_static", "Refresh Static"),
@@ -919,7 +907,8 @@ def RenderNode(node: application_node.ApplicationNode):
         "<p>"
         "<h2>Readings</h2>",
     ]
-    out += RenderAllReadings(node.values.Sensors(), node.values.Meters())
+    out += RenderReadings(node.values.Sensors() +
+                          node.values.Meters() + node.values.MiscSensors())
     out += ["<p>"]
     out += ClassSpecificNodeButtons(node)
 

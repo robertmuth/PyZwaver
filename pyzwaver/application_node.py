@@ -270,7 +270,8 @@ class NodeValues:
 
     def HasCommandClass(self, cls):
         m = self.GetMap(z.Version_CommandClassReport)
-        return cls in m
+        e = m.get(cls, (0, 0))
+        return e[1] != 0
 
     def NumCommands(self):
         m = self.GetMap(z.Version_CommandClassReport)
@@ -300,13 +301,29 @@ class NodeValues:
 
     def Sensors(self):
         m = self.GetMap(z.SensorMultilevel_Report)
-        return [(key, value.GetSensorMeta(val), val)
+        return [(key, *value.GetSensorMeta(val), val["value"]["_value"])
                 for key, (_, val) in m.items()]
 
     def Meters(self):
         m = self.GetMap(z.Meter_Report)
-        return [(key, value.GetMeterMeta(val), val)
+        return [(key, *value.GetMeterMeta(val), val["value"]["_value"])
                 for key, (_, val) in m.items()]
+
+    def MiscSensors(self):
+        out = []
+        v = self.Get(z.SwitchMultilevel_Report)
+        if v is not None:
+            out.append((z.SwitchMultilevel_Report, value.SENSOR_KIND_SWITCH_MULTILEVEL,
+                        "% (dimmer)", v["level"]))
+        v = self.Get(z.SwitchBinary_Report)
+        if v is not None:
+            out.append((z.SwitchBinary_Report, value.SENSOR_KIND_SWITCH_BINARY,
+                        "on/off", v["level"]))
+        v = self.Get(z.Battery_Report)
+        if v is not None:
+            out.append((z.Battery_Report, value.SENSOR_KIND_SWITCH_BINARY,
+                        "% (battery)", v["level"]))
+        return out
 
     def Associations(self):
         groups = self.GetMap(z.Association_Report)
@@ -470,7 +487,7 @@ class ApplicationNode:
                                             XMIT_OPTIONS)
 
     def RefreshAllCommandVersions(self):
-        logging.warning("RefreshAllCommandVersions")
+        logging.warning("[%d] RefreshAllCommandVersions", self.n)
         self.RefreshCommandVersions(range(255))
 
     def RefreshSceneActuatorConfigurations(self, scenes):
@@ -478,7 +495,7 @@ class ApplicationNode:
         self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)
 
     def RefreshAllParameters(self):
-        logging.warning("RefreshAllParameter")
+        logging.warning("[%d] RefreshAllParameter", self.n)
         c = [(z.Configuration_Get, {"parameter": p})
              for p in range(255)]
         self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)
@@ -527,15 +544,14 @@ class ApplicationNode:
         self.BatchCommandSubmitFilteredFast(c, XMIT_OPTIONS)
 
     def AssociationAdd(self, group, n):
-        # TODO
-        c = [(z.Association_Set, group, [n]),
-             (z.Association_Get, group)]
+        c = [(z.Association_Set, {"group": group, "nodes": [n]}),
+             (z.Association_Get,  {"group": group})]
         self.BatchCommandSubmitFilteredFast(c, XMIT_OPTIONS)
 
     def AssociationRemove(self, group, n):
         # TODO: broken
-        c = [(z.Association_Remove, {group, n}),
-             (z.Association_Get, {group})]
+        c = [(z.Association_Remove,  {"group": n, "nodes": [n]}),
+             (z.Association_Get,  {"group": group})]
         self.BatchCommandSubmitFilteredFast(c, XMIT_OPTIONS)
 
     def RefreshDynamicValues(self):

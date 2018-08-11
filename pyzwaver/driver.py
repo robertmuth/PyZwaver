@@ -369,6 +369,9 @@ class Driver(object):
             if next_action == DO_ACK:
                 self._SendRaw(zmessage.RAW_MESSAGE_ACK)
             elif next_action == DO_RETRY:
+                # Does this help?
+                # TODO: analyze
+                time.sleep(0.01)
                 self._inflight.IncRetry()
                 self._SendRaw(self._inflight.payload, "re-try")
             elif next_action == DO_PROPAGATE:

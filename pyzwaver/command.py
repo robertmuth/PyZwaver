@@ -246,12 +246,9 @@ def _ParseSensor(m, index):
     precision = (c >> 5) & 7
     unit = (c >> 3) & 3
     size = c & 7
-    if size == 3:
-        logging.error("@@@ strange size field")
-        size = 2
-    elif size == 7:
-        logging.error("@@@ strange size field")
-        size = 1
+    if size not in (1, 2, 4):
+        raise ValueError("strange size field: %d" % size)
+
     if len(m) < index + 1 + size:
         raise ValueError("malformed sensor string precision:%d unit:%d size:%d" %
                          (precision, unit, size))
@@ -453,14 +450,28 @@ def MaybePatchCommand(m):
             ((m[3] & 7) > len(m) - 4)):
         x = 1 << 5 | (0 << 3) | 2
         # [49, 5, 1, 127, 1, 10] => [49, 5, 1, X, 1, 10]
-        logging.warning(
-            "fixing up SensorMultilevel_Report %s: [3] %02x-> %02x", Hexify(m), m[3], x)
+        logging.error(
+            "A fixing up SensorMultilevel_Report %s: [3] %02x-> %02x", Hexify(m), m[3], x)
         m[3] = x
+
     if ((m[0], m[1]) == z.SensorMultilevel_Report and
             m[2] == 1 and
             (m[3] & 0x10) != 0):
         x = m[3] & 0xe7
-        logging.warning(
-            "fixing up SensorMultilevel_Report %s: [3] %02x-> %02x", Hexify(m), m[3], x)
+        logging.error(
+            "B fixing up SensorMultilevel_Report %s: [3] %02x-> %02x", Hexify(m), m[3], x)
         m[3] = x
+
+    # if (m[0], m[1]) == z.SensorMultilevel_Report and (m[3] & 7) not in (1, 2, 4):
+    #     size = m[3] & 7
+    #     if size == 3:
+    #         size = 2
+    #     elif size == 7:
+    #         size = 1
+    #     elif size == 6:
+    #         size = 2
+    #     x = m[3] & 0xf8 | size
+    #     logging.error(
+    #         "C fixing up SensorMultilevel_Report %s: [3] %02x-> %02x", Hexify(m), m[3], x)
+    #     m[3] = x
     return m
