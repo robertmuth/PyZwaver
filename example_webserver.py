@@ -48,7 +48,6 @@ import tornado.options
 import tornado.web
 import tornado.websocket
 
-from pyzwaver import command
 from pyzwaver import value
 from pyzwaver import zmessage
 from pyzwaver import controller
@@ -577,10 +576,8 @@ def MakeNodeRange(node: application_node.ApplicationNode, action, lo, hi):
     return s % (node.n, action, lo, hi, node.values.GetMultilevelSwitchLevel())
 
 
-def RenderReading(value):
-    v = value.value
-    kind = value.kind
-    unit = value.unit
+def RenderReading(kind, unit, val):
+    v = val["value"]["_value"]
     if kind == value.SENSOR_KIND_BATTERY:
         if v == 100:
             return ""
@@ -602,19 +599,18 @@ def RenderReading(value):
     return "%.1f%s" % (v, unit)
 
 
+
+
 def RenderAllReadings(values1, values2):
-    # TODO
-    return []
     seen = set()
     out = []
-    for v in sorted(values1):
-        out.append("<span class=reading>" + RenderReading(v) + "</span>")
-        if v.unit:
-            seen.add(v.unit)
-    for v in sorted(values2):
-        if v.unit in seen:
+    for key, (kind, unit), val in sorted(values1):
+        out.append("<span class=reading>" + RenderReading(kind, unit, val) + "</span>")
+        seen.add(unit)
+    for key, (kind, unit), val in sorted(values2):
+        if unit in seen:
             continue
-        out.append("<span class=reading>" + RenderReading(v) + "</span>")
+        out.append("<span class=reading>" + RenderReading(kind, unit, val) + "</span>")
     return out
 
 

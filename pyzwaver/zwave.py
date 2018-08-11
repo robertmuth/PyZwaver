@@ -958,7 +958,7 @@ SUBCMD_TO_PARSE_TABLE = {
 
     # Meter (0x32 = 50)
     0x3201: ['b{scale}'],  # Get (1)
-    0x3202: ['M{meter}'],  # Report (2)
+    0x3202: ['M{value}'],  # Report (2)
     0x3203: [],  # SupportedGet (3)
     0x3204: ['B{type}', 'B{scale}'],  # SupportedReport (4)
     0x3205: [],  # Reset (5)

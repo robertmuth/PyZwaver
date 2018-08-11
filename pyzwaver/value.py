@@ -211,7 +211,7 @@ def GetSensorMeta(values):
 
 
 def GetMeterMeta(values):
-    v = values["meter"]
+    v = values["value"]
     kind = v["type"]
     unit = v["unit"]
     info = METER_TYPES[kind]

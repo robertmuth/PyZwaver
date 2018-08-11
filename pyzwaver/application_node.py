@@ -47,7 +47,7 @@ def _AssociationSubkey(v):
 
 _COMMANDS_WITH_MAP_VALUES = {
     z.Version_CommandClassReport: lambda v: v["class"],
-    z.Meter_Report: lambda v: (v["meter"]["type"], v["meter"]["unit"]),
+    z.Meter_Report: lambda v: (v["value"]["type"], v["value"]["unit"]),
     z.Configuration_Report: lambda v: v["parameter"],
     z.SensorMultilevel_Report: lambda v: (v["type"], v["value"]["unit"]),
     z.Association_Report: _AssociationSubkey,
@@ -579,6 +579,7 @@ class ApplicationNode:
                 self.RefreshStaticValues()
         else:
             self.RefreshDynamicValues()
+            self.RefreshAssociations()
 
     def put(self, ts, key, values):
 

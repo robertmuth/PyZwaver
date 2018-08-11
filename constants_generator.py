@@ -398,7 +398,7 @@ ALLOWED_PARAMETER_FORMATS = {
     "L{command}",
     "L{nodes}",
     "L{sensor}",
-    "M{meter}",
+    "M{value}",
     "N{name}",
     "O{nonce}",
     "R{bits}",
@@ -540,7 +540,7 @@ C("SensorMultilevel", 0x31,
 
 C("Meter", 0x32,
   Get=(0x1, "b{scale}"),
-  Report=(0x2, "M{meter}"),
+  Report=(0x2, "M{value}"),
   SupportedGet=(0x3, ""),
   SupportedReport=(0x4, "B{type},B{scale}"),
   Reset=(0x5, ""))
