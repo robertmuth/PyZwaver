@@ -88,7 +88,6 @@ class Node(object):
     def SendCommand(self, key, values, priority: tuple, xmit: int):
         try:
             raw_cmd = command.AssembleCommand(key[0], key[1], values)
-            raw_cmd = command.AssembleCommand(key[0], key[1], values)
         except:
             logging.error("cannot assemble command for %s %s %s",
                           command.StringifyCommand(key),
