@@ -319,6 +319,7 @@ class Driver(object):
         while not self._terminate:
             inflight = self._out_queue.get() # type: zmessage.Message
             if inflight.payload is None:
+                logging.warning("received empty message")
                 inflight.Start(time.time(), lock)
                 inflight.Complete(time.time(), None, zmessage.MESSAGE_STATE_COMPLETED)
                 continue
@@ -378,4 +379,4 @@ class Driver(object):
                 self._SendRaw(zmessage.RAW_MESSAGE_ACK)
                 self._in_queue.put((ts, m))
 
-    logging.warning("_DriverReceivingThread terminated")
+        logging.warning("_DriverReceivingThread terminated")

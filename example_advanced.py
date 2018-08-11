@@ -16,7 +16,14 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-Advanced Example
+Simple example demonstrating basic pyzwaver concepts.
+
+Progression:
+* open the device
+* start the controller
+* wait for controller initialization
+* wait for each node to be interviewed
+* terminate
 """
 
 # python import
@@ -25,19 +32,18 @@ import logging
 import argparse
 import sys
 import time
-import signal
 
 from pyzwaver import controller
 from pyzwaver import driver
 from pyzwaver import protocol_node
-from pyzwaver import zwave as z
+from pyzwaver import command
 from pyzwaver import application_node
 
 
-# use --logging=none
-# to disable the tornado logging overrides caused by
-# tornado.options.parse_command_line(
 class MyFormatter(logging.Formatter):
+    """
+    Nicer logging format
+    """
     def __init__(self):
         super(MyFormatter, self).__init__()
 
@@ -54,38 +60,45 @@ class MyFormatter(logging.Formatter):
 
 
 class TestListener(object):
-
+    """
+    Demonstrates how to hook into the stream of messages
+    sent to the controller from other nodes
+    """
     def __init__(self):
-        self._count = 0
+        pass
 
-    def put(self, n, _, key0, key1, values):
+    def put(self, n, ts, key, values):
         name = "@NONE@"
-        if key0 is not None:
-            name = "%s  (%02x:%02x)" % (z.SUBCMD_TO_STRING.get(key0 * 256 + key1), key0, key1)
-        logging.info("RECEIVED [%d]: %s - %s", n, name, values)
-        self._count += 1
+        if key[0] is not None:
+            name = command.StringifyCommand(key)
+        logging.warning("RECEIVED [%d]: %s - %s", n, name, values)
+
+
+def Banner(m):
+    print ("=" * 60)
+    print (m)
+    print ("=" * 60)
 
 
 def main():
     global DRIVER, CONTROLLER, PROTOCOL_NODESET, APPLICATION_NODESET
 
     parser = argparse.ArgumentParser(description='Process some integers.')
-    parser.add_argument("--verbosity", help="increase output verbosity")
 
     parser.add_argument('--serial_port', type=str,
                         default="/dev/ttyUSB0",
-                        # default="/dev/ttyACM0",
-                        help='an integer for the accumulator')
+                        help='The USB serial device representing the Z-Wave controller stick. ' +
+                             'Common settings are: dev/ttyUSB0, dev/ttyACM0')
+
+    parser.add_argument('--verbosity', type=int,
+                        default=30,
+                        help='Lower numbers mean more verbosity')
 
     args = parser.parse_args()
-    print(args)
     # note: this makes sure we have at least one handler
-    # logging.basicConfig(level=logging.WARNING)
-    # logging.basicConfig(level=logging.ERROR)
-
+    logging.basicConfig(level=logging.ERROR)
     logger = logging.getLogger()
-    #logger.setLevel(logging.INFO)
-    logger.setLevel(logging.WARN)
+    logger.setLevel(args.verbosity)
     for h in logger.handlers:
         h.setFormatter(MyFormatter())
 
@@ -98,42 +111,39 @@ def main():
     CONTROLLER.WaitUntilInitialized()
     CONTROLLER.UpdateRoutingInfo()
     time.sleep(2)
+    Banner("Initialized Controller")
     print(CONTROLLER)
+
     PROTOCOL_NODESET = protocol_node.NodeSet(DRIVER, CONTROLLER.GetNodeId())
     APPLICATION_NODESET = application_node.ApplicationNodeSet(PROTOCOL_NODESET)
 
     PROTOCOL_NODESET.AddListener(APPLICATION_NODESET)
+    PROTOCOL_NODESET.AddListener(TestListener())
     # n.InitializeExternally(CONTROLLER.props.product, CONTROLLER.props.library_type, True)
-    logging.info("pinging %d nodes", len(CONTROLLER.nodes))
 
+    logging.info("Pinging %d nodes", len(CONTROLLER.nodes))
     for n in CONTROLLER.nodes:
         node = PROTOCOL_NODESET.GetNode(n)
         node.Ping(5, False)
         time.sleep(0.5)
 
-    def signal_handler(sig, frame):
-       print("Control-C pressed. Node dump:")
-       for n in CONTROLLER.nodes:
-           node = APPLICATION_NODESET.GetNode(n)
-           print(node)
-           node.RefreshStaticValues()
-           node.RefreshDynamicValues()
-           node.RefreshSemiStaticValues()
-
-    signal.signal(signal.SIGINT, signal_handler)
-
+    logging.info("Waiting for all nodes to be interviewed")
     not_ready = CONTROLLER.nodes.copy()
+    not_ready.remove(CONTROLLER.GetNodeId())
     while not_ready:
         interviewed = set()
         for n in not_ready:
             node = APPLICATION_NODESET.GetNode(n)
             if node.IsInterviewed():
                     interviewed.add(node)
-                    node.RefreshAssociations()
         time.sleep(2.0)
         for node in interviewed:
+            Banner ("Node %s has been interviewed" % node.n)
             print(node)
             not_ready.remove(node.n)
+            if not_ready:
+                print("\nStill waiting for %s" % str(not_ready))
+    DRIVER.Terminate()
     return 0
 
 
