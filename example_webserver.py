@@ -801,26 +801,28 @@ class DisplayHandler(BaseHandler):
         self.finish()
 
 
-# def RenderAssociationGroup(node: application_node.ApplicationNode, group: application_node.AssociationGroup):
-#     no = group._no
-#     out = ["<tr>"
-#            "<th>", "Group %d %s [%d]:" % (no, group.name, group.capacity), "</th>",
-#            "<td>",
-#            ]
-#     for n in group.nodes:
-#         out += ["%d" % n,
-#                 MakeNodeButton(node, "association_remove/%d/%d" % (no, n), "X", "remove"),
-#                 "&nbsp;"]
-#
-#     out += ["</td>",
-#             "<td>",
-#             MakeNodeButtonInput(node, "association_add/%d/" % no, "Add Node"),
-#             "<input type=number min=0 max=232 value=0>",
-#             "</td>",
-#             "</tr>"]
-#     return "".join(out)
-#
-#
+def RenderAssociationGroup(node: application_node.ApplicationNode, no, group, name, info, lst):
+    group_name = ""
+    if name:
+        group_name = name["name"]
+    out = ["<tr>"
+           "<th>", "Group %d %s [%d]:" % (no, group_name, group["count"]), "</th>",
+           "<td>",
+           ]
+    for n in group["nodes"]:
+        out += ["%d" % n,
+                MakeNodeButton(node, "association_remove/%d/%d" % (no, n), "X", "remove"),
+                "&nbsp;"]
+
+    out += ["</td>",
+            "<td>",
+            MakeNodeButtonInput(node, "association_add/%d/" % no, "Add Node"),
+            "<input type=number min=0 max=232 value=0>",
+            "</td>",
+            "</tr>"]
+    return "".join(out)
+
+
 def RenderNodeCommandClasses(node: application_node.ApplicationNode):
     out = ["<h2>Command Classes</h2>",
            MakeNodeButton(node, "refresh_commands", "Probe"),
@@ -831,20 +833,22 @@ def RenderNodeCommandClasses(node: application_node.ApplicationNode):
         out += ["<tr><td>%s [%d]</td><td>%d</td></tr>" % (name, cls, version)]
     out += ["</table>"]
     return out
-#
-#
-# def RenderNodeAssociations(node: application_node.ApplicationNode):
-#     out = ["<h2>Associations</h2>",
-#            MakeNodeButton(node, "refresh_assoc", "Probe"),
-#            "<p>",
-#            "<table>",
-#            ]
-#     for group in node.associations.Groups():
-#         out.append(RenderAssociationGroup(node, group))
-#     out += ["</table>"]
-#     return out
-#
-#
+
+
+def RenderNodeAssociations(node: application_node.ApplicationNode):
+    out = ["<h2>Associations</h2>",
+           MakeNodeButton(node, "refresh_assoc", "Probe"),
+           "<p>",
+           "<table>",
+           ]
+    for no, group, info, lst, name in node.values.Associations():
+        if group:
+            out.append(RenderAssociationGroup(node, no, group,info, lst, name))
+    out += ["</table>"]
+    return out
+
+
+
 def RenderNodeParameters(node: application_node.ApplicationNode):
     compact = value.CompactifyParams(node.values.Configuration())
     out = ["<h2>Configuration</h2>",
@@ -905,10 +909,8 @@ def RenderNode(node: application_node.ApplicationNode):
     out += ClassSpecificNodeButtons(node)
 
     columns = [
-        RenderNodeCommandClasses(node),
-        RenderNodeParameters(node),
-        # RenderNodeAssociations(node),
-        RenderMiscValues(node),
+        RenderNodeCommandClasses(node) + RenderNodeAssociations(node),
+        RenderMiscValues(node) + RenderNodeParameters(node),
     ]
 
     out += ["<table class=node-sections width='100%'>",

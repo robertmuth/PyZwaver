@@ -299,9 +299,9 @@ class NodeValues:
 
     def Associations(self):
         groups = self.GetMap(z.Association_Report)
+        names = self.GetMap(z.AssociationGroupInformation_NameReport)
         infos = self.GetMap(z.AssociationGroupInformation_InfoReport)
         lists = self.GetMap(z.AssociationGroupInformation_ListReport)
-        names = self.GetMap(z.AssociationGroupInformation_NameReport)
         all = set(groups.keys())
         all |= infos.keys()
         all |= lists.keys()
