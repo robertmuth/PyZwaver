@@ -234,8 +234,7 @@ def GetMeterMeta(values):
 def CompactifyParams(params):
     out = []
     last = [-1, -1, -1, -1]  # range start, range end, size, value
-    for k in sorted(params.keys()):
-        a, b = params[k]
+    for k, a, b in sorted(params):
         if last[2] != a or last[3] != b or last[1] != k - 1:
             last = [k, k, a, b]
             out.append(last)

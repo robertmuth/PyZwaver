@@ -827,7 +827,7 @@ def RenderNodeCommandClasses(node: application_node.ApplicationNode):
            "<p>",
            "<table>",
            ]
-    for cls, name, version in node.values.CommandVersions():
+    for cls, name, version in sorted(node.values.CommandVersions()):
         out += ["<tr><td>%s [%d]</td><td>%d</td></tr>" % (name, cls, version)]
     out += ["</table>"]
     return out
@@ -845,30 +845,30 @@ def RenderNodeCommandClasses(node: application_node.ApplicationNode):
 #     return out
 #
 #
-# def RenderNodeParameters(node: application_node.ApplicationNode):
-#     compact = application_node.CompactifyParams(node.parameters._parameters)
-#     out = ["<h2>Configuration</h2>",
-#            MakeNodeButton(node, "refresh_parameters", "Probe"),
-#            "<br>",
-#            MakeNodeButtonInputConfig(node, "change_parameter/", "Change"),
-#            "no <input id=num type='number' name='no' value=0 min=1 max=232 style='width: 3em'>",
-#            "size <select id=size name='size'>",
-#            "<option value='1'>1</option>",
-#            "<option value='2'>2</option>",
-#            "<option value='4'>4</option>",
-#            "</select>",
-#            "value <input id=value type='number' name='val' value=0 style='width: 7em'>",
-#            "<p>",
-#            "<table>",
-#            ]
-#     for a, b, c, d in sorted(compact):
-#         r = str(a)
-#         if a != b:
-#             r += " - " + str(b)
-#         out += ["<tr><td>", r, "</td><td>", "[%d]" % c, "</td><td>", str(d), "</td></tr>"]
-#     out += ["</table>"]
-#     return out
-#
+def RenderNodeParameters(node: application_node.ApplicationNode):
+    compact = value.CompactifyParams(node.values.Configuration())
+    out = ["<h2>Configuration</h2>",
+           MakeNodeButton(node, "refresh_parameters", "Probe"),
+           "<br>",
+           MakeNodeButtonInputConfig(node, "change_parameter/", "Change"),
+           "no <input id=num type='number' name='no' value=0 min=1 max=232 style='width: 3em'>",
+           "size <select id=size name='size'>",
+           "<option value='1'>1</option>",
+           "<option value='2'>2</option>",
+           "<option value='4'>4</option>",
+           "</select>",
+           "value <input id=value type='number' name='val' value=0 style='width: 7em'>",
+           "<p>",
+           "<table>",
+           ]
+    for a, b, c, d in sorted(compact):
+        r = str(a)
+        if a != b:
+            r += " - " + str(b)
+        out += ["<tr><td>", r, "</td><td>", "[%d]" % c, "</td><td>", str(d), "</td></tr>"]
+    out += ["</table>"]
+    return out
+
 #
 # def RenderMiscValues(node):
 #     out = ["<h2>Misc Values</h2>",
@@ -902,7 +902,7 @@ def RenderNode(node: application_node.ApplicationNode):
 
     columns = [
         RenderNodeCommandClasses(node),
-        # RenderNodeParameters(node),
+        RenderNodeParameters(node),
         # RenderNodeAssociations(node),
         # RenderMiscValues(node),
     ]

@@ -275,27 +275,27 @@ class NodeValues:
 
     def CommandVersions(self):
         m = self.GetMap(z.Version_CommandClassReport)
-        return sorted([(cls, z.CMD_TO_STRING.get(cls, "UKNOWN:%d" % cls), val["version"])
-                       for cls, (_, val) in m.items()
-                       if val["version"] != 0])
+        return [(cls, z.CMD_TO_STRING.get(cls, "UKNOWN:%d" % cls), val["version"])
+                for cls, (_, val) in m.items()
+                if val["version"] != 0]
 
     def Configuration(self):
         m = self.GetMap(z.Configuration_Report)
-        return sorted([(no, val["value"]["size"], val["value"]["value"]) for no, (_, val) in m.items()])
+        return [(no, val["value"]["size"], val["value"]["value"]) for no, (_, val) in m.items()]
 
     def Values(self):
-        return sorted([(key, command.StringifyCommamnd(*key), val)
-                       for key, (_, val) in self._values.items()])
+        return [(key, command.StringifyCommamnd(*key), val)
+                for key, (_, val) in self._values.items()]
 
     def Sensors(self):
         m = self.GetMap(z.SensorMultilevel_Report)
-        return sorted([(key, value.GetSensorMeta(val), val)
-                       for key, (_, val) in m.items()])
+        return [(key, value.GetSensorMeta(val), val)
+                for key, (_, val) in m.items()]
 
     def Meters(self):
         m = self.GetMap(z.Meter_Report)
-        return sorted([(key, value.GetMeterMeta(val), val)
-                       for key, (_, val) in m.items()])
+        return [(key, value.GetMeterMeta(val), val)
+                for key, (_, val) in m.items()]
 
     def Associations(self):
         groups = self.GetMap(z.Association_Report)
@@ -314,7 +314,7 @@ class NodeValues:
             return e[1]
 
         out = []
-        for n in sorted(all):
+        for n in all:
             out.append((n, foo(groups, n), foo(names, n), foo(infos, n), foo(lists, n)))
         return out
 
@@ -327,24 +327,24 @@ class NodeValues:
     def __str__(self):
         out = []
         out.append("  values:")
-        for x in self.Values():
+        for x in sorted(self.Values()):
             out.append("    " + str(x))
         out.append("  configuration:")
-        for x in self.Configuration():
+        for x in sorted(self.Configuration()):
             out.append("    " + str(x))
         out.append("  commands:")
-        for x in self.CommandVersions():
+        for x in sorted(self.CommandVersions()):
             out.append("    " + str(x))
         out.append("  associations:")
-        for x in self.Associations():
+        for x in sorted(self.Associations()):
             out.append("    " + str(x))
         if self.MeterSupported():
             out.append("  meters:")
-            for x in self.Meters():
+            for x in sorted(self.Meters()):
                 out.append("    " + str(x))
         if self.SensorSupported():
             out.append("  sensors:")
-            for x in self.Sensors():
+            for x in sorted(self.Sensors()):
                 out.append("    " + str(x))
         return "\n".join(out)
 
@@ -441,7 +441,7 @@ class ApplicationNode:
         logging.error("[%d] initializing security", self.n)
         # self.RefreshStaticValues()
         self.BatchCommandSubmitFilteredSlow(
-            [[z.Security, z.Security_SchemeGet, 0]], XMIT_OPTIONS)
+            [(z.Security_SchemeGet, 0)], XMIT_OPTIONS)
 
     def _InitializeCommands(self, typ, cmd, controls):
         k = typ[1] * 256 + typ[2]
@@ -453,7 +453,7 @@ class ApplicationNode:
 
     def ProbeNode(self):
         self.BatchCommandSubmitFilteredFast(
-            [(z.NoOperation, z.NoOperation_Set, {})],
+            [(z.NoOperation_Set, {})],
             XMIT_OPTIONS)
 
     #        cmd = zwave_cmd.MakeWakeUpIntervalCapabilitiesGet(
@@ -468,24 +468,23 @@ class ApplicationNode:
         self.RefreshCommandVersions(range(255))
 
     def RefreshSceneActuatorConfigurations(self, scenes):
-        c = [(z.SceneActuatorConf, z.SceneActuatorConf_Get, {"group": s})
-             for s in scenes]
+        c = [(z.SceneActuatorConf_Get, {"group": s}) for s in scenes]
         self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)
 
-    def RefreshParameters(self):
-        c = [(z.Configuration, z.Configuration_Get, {"parameter": p})
+    def RefreshAllParameters(self):
+        c = [(z.Configuration_Get, {"parameter": p})
              for p in range(255)]
         self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)
 
     def SetConfigValue(self, param, size, value, request_update=True):
-        c = [(z.Configuration, z.Configuration_Set, param, {size, value})]
+        c = [(z.Configuration_Set, param, {size, value})]
         if request_update:
             c += [(z.Configuration, z.Configuration_Get, {param})]
         self.BatchCommandSubmitFilteredFast(c, XMIT_OPTIONS)
 
     def SetSceneConfig(self, scene, delay, extra, level, request_update=True):
         self.BatchCommandSubmitFilteredFast(
-            [(z.SceneActuatorConf, z.SceneActuatorConf_Set,
+            [(z.SceneActuatorConf_Set,
               {scene, delay, extra, level})], XMIT_OPTIONS)
         if not request_update:
             return
