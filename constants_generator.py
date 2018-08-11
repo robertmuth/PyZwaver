@@ -401,6 +401,7 @@ ALLOWED_PARAMETER_FORMATS = {
     "L{nodes}",
     "L{sensor}",
     "L{classes}",
+    "L{extra}",
     "M{value}",
     "N{name}",
     "O{nonce}",
@@ -762,7 +763,7 @@ C("AssociationCommandConfiguration", 0x9b,
 
 C("CentralScene", 0x5b,
   SupportedGet=(0x01, ""),
-  SupportedReport=(0x02, "B{count}"),
+  SupportedReport=(0x02, "B{count},L{extra}"),
   Notification=(0x03, "B{count},B{mode},B{scene}"),
   )
 
