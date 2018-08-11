@@ -252,7 +252,6 @@ class NodeSet(object):
         try:
             data = [int(x) for x in m[7:7 + size]]
             data = command.MaybePatchCommand(data)
-            # prefix = self.LogPrefix(key)
             value = command.ParseCommand(data, "[%d]" % n)
             if value is None:
                 logging.error("[%d] parsing failed for %s", n, Hexify(data))

@@ -488,7 +488,9 @@ class Controller:
 
     def SoftReset(self):
         def handler(message):
-            logging.warning("soft reset response %s", message[4:-1])
+            if message:
+                message = message[4:-1]
+            logging.warning("soft reset response %s", message)
 
         self.SendCommandWithId(z.API_SERIAL_API_SOFT_RESET, [], handler)
 

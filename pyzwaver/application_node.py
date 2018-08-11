@@ -143,6 +143,7 @@ _STATIC_PROPERTY_QUERIES = [
     # arguably dynamic
     (z.Clock_Get, {}),
     (z.Firmware_MetadataGet, {}),
+    (z.CentralScene_SupportedGet, {}),
     (z.Association_GroupingsGet, {}),
 ]
 
@@ -501,9 +502,11 @@ class ApplicationNode:
         self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)
 
     def SetConfigValue(self, param, size, val, request_update=True):
-        c = [(z.Configuration_Set, param, {size, val})]
+        c = [(z.Configuration_Set, {"parameter": param,
+                                    "value": {"size": size, "value": val}})]
+
         if request_update:
-            c += [(z.Configuration, z.Configuration_Get, {param})]
+            c += [(z.Configuration_Get, {"parameter": param})]
         self.BatchCommandSubmitFilteredFast(c, XMIT_OPTIONS)
 
     def SetSceneConfig(self, scene, delay, extra, level, request_update=True):
@@ -545,13 +548,13 @@ class ApplicationNode:
 
     def AssociationAdd(self, group, n):
         c = [(z.Association_Set, {"group": group, "nodes": [n]}),
-             (z.Association_Get,  {"group": group})]
+             (z.Association_Get, {"group": group})]
         self.BatchCommandSubmitFilteredFast(c, XMIT_OPTIONS)
 
     def AssociationRemove(self, group, n):
         # TODO: broken
-        c = [(z.Association_Remove,  {"group": n, "nodes": [n]}),
-             (z.Association_Get,  {"group": group})]
+        c = [(z.Association_Remove, {"group": n, "nodes": [n]}),
+             (z.Association_Get, {"group": group})]
         self.BatchCommandSubmitFilteredFast(c, XMIT_OPTIONS)
 
     def RefreshDynamicValues(self):
