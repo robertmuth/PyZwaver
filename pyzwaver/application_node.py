@@ -275,7 +275,7 @@ class NodeValues:
 
     def CommandVersions(self):
         m = self.GetMap(z.Version_CommandClassReport)
-        return [(cls, z.CMD_TO_STRING.get(cls, "UKNOWN:%d" % cls), val["version"])
+        return [(cls, command.StringifyCommandClass(cls), val["version"])
                 for cls, (_, val) in m.items()
                 if val["version"] != 0]
 
@@ -284,7 +284,7 @@ class NodeValues:
         return [(no, val["value"]["size"], val["value"]["value"]) for no, (_, val) in m.items()]
 
     def Values(self):
-        return [(key, command.StringifyCommamnd(*key), val)
+        return [(key, command.StringifyCommand(key), val)
                 for key, (_, val) in self._values.items()]
 
     def Sensors(self):

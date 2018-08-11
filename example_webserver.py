@@ -869,18 +869,22 @@ def RenderNodeParameters(node: application_node.ApplicationNode):
     out += ["</table>"]
     return out
 
-#
-# def RenderMiscValues(node):
-#     out = ["<h2>Misc Values</h2>",
-#            "<table>",
-#            ]
-#     for _, _, v in node.values.GetAllTuples():
-#         out += ["<tr><td>", v.kind, "</td><td>", repr(v.value), "</td></tr>"]
-#     out += ["</table>",
-#             "<p>",
-#             ]
-#     return out
-#
+
+def RenderMiscValues(node: application_node.ApplicationNode):
+    out = ["<h2>Misc Values</h2>",
+           "<table>",
+           ]
+    for _, name, values in sorted(node.values.Values()):
+        if name.endswith("Report"):
+            name = name[:-6]
+        if name.endswith("_"):
+            name = name[:-1]
+        out += ["<tr><td>", name, "</td><td>", repr(values), "</td></tr>"]
+    out += ["</table>",
+            "<p>",
+            ]
+    return out
+
 
 def RenderNode(node: application_node.ApplicationNode):
     global DB
@@ -904,7 +908,7 @@ def RenderNode(node: application_node.ApplicationNode):
         RenderNodeCommandClasses(node),
         RenderNodeParameters(node),
         # RenderNodeAssociations(node),
-        # RenderMiscValues(node),
+        RenderMiscValues(node),
     ]
 
     out += ["<table class=node-sections width='100%'>",

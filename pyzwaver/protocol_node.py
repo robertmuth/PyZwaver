@@ -91,7 +91,7 @@ class Node(object):
             raw_cmd = command.AssembleCommand(key[0], key[1], values)
         except:
             logging.error("cannot assemble command for %s %s %s",
-                          command.StringifyCommamnd(key0, key1),
+                          command.StringifyCommand(key),
                           z.SUBCMD_TO_PARSE_TABLE[key[0] * 256 + key[1]],
                           values)
             print("-" * 60)

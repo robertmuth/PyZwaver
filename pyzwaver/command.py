@@ -31,9 +31,12 @@ def Hexify(t):
     return ["%02x" % i for i in t]
 
 
-def StringifyCommamnd(cmd0, cmd1):
-    return z.SUBCMD_TO_STRING.get(cmd0 * 256 + cmd1, "Unknown_%02x:%02x" % (cmd0, cmd1))
+def StringifyCommand(key):
+    return z.SUBCMD_TO_STRING.get(key[0] * 256 + key[1], "Unknown:%02x:%02x" % (key[0], key[1]))
 
+
+def StringifyCommandClass(cls):
+    return z.CMD_TO_STRING.get(cls, "UNKNOWN:%d" % cls)
 
 # ======================================================================
 def _GetSignedValue(data):
