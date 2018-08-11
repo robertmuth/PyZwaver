@@ -108,7 +108,7 @@ def main():
 
     for n in CONTROLLER.nodes:
         node = PROTOCOL_NODESET.GetNode(n)
-        node.Ping(3, False)
+        node.Ping(5, False)
 
     def signal_handler(sig, frame):
        print("Control-C pressed. Node dump:")
@@ -117,7 +117,7 @@ def main():
            print(node)
            node.RefreshStaticValues()
            node.RefreshDynamicValues()
-           node.RefreshAssociations()
+           node.RefreshSemiStaticValues()
 
     signal.signal(signal.SIGINT, signal_handler)
 

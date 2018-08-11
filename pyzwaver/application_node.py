@@ -20,6 +20,7 @@
 """
 
 import logging
+from typing import Set, Any
 
 from pyzwaver import zmessage
 from pyzwaver import zwave as z
@@ -54,11 +55,12 @@ _COMMANDS_WITH_MAP_VALUES = {
     z.AssociationGroupInformation_NameReport: _AssociationSubkey,
     z.AssociationGroupInformation_InfoReport: _AssociationSubkey,
     z.AssociationGroupInformation_ListReport: _AssociationSubkey,
-    z.UserCode_Report: lambda v: v["user"]
+    z.UserCode_Report: lambda v: v["user"],
+    z.MultiChannel_CapabilityReport: lambda v: v["endpoint"],
 }
 
 _COMMANDS_WITH_SPECIAL_ACTIONS = {
-    z.ManufacturerSpecific_Report: lambda node, _: node._MaybeChangeState(NODE_STATE_INTERVIEWED),
+    z.ManufacturerSpecific_Report: lambda node, _: node.MaybeChangeState(NODE_STATE_INTERVIEWED),
 }
 
 XMIT_OPTIONS_NO_ROUTE = (z.TRANSMIT_OPTION_ACK |
@@ -96,22 +98,13 @@ _DYNAMIC_PROPERTY_QUERIES = [
 ]
 
 
-def SensorMultiLevelQueries(sensors):
+def _SensorMultiLevelQueries(sensors):
     # older version
     return ([(z.SensorMultilevel_Get, {})] +
             [(z.SensorMultilevel_Get, {"sensor": s}) for s in sensors])
 
 
-def DynamicPropertyQueriesMultiInstance(instances):
-    out = []
-    for i in instances:
-        out.append((z.MultiInstance_Encap, {
-            "mode": i,
-            "command": list(z.SensorMultilevel_Get)}))
-    return out
-
-
-def MeterQueries(scales=(0, 1, 2, 3)):
+def _MeterQueries(scales=(0, 1, 2, 3)):
     # older versions
     return ([(z.Meter_Get, {})] +
             # newer versions
@@ -131,7 +124,7 @@ _STATIC_PROPERTY_QUERIES = [
     (z.ThermostatSetpoint_SupportedGet, {}),
     (z.Version_Get, {}),
     (z.SwitchMultilevel_SupportedGet, {}),
-    (z.MultiInstance_ChannelEndPointGet, {}),
+    (z.MultiChannel_EndPointGet, {}),
 
     # device type
     (z.ManufacturerSpecific_DeviceSpecificGet, {"type": 0}),
@@ -162,8 +155,20 @@ def _CommandVersionQueries(classes):
     return [(z.Version_CommandClassGet, {"class": c}) for c in classes]
 
 
-def _MultiInstanceSupportQueries(classes):
-    return [(z.MultiInstance_Get, {"mode": c}) for c in classes]
+def _MultiChannelEndpointQueries(endpoints):
+    return [(z.MultiChannel_CapabilityGet, {"mode": 0, "endpoint": e}) for e in endpoints]
+
+
+def _AssociationQueries(assocs):
+    c = []
+    for no in assocs:
+        v = {"group": no}
+        c.append((z.Association_Get, v))
+        c.append((z.AssociationGroupInformation_NameGet, v))
+        v = {"group": no, "mode": 0}
+        c.append((z.AssociationGroupInformation_ListGet, v))
+        c.append((z.AssociationGroupInformation_InfoGet, v))
+    return c
 
 
 def BitsToSetWithOffset(x, offset):
@@ -186,19 +191,19 @@ class NodeValues:
     def HasValue(self, key: tuple):
         return key in self._values
 
-    def Set(self, ts, key: tuple, value):
-        if value is None:
+    def Set(self, ts, key: tuple, v):
+        if v is None:
             return
-        self._values[key] = ts, value
+        self._values[key] = ts, v
 
-    def SetMapEntry(self, ts, key: tuple, subkey, value):
-        if value is None:
+    def SetMapEntry(self, ts, key: tuple, subkey, v):
+        if v is None:
             return
         m = self._maps.get(key)
         if m is None:
             m = {}
             self._maps[key] = m
-        m[subkey] = ts, value
+        m[subkey] = ts, v
 
     def Get(self, key: tuple) -> map:
         v = self._values.get(key)
@@ -221,6 +226,12 @@ class NodeValues:
         if not v:
             return set()
         return BitsToSetWithOffset(v["bits"]["value"], 1)
+
+    def MultiChannelEndPointIds(self):
+        v = self.Get(z.MultiChannel_EndPointReport)
+        if not v:
+            return []
+        return range(1, v["count"] + 1)
 
     def MeterSupported(self):
         v = self.Get(z.Meter_SupportedReport)
@@ -246,7 +257,7 @@ class NodeValues:
             return 0, 0, 0
         return v.get("manufacturer", 0), v.get("type", 0), v.get("product", 0)
 
-    def ListAssociationGroupNumbers(self):
+    def AssociationGroupIds(self):
         m = self.GetMap(z.Association_Report)
         if m:
             return m.keys()
@@ -302,10 +313,10 @@ class NodeValues:
         names = self.GetMap(z.AssociationGroupInformation_NameReport)
         infos = self.GetMap(z.AssociationGroupInformation_InfoReport)
         lists = self.GetMap(z.AssociationGroupInformation_ListReport)
-        all = set(groups.keys())
-        all |= infos.keys()
-        all |= lists.keys()
-        all |= names.keys()
+        assocs: Set[int] = set(groups.keys())
+        assocs |= infos.keys()
+        assocs |= lists.keys()
+        assocs |= names.keys()
 
         def foo(m, k):
             e = m.get(k)
@@ -314,7 +325,7 @@ class NodeValues:
             return e[1]
 
         out = []
-        for n in all:
+        for n in assocs:
             out.append((n, foo(groups, n), foo(names, n), foo(infos, n), foo(lists, n)))
         return out
 
@@ -325,8 +336,7 @@ class NodeValues:
         return v.get("library", 0), v.get("protocol", 0), v.get("firmware", 0), v.get("hardware", 0)
 
     def __str__(self):
-        out = []
-        out.append("  values:")
+        out = ["  values:"]
         for x in sorted(self.Values()):
             out.append("    " + str(x))
         out.append("  configuration:")
@@ -367,7 +377,7 @@ class ApplicationNode:
         self.scenes = {}
 
     def IsSelf(self):
-        return self.protocol_node._is_controller
+        return self.protocol_node.is_controller
 
     def IsInterviewed(self):
         return self.state == NODE_STATE_INTERVIEWED
@@ -384,15 +394,10 @@ class ApplicationNode:
         for k in cmd:
             if not self.values.HasCommandClass(k):
                 self.values.SetMapEntry(ts, z.Version_CommandClassReport, k, NO_VERSION)
-        for k in controls:
+        for k in self._controls:
             if not self.values.HasCommandClass(k):
                 self.values.SetMapEntry(ts, z.Version_CommandClassReport, k, NO_VERSION)
         for k in std_cmd:
-            if not self.values.HasCommandClass(k):
-                self.values.SetMapEntry(ts, z.Version_CommandClassReport, k, NO_VERSION)
-
-        k = z.MultiInstance
-        if k in self._controls:
             if not self.values.HasCommandClass(k):
                 self.values.SetMapEntry(ts, z.Version_CommandClassReport, k, NO_VERSION)
 
@@ -402,7 +407,7 @@ class ApplicationNode:
             "state: %s" % self.state[2:],
             "version: %d:%d:%d:%d" % self.values.Versions(),
             "product: %04x:%04x:%04x" % self.values.ProductInfo(),
-            "groups: %d" % len(self.values.ListAssociationGroupNumbers()),
+            "groups: %d" % len(self.values.AssociationGroupIds()),
         ]
         return "  ".join(out)
 
@@ -476,8 +481,8 @@ class ApplicationNode:
              for p in range(255)]
         self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)
 
-    def SetConfigValue(self, param, size, value, request_update=True):
-        c = [(z.Configuration_Set, param, {size, value})]
+    def SetConfigValue(self, param, size, val, request_update=True):
+        c = [(z.Configuration_Set, param, {size, val})]
         if request_update:
             c += [(z.Configuration, z.Configuration_Get, {param})]
         self.BatchCommandSubmitFilteredFast(c, XMIT_OPTIONS)
@@ -498,37 +503,26 @@ class ApplicationNode:
         #    c += [(z.Meter_Get, {})]
         self.BatchCommandSubmitFilteredFast(c, XMIT_OPTIONS)
 
-    def SetBasic(self, value, request_update=True):
-        c = [(z.Basic_Set, {"level": value})]
+    def SetBasic(self, val, request_update=True):
+        c = [(z.Basic_Set, {"level": val})]
         if request_update:
             c += [(z.Basic_Get, {})]
         self.BatchCommandSubmitFilteredFast(c, XMIT_OPTIONS)
 
     # Version 1 of the command class does not support `delay`
-    def SetMultilevelSwitch(self, value, delay=0, request_update=True):
-        c = [(z.SwitchMultilevel_Set, {"level": value, "duration": delay})]
+    def SetMultilevelSwitch(self, val, delay=0, request_update=True):
+        c = [(z.SwitchMultilevel_Set, {"level": val, "duration": delay})]
         if request_update:
             c += [(z.SwitchBinary_Get, {}),
                   (z.SwitchMultilevel_Get, {})]
         self.BatchCommandSubmitFilteredFast(c, XMIT_OPTIONS)
 
-    def SetBinarySwitch(self, value, request_update=True):
-        c = [(z.SwitchBinary_Set, {value})]
+    def SetBinarySwitch(self, val, request_update=True):
+        c = [(z.SwitchBinary_Set, {"level": val})]
         if request_update:
             c += [(z.SwitchBinary_Get, {}),
                   (z.SwitchMultilevel_Get, {})]
         self.BatchCommandSubmitFilteredFast(c, XMIT_OPTIONS)
-
-    def RefreshAssociations(self):
-        c = []
-        for no in self.values.ListAssociationGroupNumbers():
-            v = {"group": no}
-            c.append((z.Association_Get, v))
-            c.append((z.AssociationGroupInformation_NameGet, v))
-            v = {"group": no, "mode": 0}
-            c.append((z.AssociationGroupInformation_ListGet, v))
-            c.append((z.AssociationGroupInformation_InfoGet, v))
-        self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)
 
     def AssociationAdd(self, group, n):
         # TODO
@@ -545,27 +539,31 @@ class ApplicationNode:
     def RefreshDynamicValues(self):
         logging.warning("[%d] RefreshDynamic", self.n)
         c = (_DYNAMIC_PROPERTY_QUERIES +
-             SensorMultiLevelQueries(self.values.SensorSupported()) +
-             MeterQueries(self.values.MeterSupported()) +
+             _SensorMultiLevelQueries(self.values.SensorSupported()) +
+             _MeterQueries(self.values.MeterSupported()) +
              _ColorQueries(self.values.ColorSwitchSupported()))
         self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)
 
     def RefreshStaticValues(self):
         logging.warning("[%d] RefreshStatic", self.n)
-        self.BatchCommandSubmitFilteredSlow(_STATIC_PROPERTY_QUERIES, XMIT_OPTIONS)
-        self.BatchCommandSubmitFilteredSlow(
-            _CommandVersionQueries(self.values.Classes()),
-            XMIT_OPTIONS)
-        self.BatchCommandSubmitFilteredSlow(
-            _MultiInstanceSupportQueries(self.values.Classes()),
-            XMIT_OPTIONS)
+        c = (_STATIC_PROPERTY_QUERIES +
+             _CommandVersionQueries(self.values.Classes()))
+
+        self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)
 
         # This must be last as we use this as an indicator for the
         # NODE_STATE_INTERVIEWED
         last = (z.ManufacturerSpecific_Get, {})
         self.BatchCommandSubmitFilteredSlow([last], XMIT_OPTIONS)
 
-    def _MaybeChangeState(self, new_state):
+    def RefreshSemiStaticValues(self):
+        logging.warning("[%d] RefreshSemiStatic", self.n)
+        c = (_AssociationQueries(self.values.AssociationGroupIds()) +
+             _MultiChannelEndpointQueries(self.values.MultiChannelEndPointIds())
+             )
+        self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)
+
+    def MaybeChangeState(self, new_state):
         old_state = self.state
         if old_state < new_state:
             logging.warning(
@@ -579,17 +577,20 @@ class ApplicationNode:
                 self.RefreshStaticValues()
         else:
             self.RefreshDynamicValues()
-            self.RefreshAssociations()
+            self.RefreshSemiStaticValues()
 
     def put(self, ts, key, values):
 
         if key[0] is None:
             self._InitializeCommands(values["type"], values["commands"], values["controls"])
-            self._MaybeChangeState(NODE_STATE_DISCOVERED)
+            self.MaybeChangeState(NODE_STATE_DISCOVERED)
             return
 
         if self.state < NODE_STATE_DISCOVERED:
             self.protocol_node.Ping(3, False)
+
+        if key == z.MultiChannel_CapabilityReport:
+            logging.warning("FOUND MULTICHANNEL ENDPOINT: %s", values)
 
         special = _COMMANDS_WITH_SPECIAL_ACTIONS.get(key)
         if special:

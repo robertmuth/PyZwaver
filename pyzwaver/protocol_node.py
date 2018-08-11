@@ -51,7 +51,7 @@ _BAUD = [
 class Node(object):
     def __init__(self, n, is_controller, driver):
         self.n = n
-        self._is_controller = is_controller
+        self.is_controller = is_controller
         self._driver = driver
         self.last_contact = 0
         self.flags = set()
@@ -168,7 +168,7 @@ class Node(object):
         self._SendMessage(m, zmessage.ControllerPriority(), handler)
 
     def _UpdateIsFailedNode(self, cb):
-        if self._is_controller:
+        if self.is_controller:
             logging.warning("[%d] skip failed check for controller", self.n)
             return
 
@@ -186,7 +186,7 @@ class Node(object):
 
     def Ping(self, retries, force):
         logging.warning("[%d] Ping retries %d, force: %s", self.n, retries, force)
-        if self._is_controller:
+        if self.is_controller:
             logging.warning("[%d] skip ping for controller", self.n)
             return
 

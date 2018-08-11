@@ -397,7 +397,7 @@ class Controller:
                 event_cb(activity, EVENT_PAIRING_SUCCESS)
                 # This not make much sense for node removals but does not hurt either
                 self.RequestNodeInfo(node)
-                self.Update(event_cb)
+                self.Update(None)
                 return True
             elif a == PAIRING_ACTION_FAILED:
                 logging.warning("[%s] Failure - %s [%d]" % (activity, name, node))
@@ -410,18 +410,21 @@ class Controller:
         return Handler
 
     def AddNodeToNetwork(self, event_cb):
+        logging.warning("AddNodeToNetwork")
         mode = [z.ADD_NODE_ANY]
         cb = self.FancyReceiver(ACTIVITY_ADD_NODE, HANDLER_TYPE_ADD_NODE, event_cb)
         return self.SendCommandWithId(z.API_ZW_ADD_NODE_TO_NETWORK, mode, cb,
                                       timeout=self._pairing_timeout_sec)
 
     def StopAddNodeToNetwork(self, event_cb):
+        logging.warning("StopAddNodeToNetwork")
         mode = [z.ADD_NODE_STOP]
         cb = self.FancyReceiver(ACTIVITY_ADD_NODE, HANDLER_TYPE_STOP, event_cb)
         return self.SendCommandWithId(z.API_ZW_ADD_NODE_TO_NETWORK, mode, cb,
                                       timeout=self._pairing_timeout_sec)
 
     def RemoveNodeFromNetwork(self, event_cb):
+        logging.warning("RemoveNodeFromNetwork")
         mode = [z.REMOVE_NODE_ANY]
         cb = self.FancyReceiver(ACTIVITY_REMOVE_NODE, HANDLER_TYPE_REMOVE_NODE, event_cb)
         return self.SendCommandWithId(z.API_ZW_REMOVE_NODE_FROM_NETWORK, mode, cb,
@@ -507,6 +510,7 @@ class Controller:
         self._mq.SendMessage(mesg)
 
     def SendBarrierCommand(self, handler):
+        logging.warning("SendBarrierCommand")
         """Dummy Command to invoke the handler when all previous commands are done"""
         mesg = zmessage.Message(None, self.Priority(), handler, None)
         self._mq.SendMessage(mesg)
@@ -539,6 +543,7 @@ class Controller:
         return self.props.node_id
 
     def Update(self, cb):
+        logging.warning("Update")
         # self._event_cb(ACTIVITY_CONTROLLER_UPDATE, EVENT_UPDATE_STARTED)
         self.UpdateId()
         self.UpdateControllerCapabilities()

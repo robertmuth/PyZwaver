@@ -1154,7 +1154,7 @@ def main():
     # TODO n.InitializeExternally(CONTROLLER.props.product, CONTROLLER.props.library_type, True)
     for n in CONTROLLER.nodes:
         node = PROTOCOL_NODESET.GetNode(n)
-        node.Ping(3, False)
+        node.Ping(5, False)
 
     logging.warning("listening on port %d", OPTIONS.port)
     application.listen(OPTIONS.port)
