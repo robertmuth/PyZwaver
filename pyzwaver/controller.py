@@ -37,6 +37,7 @@ CONTROLLER_STATE_NONE = 0
 CONTROLLER_STATE_INITIALIZED = 1
 
 ACTIVITY_ADD_NODE = "AddNode"
+ACTIVITY_STOP_ADD_NODE = "StopAddNode"
 ACTIVITY_REMOVE_NODE = "RemoveNode"
 ACTIVITY_SET_LEARN_MODE = "SetLearnMode"
 ACTIVITY_CHANGE_CONTROLLER = "ChangeController"
@@ -200,7 +201,7 @@ class Controller:
 
     """
 
-    def __init__(self, message_queue : driver.Driver, pairing_timeout_secs=15.0):
+    def __init__(self, message_queue: driver.Driver, pairing_timeout_secs=15.0):
         """
         :param message_queue:  is used to send commands to the controller and other zwave nodes.
                                The other end of the queue must be handled by the driver.
@@ -369,8 +370,7 @@ class Controller:
     # ============================================================
     # Pairing
     # ============================================================
-    def FancyReceiver(self, activity, receiver_type, event_cb):
-        event_cb(activity, EVENT_PAIRING_STARTED)
+    def MakeFancyReceiver(self, activity, receiver_type, event_cb):
         stringMap, actions = receiver_type
 
         def Handler(m):
@@ -378,11 +378,15 @@ class Controller:
                 logging.error("[%s] Aborted", activity)
                 event_cb(activity, EVENT_PAIRING_ABORTED)
                 return True
+            if len(m) == 0:
+                event_cb(activity, EVENT_PAIRING_STARTED)
+                return True
+
             status = m[5]
             node = m[6]
             name = stringMap[status]
             a = actions[status]
-            logging.error("pairing status update: %s", a)
+            logging.warning("pairing status update: %s", a)
             if a == PAIRING_ACTION_CONTINUE:
                 logging.warning("[%s] Continue - %s [%d]" % (activity, name, node))
                 event_cb(activity, EVENT_PAIRING_CONTINUE)
@@ -412,21 +416,21 @@ class Controller:
     def AddNodeToNetwork(self, event_cb):
         logging.warning("AddNodeToNetwork")
         mode = [z.ADD_NODE_ANY]
-        cb = self.FancyReceiver(ACTIVITY_ADD_NODE, HANDLER_TYPE_ADD_NODE, event_cb)
+        cb = self.MakeFancyReceiver(ACTIVITY_ADD_NODE, HANDLER_TYPE_ADD_NODE, event_cb)
         return self.SendCommandWithId(z.API_ZW_ADD_NODE_TO_NETWORK, mode, cb,
                                       timeout=self._pairing_timeout_sec)
 
     def StopAddNodeToNetwork(self, event_cb):
         logging.warning("StopAddNodeToNetwork")
         mode = [z.ADD_NODE_STOP]
-        cb = self.FancyReceiver(ACTIVITY_ADD_NODE, HANDLER_TYPE_STOP, event_cb)
+        cb = self.MakeFancyReceiver(ACTIVITY_STOP_ADD_NODE, HANDLER_TYPE_STOP, event_cb)
         return self.SendCommandWithId(z.API_ZW_ADD_NODE_TO_NETWORK, mode, cb,
-                                      timeout=self._pairing_timeout_sec)
+                                      timeout=5)
 
     def RemoveNodeFromNetwork(self, event_cb):
         logging.warning("RemoveNodeFromNetwork")
         mode = [z.REMOVE_NODE_ANY]
-        cb = self.FancyReceiver(ACTIVITY_REMOVE_NODE, HANDLER_TYPE_REMOVE_NODE, event_cb)
+        cb = self.MakeFancyReceiver(ACTIVITY_REMOVE_NODE, HANDLER_TYPE_REMOVE_NODE, event_cb)
         return self.SendCommandWithId(z.API_ZW_REMOVE_NODE_FROM_NETWORK, mode, cb,
                                       timeout=self._pairing_timeout_sec)
 
@@ -439,7 +443,7 @@ class Controller:
 
     def SetLearnMode(self, event_cb):
         mode = [z.LEARN_MODE_NWI]
-        cb = self.FancyReceiver(ACTIVITY_SET_LEARN_MODE, HANDLER_TYPE_SET_LEARN_MODE, event_cb)
+        cb = self.MakeFancyReceiver(ACTIVITY_SET_LEARN_MODE, HANDLER_TYPE_SET_LEARN_MODE, event_cb)
         return self.SendCommandWithId(z.API_ZW_SET_LEARN_MODE, mode, cb, timeout=self._pairing_timeout_sec)
 
     def StopSetLearnMode(self, _):
@@ -448,7 +452,7 @@ class Controller:
 
     def ChangeController(self, event_cb):
         mode = [z.CONTROLLER_CHANGE_START]
-        cb = self.FancyReceiver(ACTIVITY_CHANGE_CONTROLLER, HANDLER_TYPE_ADD_NODE, event_cb)
+        cb = self.MakeFancyReceiver(ACTIVITY_CHANGE_CONTROLLER, HANDLER_TYPE_ADD_NODE, event_cb)
         return self.SendCommandWithId(z.API_ZW_CONTROLLER_CHANGE, mode, cb, timeout=self._pairing_timeout_sec)
 
     def StopChangeController(self, _):
@@ -481,8 +485,12 @@ class Controller:
                                handler)
 
     def SetDefault(self):
+        """Factory reset the controller"""
+
         def handler(message):
-            logging.warning("set default response %s", message[4:-1])
+            if message:
+                message = message[4:-1]
+            logging.warning("set default response %s", message)
 
         self.SendCommandWithId(z.API_ZW_SET_DEFAULT, [], handler)
 

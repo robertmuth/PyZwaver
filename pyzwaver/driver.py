@@ -269,6 +269,24 @@ class Driver(object):
         # wait until semaphore is released by callback
         lock.acquire()
 
+    def Terminate(self):
+        """
+        Terminate shuts down the driver object.
+
+        """
+        lock = threading.Lock()
+        lock.acquire()
+
+        def cb(_):
+            self._terminate = True
+            lock.release()
+
+        # send listeners signal to shutdown
+        self._in_queue.put((time.time(), None))
+        self.SendMessage(zmessage.Message(None, zmessage.LowestPriority(), cb, None))
+        lock.acquire()
+        logging.info("Driver terminated")
+
     def GetInFlightMessage(self):
         """"
         Returns the current outbound message being processed or None.
@@ -280,15 +298,7 @@ class Driver(object):
                "by node: %s" % str(self._out_queue)]
         return "\n".join(out)
 
-    def Terminate(self):
-        """
-        Terminate shuts down the driver object.
 
-        """
-        self._terminate = True
-        self._in_queue.put((time.time(), None))
-        self.SendMessage(zmessage.Message(None, zmessage.LowestPriority(), lambda _: None, None))
-        logging.info("Driver terminated")
 
     def _SendRaw(self, payload, comment=""):
         # if len(payload) >= 5:

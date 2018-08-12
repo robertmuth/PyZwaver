@@ -16,103 +16,97 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-Simple Example
-
-Establishes a connection to all nodes.
-Does not "interview" them
+Example command line tool for pairing/unpairing
 """
 
 # python import
-import datetime
 import logging
 import argparse
 import sys
-import time
+from typing import Dict, Tuple, List
 
-from pyzwaver import controller
-from pyzwaver import driver
+from pyzwaver.controller import Controller
+from pyzwaver.driver import Driver, MakeSerialDevice
 from pyzwaver import protocol_node
 from pyzwaver import zwave as z
 
-
-# use --logging=none
-# to disable the tornado logging overrides caused by
-# tornado.options.parse_command_line(
-class MyFormatter(logging.Formatter):
-    def __init__(self):
-        super(MyFormatter, self).__init__()
-
-    TIME_FMT = '%Y-%m-%d %H:%M:%S.%f'
-
-    def format(self, record):
-        return "%s%s %s:%s:%d %s" % (
-            record.levelname[0],
-            datetime.datetime.fromtimestamp(record.created).strftime(MyFormatter.TIME_FMT)[:-3],
-            record.threadName,
-            record.filename,
-            record.lineno,
-            record.msg % record.args)
+def ControllerEventCallback(action, event):
+    print (action, event)
 
 
-class TestListener(object):
+def InitController(args, update_routing=False) -> Tuple[Driver, Controller]:
+    logging.info("opening serial: [%s]", args.serial_port)
+    device = MakeSerialDevice(args.serial_port)
 
-    def __init__(self):
-        self._count = 0
+    driver = Driver(device)
+    controller = Controller(driver, pairing_timeout_secs=args.pairing_timeout_sec)
+    controller.Initialize()
+    controller.WaitUntilInitialized()
+    if update_routing:
+        controller.UpdateRoutingInfo()
+        driver.WaitUntilAllPreviousMessagesHaveBeenHandled()
+    print(controller)
+    return driver, controller
 
-    def put(self, n, _, key, values):
-        name = "@NONE@"
-        if key[0] is not None:
-            name = "%s  (%02:%02x)" % (z.SUBCMD_TO_STRING.get(key[0] * 256 + key[1]), key[0], key[1])
-        logging.info("RECEIVED [%d]: %s - %s", n, name, values)
-        self._count += 1
 
+def cmd_hard_reset(args):
+    driver, controller = InitController(args)
+    driver.Terminate()
+
+
+def cmd_pair(args):
+    driver, controller = InitController(args)
+    controller.StopAddNodeToNetwork(ControllerEventCallback)
+    controller.AddNodeToNetwork(ControllerEventCallback)
+    controller.StopAddNodeToNetwork(ControllerEventCallback)
+    driver.Terminate()
+
+
+def cmd_unpair(args):
+    driver, controller = InitController(args)
+    controller.StopRemoveNodeFromNetwork(None)
+    controller.RemoveNodeFromNetwork(ControllerEventCallback)
+    controller.StopRemoveNodeFromNetwork(None)
+    driver.Terminate()
+
+
+def cmd_hard_reset(args):
+    driver, controller = InitController(args)
+    controller.SetDefault()
+    driver.Terminate()
+
+def cmd_controller_details(args):
+    driver, controller = InitController(args, True)
+    driver.Terminate()
 
 def main():
-    global DRIVER, CONTROLLER, NODESET
-    parser = argparse.ArgumentParser(description='Process some integers.')
-    parser.add_argument("--verbosity", help="increase output verbosity")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--verbosity", type=int, default=40,
+                        help="increase output verbosity")
 
-    parser.add_argument('--serial_port', type=str,
-                        default="/dev/ttyUSB0",
-                        # default="/dev/ttyACM0",
-                        help='an integer for the accumulator')
+    parser.add_argument("--pairing_timeout_sec", type=int, default=30,
+                        help="(un)pairing timeout")
+
+    parser.add_argument("--serial_port", type=str, default="/dev/ttyUSB0",
+                        help='The USB serial device representing the Z-Wave controller stick. ' 
+                             'Common settings are: dev/ttyUSB0, dev/ttyACM0')
+
+    subparsers = parser.add_subparsers(help="sub-commands")
+    s = subparsers.add_parser("pair", help="Pair a Z-wave node")
+    s.set_defaults(func=cmd_pair)
+
+    s = subparsers.add_parser("unpair", help="Unpair a Z-wave node")
+    s.set_defaults(func=cmd_unpair)
+
+    s = subparsers.add_parser("hard_reset", help="Factory reset Z-wave controller")
+    s.set_defaults(func=cmd_hard_reset)
+
+    s = subparsers.add_parser("controller_details", help="Show Z-wave controller details")
+    s.set_defaults(func=cmd_controller_details)
 
     args = parser.parse_args()
-    print(args)
-    # note: this makes sure we have at least one handler
-    # logging.basicConfig(level=logging.WARNING)
-    # logging.basicConfig(level=logging.ERROR)
-
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-    # logger.setLevel(logging.ERROR)
-    for h in logger.handlers:
-        h.setFormatter(MyFormatter())
-
-    logging.info("opening serial: [%s]", args.serial_port)
-    device = driver.MakeSerialDevice(args.serial_port)
-
-    DRIVER = driver.Driver(device)
-    CONTROLLER = controller.Controller(DRIVER, pairing_timeout_secs=60)
-    CONTROLLER.Initialize()
-    CONTROLLER.WaitUntilInitialized()
-    CONTROLLER.UpdateRoutingInfo()
-    time.sleep(2)
-    print(CONTROLLER)
-    NODESET = protocol_node.NodeSet(DRIVER, CONTROLLER.GetNodeId())
-    NODESET.AddListener(TestListener())
-    # n.InitializeExternally(CONTROLLER.props.product, CONTROLLER.props.library_type, True)
-    logging.info("pinging %d nodes", len(CONTROLLER.nodes))
-    for n in CONTROLLER.nodes:
-        node = NODESET.GetNode(n)
-        node.Ping(3, False)
-        time.sleep(0.5)
-
-    time.sleep(2.0)
-    print("Node List:")
-    for n in CONTROLLER.nodes:
-        print(NODESET.GetNode(n))
-    DRIVER.Terminate()
+    logging.basicConfig(level=args.verbosity)
+    args.func(args)
 
     return 0
 

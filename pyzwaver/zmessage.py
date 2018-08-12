@@ -369,18 +369,17 @@ class Message:
         self.can = 0
         self.state = MESSAGE_STATE_CREATED
         self._inflight_lock = None
+        self.action_requ = action_requ
+        self.action_resp = action_resp
         if payload is None:
             return
         func = payload[3]
         # mode = payload[4]
         if action_requ is None:
             self.action_requ = _REQUEST_ACTION[func]
-        else:
-            self.action_requ = action_requ
         if action_resp is None:
             self.action_resp = _RESPONSE_ACTION[func]
-        else:
-            self.action_resp = action_resp
+
 
     def _Timeout(self):
         if self._inflight_lock is None:
@@ -393,6 +392,10 @@ class Message:
         self._inflight_lock = lock
         self._inflight_lock.acquire()
         threading.Timer(self._timeout, self._Timeout).start()
+        if self.action_requ and self.action_requ[0] == ACTION_MATCH_CBID_MULTI:
+            logging.warning("Multi request command started")
+            # empty list means start, None means abort
+            self._callback([])
 
     def IncRetry(self):
         self.can += 1
