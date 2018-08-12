@@ -4,6 +4,7 @@ SHELL:=/bin/bash
 
 PYTHON_SOURCES = pyzwaver/*.py tests/*.py  *.py
 TD =  ./TestData
+export PYTHONPATH = $(PWD)
 
 check_pylint::
 	@echo "============================================================"
@@ -23,8 +24,14 @@ check:: check_pylint check_pyflakes
 pyzwaver/zwave.py: constants_generator.py
 	./constants_generator.py python > $@
 
-
 tests:
+	@echo "============================================================"
+	@echo "run message parsing test"
+	@echo "============================================================"
+	cd Tests;./command_test.py < ../TestData/commands.input.txt
+	@echo "PASS"		
+
+tests_obsolete:
 	@echo "============================================================"
 	@echo "run message parsing test"
 	@echo "============================================================"
