@@ -380,7 +380,6 @@ class Message:
         if action_resp is None:
             self.action_resp = _RESPONSE_ACTION[func]
 
-
     def _Timeout(self):
         if self._inflight_lock is None:
             return

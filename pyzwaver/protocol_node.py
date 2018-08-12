@@ -135,7 +135,7 @@ class Node(object):
     def _RequestNodeInfo(self, retries):
         """This usually triggers send "API_ZW_APPLICATION_UPDATE:"""
 
-        def handler(m):
+        def handler(_):
             # if we timeout  m will be None
             if m is not None and m[4] != 0:
                 return  # success
@@ -252,7 +252,7 @@ class NodeSet(object):
         try:
             data = [int(x) for x in m[7:7 + size]]
             data = command.MaybePatchCommand(data)
-            value = command.ParseCommand(data, "[%d]" % n)
+            value = command.ParseCommand(data)
             if value is None:
                 logging.error("[%d] parsing failed for %s", n, Hexify(data))
                 return

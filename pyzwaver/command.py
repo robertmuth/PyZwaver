@@ -22,7 +22,6 @@ It also contains some logic pertaining to the node state machine.
 """
 
 import logging
-import re
 
 from pyzwaver import zwave as z
 
@@ -37,6 +36,7 @@ def StringifyCommand(key):
 
 def StringifyCommandClass(cls):
     return z.CMD_TO_STRING.get(cls, "UNKNOWN:%d" % cls)
+
 
 # ======================================================================
 def _GetSignedValue(data):
@@ -73,11 +73,11 @@ def _GetTimeDelta(m, index):
 
 def _ParseMeter(m, index):
     if index + 2 > len(m):
-        logging.error("cannot parse value")
-        return index, None
+        raise ValueError("cannot parse value")
     c1 = m[index]
     unit_extra = (c1 & 0x80) >> 7
-    type = c1 & 0x1f
+
+    kind = c1 & 0x1f
     rate = (c1 & 0x60) >> 5
     c2 = m[index + 1]
     size = c2 & 0x7
@@ -85,14 +85,13 @@ def _ParseMeter(m, index):
     exp = (c2 & 0xe0) >> 5
     index += 2
     out = {
-        "type": type,
+        "type": kind,
         "unit": unit,
         "exp": exp,
         "rate": rate,
     }
     if index + size >= len(m):
-        logging.error("cannot parse value")
-        return index, None
+        raise ValueError("cannot parse value")
     mantissa = m[index: index + size]
     index += size
     value = _GetSignedValue(mantissa) / pow(10, exp)
@@ -266,8 +265,7 @@ def _ParseValue(m, index):
 
 def _ParseDate(m, index):
     if len(m) < index + 7:
-        logging.error("malformed time data")
-        return len(m)
+        raise ValueError("malformed time data")
 
     year = m[index] * 256 + m[index + 1]
     month = m[index + 2]
@@ -307,7 +305,7 @@ def _GetParameterDescriptors(m):
     return z.SUBCMD_TO_PARSE_TABLE[key]
 
 
-def ParseCommand(m, prefix=""):
+def ParseCommand(m):
     """ParseCommand decodes an API_APPLICATION_COMMAND request into a map of values"""
     table = _GetParameterDescriptors(m)
 

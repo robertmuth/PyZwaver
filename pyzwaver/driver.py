@@ -26,6 +26,8 @@ import time
 import collections
 import queue
 
+from typing import List, Tuple
+
 from pyzwaver import zwave as z
 from pyzwaver import zmessage
 
@@ -193,7 +195,8 @@ class MessageQueueOut:
         return message
 
     def __str__(self):
-        return "Per node queue length: " + str(self._per_node_size)
+        non_empty = {a: b for a, b in self._per_node_size.items() if b}
+        return "Per node queue length: " + str(non_empty)
 
 
 class Driver(object):
@@ -204,7 +207,7 @@ class Driver(object):
     any Z-Wave node but will just be local communication
     with the stick.
 
-    It spawns to threads:
+    It spawns two threads:
     * a sending thread which in a loop picks a message from
       the outgoing queue, sends it, waits for any related
       replies and triggers actions based on the replies
@@ -217,9 +220,9 @@ class Driver(object):
         self._device = serialDevice
         self._out_queue = MessageQueueOut()  # stuff being send to the stick
 
-        self._raw_history = []  # type: List[tuple]
+        self._raw_history: List[Tuple[int, bool, zmessage.Message, str]] = []
         # a message is copied into this once if makes it into _inflight.
-        self._history = []   # type: List[zmessage.Message]
+        self._history: List[zmessage.Message] = []
         self._device_idle = True
         self._terminate = False  # True if we want to shut things down
         self._in_queue = queue.Queue()  # stuff coming from the stick unrelated to _inflight
@@ -298,8 +301,6 @@ class Driver(object):
                "by node: %s" % str(self._out_queue)]
         return "\n".join(out)
 
-
-
     def _SendRaw(self, payload, comment=""):
         # if len(payload) >= 5:
         #    if self._last == payload[4]:
@@ -327,7 +328,7 @@ class Driver(object):
         logging.warning("_DriverSendingThread started")
         lock = threading.Lock()
         while not self._terminate:
-            inflight = self._out_queue.get() # type: zmessage.Message
+            inflight = self._out_queue.get()  # type: zmessage.Message
             if inflight.payload is None:
                 logging.warning("received empty message")
                 inflight.Start(time.time(), lock)

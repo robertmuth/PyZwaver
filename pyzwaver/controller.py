@@ -205,7 +205,6 @@ class Controller:
         """
         :param message_queue:  is used to send commands to the controller and other zwave nodes.
                                The other end of the queue must be handled by the driver.
-        :param event_cb:
         :param pairing_timeout_secs:
         """
         # self._event_cb = event_cb

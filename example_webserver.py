@@ -658,6 +658,10 @@ def MakeTableRowForNode(node: application_node.ApplicationNode, is_failed):
     # if node.IsSelf():
     #    action = "HandleTab"
     #    param = "tab-controller"
+    last_contact = TimeFormat(pnode.last_contact)
+    age = "never"
+    if pnode.last_contact:
+        age = "%dm ago" % ((time.time() - pnode.last_contact) / 60.0)
     return [
         "<tr>",
         "<td class=name>",
@@ -669,7 +673,7 @@ def MakeTableRowForNode(node: application_node.ApplicationNode, is_failed):
         "<tr>",
         "<td>" + " ".join(buttons) + "</td>",
         "<td class=no>node: %d</td>" % node.n,
-        "<td class=state>%s (%s)</td>" % (TimeFormat(pnode.last_contact), state),
+        "<td class=state>%s (%s) [%s]</td>" % (last_contact, age, state),
         "<td class=product>%s (%s)</td>" % (pnode.device_description, pnode.device_type),
         "</tr>"]
 
