@@ -41,6 +41,8 @@ NODE_STATE_DISCOVERED = "2_Discovered"
 # info an versions)
 NODE_STATE_INTERVIEWED = "3_Interviewed"
 
+_NO_VERSION = {"version": -1}
+_BAD_VERSION = {"version": 0}
 
 def _AssociationSubkey(v):
     return v["group"]
@@ -271,8 +273,10 @@ class NodeValues:
 
     def HasCommandClass(self, cls):
         m = self.GetMap(z.Version_CommandClassReport)
-        e = m.get(cls, (0, 0))
-        return e[1] != 0
+        e = m.get(cls)
+        if not e:
+                return False
+        return e[1]["version"] != 0
 
     def NumCommands(self):
         m = self.GetMap(z.Version_CommandClassReport)
@@ -407,17 +411,16 @@ class ApplicationNode:
         self._controls |= set(controls)
         self._controls |= set(std_controls)
 
-        NO_VERSION = {"version": -1}
         ts = 0.0
         for k in cmd:
             if not self.values.HasCommandClass(k):
-                self.values.SetMapEntry(ts, z.Version_CommandClassReport, k, NO_VERSION)
+                self.values.SetMapEntry(ts, z.Version_CommandClassReport, k, _NO_VERSION)
         for k in self._controls:
             if not self.values.HasCommandClass(k):
-                self.values.SetMapEntry(ts, z.Version_CommandClassReport, k, NO_VERSION)
+                self.values.SetMapEntry(ts, z.Version_CommandClassReport, k, _NO_VERSION)
         for k in std_cmd:
             if not self.values.HasCommandClass(k):
-                self.values.SetMapEntry(ts, z.Version_CommandClassReport, k, NO_VERSION)
+                self.values.SetMapEntry(ts, z.Version_CommandClassReport, k, _NO_VERSION)
 
     def BasicString(self):
         out = [

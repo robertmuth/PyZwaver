@@ -1128,7 +1128,7 @@ def main():
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     logger.setLevel(logging.WARNING)
-    # logger.setLevel(logging.ERROR)
+    logger.setLevel(logging.ERROR)
     for h in logger.handlers:
         h.setFormatter(MyFormatter())
 
@@ -1151,7 +1151,7 @@ def main():
     CONTROLLER.Initialize()
     CONTROLLER.WaitUntilInitialized()
     CONTROLLER.UpdateRoutingInfo()
-    time.sleep(2)
+    DRIVER.WaitUntilAllPreviousMessagesHaveBeenHandled()
     print(CONTROLLER)
     PROTOCOL_NODESET = protocol_node.NodeSet(DRIVER, CONTROLLER.GetNodeId())
     APPLICATION_NODESET = application_node.ApplicationNodeSet(PROTOCOL_NODESET)
