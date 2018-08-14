@@ -78,9 +78,50 @@ Simple demo app using the pyzwaver library
 <hr>
 
 <div id=display-area>
-<div class=tab id=tab-controller></div>
+
+<!-- ============================================================ -->
+<div class=tab id=tab-controller>
+
+<h2>Basics</h2>
+<div id=controller_basics></div>
+
+<h2>Connectivity</h2>
+<div id=controller_connectivity></div>
+
+<h2>Actions</h2>
+<div id=controller_buttons</div>
+<button onclick='HandleUrl(event)' data-param='/controller/refresh'>
+    Refresh</button>
+&nbsp;
+<button onclick='HandleUrl(event)' data-param='/controller/soft_reset'>
+    Soft Reset</button>
+&nbsp;
+<button onclick='HandleUrl(event)' data-param='/controller/hard_reset'>
+    Hard Reset</button>
+</div>
+
+<h2>Pairing</h2>
+
+<button onclick='HandleUrl(event)' data-param='/controller/add_node'>
+    Add Node</button>
+&nbsp;
+<button onclick='HandleUrl(event)' data-param='/controller/remove_node'>
+    Remove Node</button>
+&nbsp;
+<button onclick='HandleUrl(event)' data-param='/controller/add_controller_primary'>
+    Add Primary Controller</button>
+&nbsp;
+<button onclick='HandleUrl(event)' data-param='/controller/set_learn_mode'>
+    Enter Learn Mode</button>
+</div>
+
+<!-- ============================================================ -->
 <div class=tab id=tab-all-nodes></div>
+
+<!-- ============================================================ -->
 <div class=tab id=tab-one-node></div>
+
+<!-- ============================================================ -->
 <div class=tab id=tab-logs>
     <!-- see http://www.listjs.com/ -->
     <div id="driverlog">
@@ -92,6 +133,8 @@ Simple demo app using the pyzwaver library
     </table>
     </div>
 </div>
+
+<!-- ============================================================ -->
 <div class=tab id=tab-slow>
     <!-- see http://www.listjs.com/ -->
     <div id="driverslow">
@@ -104,6 +147,7 @@ Simple demo app using the pyzwaver library
     </div>
 </div>
 
+<!-- ============================================================ -->
 <div class=tab id=tab-failed>
     <!-- see http://www.listjs.com/ -->
     <div id="driverfailed">
@@ -140,7 +184,7 @@ var currentNode = "0";
 
 var gEventHistory = ["", "", "", "", "", ""];
 
-var gDebug = 0;
+var gDebug = 1;
 // "enums" for tabs
 const TAB_CONTROLLER = "tab-controller";
 const TAB_ALL_NODES = "tab-all-nodes";
@@ -153,13 +197,17 @@ const ACTIVITY_FIELD = "activity"
 const HISTORY_FIELD = "history";
 const DRIVE_FIELD = "driver";
 // Is there a literal notation for this?
-var tabToDisplay = {};
-tabToDisplay[TAB_CONTROLLER] = function() {return "/display/controller"; };
-tabToDisplay[TAB_ALL_NODES] =  function() {return "/display/nodes"; };
-tabToDisplay[TAB_ONE_NODE] = function() {return "/display/node/" + currentNode; };
-tabToDisplay[TAB_LOGS] = function() {return "/display/logs"; };
-tabToDisplay[TAB_SLOW] = function() {return "/display/slow"; };
-tabToDisplay[TAB_FAILED] = function() {return "/display/failed"; };
+
+var tabToDisplay = {
+    [TAB_CONTROLLER]: function() {return "/display/controller"; },
+    [TAB_ALL_NODES]:  function() {return "/display/nodes"; },
+    [TAB_ONE_NODE]:   function() {return "/display/node/" + currentNode; },
+    [TAB_LOGS]:       function() {return "/display/logs"; },
+    [TAB_SLOW]:       function() {return "/display/slow"; },
+    [TAB_FAILED]:     function() {return "/display/failed"; },
+};
+
+
 
 //  List visualization using the http://listjs.com/
 const listLog = new List('driverlog', {valueNames: [ 't', 'c', 'd', 'm' ]});
@@ -193,7 +241,9 @@ function SocketMessageHandler(e) {
          document.getElementById(HISTORY_FIELD).innerHTML = gEventHistory.join("\\n");
     } else if (tag == "c") {
          // CONTROLLER
-         document.getElementById(TAB_CONTROLLER).innerHTML = val;
+         var values = JSON.parse(val);
+         document.getElementById('controller_basics').innerHTML = 
+             values.controller_basics;
     } else if (tag == "l") {
          // LOGS (list)
          var values = JSON.parse(val);
@@ -303,6 +353,8 @@ function RequestURL(url) {
 }
 
 function UpdateSome(tab) {
+    console.log(tab);
+    console.log(tabToDisplay[tab]);
     RequestURL(tabToDisplay[tab]());
 }
 
@@ -494,7 +546,7 @@ class NodeUpdater(object):
         count = 0
         while True:
             if self._update_controller:
-                SendToSocket("d:" + RenderDriver())
+                SendToSocket("d:" + RenderDriver(DRIVER))
             if not APPLICATION_NODESET:
                 continue
             for n in self._nodes_to_update:
@@ -619,7 +671,8 @@ def RenderReadings(readings):
     for key, kind, unit, val in sorted(readings):
         if unit in seen:
             continue
-        out.append("<span class=reading>" + RenderReading(kind, unit, val) + "</span>")
+        out.append("<span class=reading>" +
+                   RenderReading(kind, unit, val) + "</span>")
         seen.add(unit)
     return out
 
@@ -639,7 +692,8 @@ def ClassSpecificNodeButtons(node: application_node.ApplicationNode):
 
 def MakeTableRowForNode(node: application_node.ApplicationNode, is_failed):
     global DB
-    readings = node.values.Sensors() + node.values.Meters() + node.values.MiscSensors()
+    readings = node.values.Sensors() + node.values.Meters() + \
+        node.values.MiscSensors()
 
     buttons = []
     if not node.IsSelf():
@@ -667,14 +721,16 @@ def MakeTableRowForNode(node: application_node.ApplicationNode, is_failed):
         "<td class=name>",
         MakeButton(action, param, name, cls="details"),
         "</td>",
-        "<td colspan=3 class=readings>%s</td>" % " ".join(RenderReadings(readings)),
+        "<td colspan=3 class=readings>%s</td>" % " ".join(
+            RenderReadings(readings)),
         "</tr>",
         #
         "<tr>",
         "<td>" + " ".join(buttons) + "</td>",
         "<td class=no>node: %d</td>" % node.n,
         "<td class=state>%s (%s) [%s]</td>" % (last_contact, age, state),
-        "<td class=product>%s (%s)</td>" % (pnode.device_description, pnode.device_type),
+        "<td class=product>%s (%s)</td>" % (pnode.device_description,
+                                            pnode.device_type),
         "</tr>"]
 
 
@@ -693,44 +749,20 @@ def RenderNodes():
     return "\n".join(out)
 
 
-def RenderController():
-    out = [
-        "<pre>%s</pre>\n" % CONTROLLER,
-        "<p>",
-        MakeControllerButton("soft_reset", "Soft Rest"),
-        "&nbsp;",
-        MakeControllerButton("hard_reset", "Hard Rest"),
-        "<p>",
-        MakeControllerButton("refresh", "Refresh"),
-        "<h3>Pairing</h3>",
-        MakeControllerButton("add_node", "Add Node"),
-        "&nbsp;",
-        # MakeControllerButton("stop_add_node", "Abort"),
-        "<p>",
-        MakeControllerButton("add_controller_primary", "Add Primary Controller"),
-        "&nbsp;",
-        # MakeControllerButton("stop_add_controller_primary", "Abort"),
-        "<p>",
-        MakeControllerButton("remove_node", "Remove Node"),
-        "&nbsp;",
-        # MakeControllerButton("stop_remove_node", "Abort"),
-        "<p>",
-        MakeControllerButton("set_learn_mode", "Enter Learn Mode"),
-        "&nbsp;",
-        # MakeControllerButton("stop_set_learn_mode", "Abort"),
-    ]
-    return "\n".join(out)
+def RenderController(controller):
+    out = {
+        "controller_basics": "<pre>%s</pre>\n" % controller,
+    }
+    return out
 
 
-def RenderDriver():
-    global DRIVER
-    return "<pre>" + str(DRIVER) + "</pre>"
+def RenderDriver(driver):
+    return "<pre>" + str(driver) + "</pre>"
 
 
-def DriverLogs():
-    global DRIVER
+def DriverLogs(driver):
     out = []
-    for t, sent, m, comment in DRIVER._raw_history:
+    for t, sent, m, comment in driver._raw_history:
         t = TimeFormatMs(t)
         d = sent and "=>" or "<="
         m = zmessage.PrettifyRawMessage(m)
@@ -738,13 +770,14 @@ def DriverLogs():
     return out
 
 
-def DriverSlow():
-    global DRIVER
+def DriverSlow(driver):
     out = []
-    for m in DRIVER._history:
-        if not m.end: continue
+    for m in driver._history:
+        if not m.end:
+            continue
         dur = int(1000.0 * (m.end - m.start))
-        if dur < 300: continue
+        if dur < 300:
+            continue
         d = "%4d%s" % (dur, "*" if m.WasAborted() else " ")
         t = TimeFormatMs(m.start)
         m = zmessage.PrettifyRawMessage(m.payload)
@@ -752,10 +785,9 @@ def DriverSlow():
     return out
 
 
-def DriverBad():
-    global DRIVER
+def DriverBad(driver):
     out = []
-    for m in DRIVER._history:
+    for m in driver._history:
         if not m.end:
             continue
         if not m.WasAborted():
@@ -780,16 +812,20 @@ class DisplayHandler(BaseHandler):
             if cmd == "nodes":
                 SendToSocket("a:" + RenderNodes())
             elif cmd == "driver":
-                SendToSocket("d:" + RenderDriver())
+                SendToSocket("d:" + RenderDriver(DRIVER))
             elif cmd == "logs":
-                SendToSocket("l:" + json.dumps(DriverLogs(), sort_keys=True, indent=4))
+                SendToSocket("l:" + json.dumps(DriverLogs(DRIVER),
+                                               sort_keys=True, indent=4))
             elif cmd == "slow":
-                SendToSocket("b:" + json.dumps(DriverSlow(), sort_keys=True, indent=4))
+                SendToSocket("b:" + json.dumps(DriverSlow(DRIVER),
+                                               sort_keys=True, indent=4))
             elif cmd == "failed":
-                SendToSocket("f:" + json.dumps(DriverBad(), sort_keys=True, indent=4))
+                SendToSocket("f:" + json.dumps(DriverBad(DRIVER),
+                                               sort_keys=True, indent=4))
 
             elif cmd == "controller":
-                SendToSocket("c:" + RenderController())
+                SendToSocket("c:" + json.dumps(RenderController(CONTROLLER),
+                                              sort_keys=True, indent=4))
             elif cmd == "node":
                 num = int(token.pop(0))
                 if num == 0:
@@ -812,12 +848,14 @@ def RenderAssociationGroup(node: application_node.ApplicationNode, no, group, na
     if name:
         group_name = name["name"]
     out = ["<tr>"
-           "<th>", "Group %d %s [%d]:" % (no, group_name, group["count"]), "</th>",
+           "<th>", "Group %d %s [%d]:" % (
+               no, group_name, group["count"]), "</th>",
            "<td>",
            ]
     for n in group["nodes"]:
         out += ["%d" % n,
-                MakeNodeButton(node, "association_remove/%d/%d" % (no, n), "X", "remove"),
+                MakeNodeButton(node, "association_remove/%d/%d" %
+                               (no, n), "X", "remove"),
                 "&nbsp;"]
 
     out += ["</td>",
@@ -848,7 +886,8 @@ def RenderNodeAssociations(node: application_node.ApplicationNode):
            ]
     for no, group, info, lst, name in node.values.Associations():
         if group:
-            out.append(RenderAssociationGroup(node, no, group, info, lst, name))
+            out.append(RenderAssociationGroup(
+                node, no, group, info, lst, name))
     out += ["</table>"]
     return out
 
@@ -873,7 +912,8 @@ def RenderNodeParameters(node: application_node.ApplicationNode):
         r = str(a)
         if a != b:
             r += " - " + str(b)
-        out += ["<tr><td>", r, "</td><td>", "[%d]" % c, "</td><td>", str(d), "</td></tr>"]
+        out += ["<tr><td>", r, "</td><td>", "[%d]" %
+                c, "</td><td>", str(d), "</td></tr>"]
     out += ["</table>"]
     return out
 
@@ -1080,6 +1120,8 @@ class JsonHandler(BaseHandler):
 HANDLERS = [
     ("/", MainHandler, {}),
     ("/json", JsonHandler, {}),
+    # handles controller actions which will typically result in updates being send to the
+    # websocket
     (r"/controller/(.+)", ControllerActionHandler, {}),
     (r"/node/(.+)", NodeActionHandler, {}),
     (r"/display/(.+)", DisplayHandler, {}),
@@ -1099,7 +1141,8 @@ class MyFormatter(logging.Formatter):
     def format(self, record):
         return "%s%s %s:%s:%d %s" % (
             record.levelname[0],
-            datetime.datetime.fromtimestamp(record.created).strftime(MyFormatter.TIME_FMT)[:-3],
+            datetime.datetime.fromtimestamp(
+                record.created).strftime(MyFormatter.TIME_FMT)[:-3],
             record.threadName,
             record.filename,
             record.lineno,
@@ -1141,7 +1184,7 @@ def main():
 
     application = tornado.web.Application(
         HANDLERS,
-        debug=True,
+        # debug=True,
         task_pool=multiprocessing.Pool(OPTIONS.tasks),
         # map static/xxx to Static/xxx
         static_path="Static/",
@@ -1151,7 +1194,8 @@ def main():
     device = driver.MakeSerialDevice(OPTIONS.serial_port)
 
     DRIVER = driver.Driver(device)
-    CONTROLLER = controller.Controller(DRIVER, pairing_timeout_secs=OPTIONS.pairing_timeout_secs)
+    CONTROLLER = controller.Controller(
+        DRIVER, pairing_timeout_secs=OPTIONS.pairing_timeout_secs)
     CONTROLLER.Initialize()
     CONTROLLER.WaitUntilInitialized()
     CONTROLLER.UpdateRoutingInfo()
