@@ -162,6 +162,19 @@ size <select id=size name='size'>
 <option value='4'>4</option>
 </select>
 value <input id=value type='number' name='val' value=0 style='width: 7em'>
+<p>
+<span id=one_node_switch>
+<button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/binary_switch/0'>
+    Off</button>
+&nbsp;
+<button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/binary_switch/100'>
+    On</button>
+&nbsp;
+</span>
+<span id=one_node_slide> SLIDE
+</span>
+  
+
 </div>
 
 <h2>Readings</h2>
@@ -339,6 +352,12 @@ function SocketMessageHandler(e) {
                 values.one_node_readings;
             document.getElementById("one_node_name").value = 
                 values.one_node_name;
+            for (let key in values.one_node_controls) {
+                 let e = document.getElementById(key);
+                 let val = values.one_node_controls[key];
+                 console.log(`$e: ${key} -> ${val}`);
+                 e.hidden = ! val;
+            }
         }
     } else if (tag == "d") {
          // DRIVER
@@ -757,6 +776,13 @@ def ClassSpecificNodeButtons(node: application_node.ApplicationNode):
     return out
 
 
+def GetControls(node: application_node.ApplicationNode):
+    return {
+        "one_node_switch": node.values.HasCommandClass(z.SwitchBinary),
+        "one_node_slide": node.values.HasCommandClass(z.SwitchMultilevel),
+    }
+
+
 def MakeTableRowForNode(node: application_node.ApplicationNode, is_failed):
     global DB
     readings = node.values.Sensors() + node.values.Meters() + \
@@ -986,12 +1012,11 @@ def RenderMiscValues(node: application_node.ApplicationNode):
 def RenderNode(node: application_node.ApplicationNode, db):
     readings = (RenderReadings(node.values.Sensors() +
                                node.values.Meters() +
-                               node.values.MiscSensors()) +
-                ["<p>"] +
-                ClassSpecificNodeButtons(node))
-
+                               node.values.MiscSensors()))
     out = {
         "one_node_name": db.GetNodeName(node.n),
+        "one_node_switch_level": node.values.GetMultilevelSwitchLevel(),
+        "one_node_controls": GetControls(node),
         "one_node_basics": "<pre>%s</pre>\n" % node.BasicString(),
         "one_node_classes": "\n".join(RenderNodeCommandClasses(node)),
         "one_node_associations": "\n".join(RenderNodeAssociations(node)),
