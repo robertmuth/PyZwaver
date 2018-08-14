@@ -118,8 +118,67 @@ Simple demo app using the pyzwaver library
 <!-- ============================================================ -->
 <div class=tab id=tab-all-nodes></div>
 
+
 <!-- ============================================================ -->
-<div class=tab id=tab-one-node></div>
+<div class=tab id=tab-one-node>
+
+<h2>Basics</h2>
+<div id=one_node_basics></div>
+
+<h2>Actions</h2>
+<div id=one_node_actions>
+
+<button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/ping'>
+    Ping Node</button>
+&nbsp;
+<button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/refresh_dynamic'>
+    Refresh Dynamic</button>
+&nbsp;
+<button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/refresh_semistatic'>
+    Refresh Semi Static</button>
+&nbsp;
+<button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/refresh_static'>
+    Refresh Static</button>
+&nbsp;
+<button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/refresh_commands'>
+    Probe Command</button>
+&nbsp;
+<button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/refresh_parameters'>
+    Probe Configuration</button>
+&nbsp;
+
+<p>
+<button onclick='HandleUrlInput(event)' data-param='/node/<CURRENT>/set_name'>
+    Change Name</button>
+    <input type=text id=one_node_name>
+<p> 
+
+<button onclick='HandleUrlInputConfig(event)' data-param='/node/<CURRENT>/change_parameter/'>
+    Change Config Param</button>    
+no <input id=num type='number' name='no' value=0 min=1 max=232 style='width: 3em'>
+size <select id=size name='size'>
+<option value='1'>1</option>
+<option value='2'>2</option>
+<option value='4'>4</option>
+</select>
+value <input id=value type='number' name='val' value=0 style='width: 7em'>
+</div>
+
+<h2>Readings</h2>
+<div id=one_node_readings></div>
+ 
+<h2>Command Classes</h2>
+<div id=one_node_classes></div>
+
+<h2>Associations</h2>
+<div id=one_node_associations></div>
+
+<h2>Values</h2>
+<div id=one_node_values></div>
+
+<h2>Configuration</h2>
+<div id=one_node_configurations></div>
+</div>
 
 <!-- ============================================================ -->
 <div class=tab id=tab-logs>
@@ -184,7 +243,7 @@ var currentNode = "0";
 
 var gEventHistory = ["", "", "", "", "", ""];
 
-var gDebug = 1;
+var gDebug = 0;
 // "enums" for tabs
 const TAB_CONTROLLER = "tab-controller";
 const TAB_ALL_NODES = "tab-all-nodes";
@@ -206,7 +265,6 @@ var tabToDisplay = {
     [TAB_SLOW]:       function() {return "/display/slow"; },
     [TAB_FAILED]:     function() {return "/display/failed"; },
 };
-
 
 
 //  List visualization using the http://listjs.com/
@@ -264,9 +322,23 @@ function SocketMessageHandler(e) {
          document.getElementById(TAB_ALL_NODES).innerHTML = val;
     } else if (tag[0] == "o") {
         // ONE-NODE
+        var values = JSON.parse(val);
         var node = tag.slice(1);
         if (node == currentNode) {
-            document.getElementById(TAB_ONE_NODE).innerHTML = val;
+            document.getElementById("one_node_basics").innerHTML =
+                values.one_node_basics;
+            document.getElementById("one_node_classes").innerHTML =
+                values.one_node_classes;
+            document.getElementById("one_node_associations").innerHTML =
+                values.one_node_associations;
+            document.getElementById("one_node_values").innerHTML =
+                values.one_node_values;
+            document.getElementById("one_node_configurations").innerHTML =
+                values.one_node_configurations;
+            document.getElementById("one_node_readings").innerHTML =
+                values.one_node_readings;
+            document.getElementById("one_node_name").value = 
+                values.one_node_name;
         }
     } else if (tag == "d") {
          // DRIVER
@@ -287,6 +359,7 @@ function HandleUrl(ev) {
     ev.preventDefault();
     ev.stopPropagation();
     var param = ev.target.dataset.param;
+    param = param.replace("<CURRENT>", currentNode);
     console.log("HandleUrl: " + param + ": " + ev.target);
     RequestURL("//" + window.location.host + param);
 }
@@ -295,6 +368,7 @@ function HandleUrlInput(ev) {
     ev.preventDefault();
     ev.stopPropagation();
     var param = ev.target.dataset.param;
+    param = param.replace("<CURRENT>", currentNode);
     var input_elem = ev.target.parentElement.getElementsByTagName("input")[0];
     console.log("HandleUrl: " + param + ": " + input_elem.value + " " + ev.target);
     RequestURL("//" + window.location.host + param + input_elem.value);
@@ -304,6 +378,7 @@ function HandleUrlInputConfig(ev) {
     ev.preventDefault();
     ev.stopPropagation();
     var param = ev.target.dataset.param;
+    param = param.replace("<CURRENT>", currentNode);
     var p = ev.target.parentElement;
     var input_num = document.getElementById("num").value;
     var input_size = document.getElementById("size").value;
@@ -353,8 +428,6 @@ function RequestURL(url) {
 }
 
 function UpdateSome(tab) {
-    console.log(tab);
-    console.log(tabToDisplay[tab]);
     RequestURL(tabToDisplay[tab]());
 }
 
@@ -551,7 +624,8 @@ class NodeUpdater(object):
                 continue
             for n in self._nodes_to_update:
                 node = APPLICATION_NODESET.GetNode(n)
-                SendToSocket(("o%d:" % n) + RenderNode(node))
+                SendToSocket("o%d:" % n + json.dumps(RenderNode(node, DB),
+                                                     sort_keys=True, indent=4))
             self._update_controller = False
             self._nodes_to_update.clear()
             if count % 20 == 0:
@@ -637,13 +711,6 @@ def MakeNodeButtonInput(node, action, label):
     return MakeButton("HandleUrlInput", "/node/%d/%s" % (node.n, action), label)
 
 
-def MakeNodeButtonInputConfig(node, action, label):
-    return MakeButton("HandleUrlInputConfig", "/node/%d/%s" % (node.n, action), label)
-
-
-def MakeControllerButton(action, label):
-    return MakeButton("HandleUrl", "/controller/%s" % action, label)
-
 
 def MakeNodeRange(node: application_node.ApplicationNode, action, lo, hi):
     s = ("<input onchange='HandleChange(event)' data-param='/node/%d/%s/' class='multilevel' "
@@ -693,7 +760,7 @@ def ClassSpecificNodeButtons(node: application_node.ApplicationNode):
 def MakeTableRowForNode(node: application_node.ApplicationNode, is_failed):
     global DB
     readings = node.values.Sensors() + node.values.Meters() + \
-        node.values.MiscSensors()
+               node.values.MiscSensors()
 
     buttons = []
     if not node.IsSelf():
@@ -825,14 +892,15 @@ class DisplayHandler(BaseHandler):
 
             elif cmd == "controller":
                 SendToSocket("c:" + json.dumps(RenderController(CONTROLLER),
-                                              sort_keys=True, indent=4))
+                                               sort_keys=True, indent=4))
             elif cmd == "node":
                 num = int(token.pop(0))
                 if num == 0:
                     logging.error("no current node")
                 else:
                     node = APPLICATION_NODESET.GetNode(num)
-                    SendToSocket("o%d:" % num + RenderNode(node))
+                    SendToSocket("o%d:" % num + json.dumps(RenderNode(node, DB),
+                                                           sort_keys=True, indent=4))
             else:
                 logging.error("unknown command %s", token)
         except:
@@ -868,11 +936,7 @@ def RenderAssociationGroup(node: application_node.ApplicationNode, no, group, na
 
 
 def RenderNodeCommandClasses(node: application_node.ApplicationNode):
-    out = ["<h2>Command Classes</h2>",
-           MakeNodeButton(node, "refresh_commands", "Probe All"),
-           "<p>",
-           "<table>",
-           ]
+    out = ["<table>"]
     for cls, name, version in sorted(node.values.CommandVersions()):
         out += ["<tr><td>%s [%d]</td><td>%d</td></tr>" % (name, cls, version)]
     out += ["</table>"]
@@ -880,7 +944,7 @@ def RenderNodeCommandClasses(node: application_node.ApplicationNode):
 
 
 def RenderNodeAssociations(node: application_node.ApplicationNode):
-    out = ["<h2>Associations</h2>",
+    out = [
            "<p>",
            "<table>",
            ]
@@ -894,20 +958,7 @@ def RenderNodeAssociations(node: application_node.ApplicationNode):
 
 def RenderNodeParameters(node: application_node.ApplicationNode):
     compact = value.CompactifyParams(node.values.Configuration())
-    out = ["<h2>Configuration</h2>",
-           MakeNodeButton(node, "refresh_parameters", "Probe All"),
-           "&nbsp;",
-           MakeNodeButtonInputConfig(node, "change_parameter/", "Change"),
-           "no <input id=num type='number' name='no' value=0 min=1 max=232 style='width: 3em'>",
-           "size <select id=size name='size'>",
-           "<option value='1'>1</option>",
-           "<option value='2'>2</option>",
-           "<option value='4'>4</option>",
-           "</select>",
-           "value <input id=value type='number' name='val' value=0 style='width: 7em'>",
-           "<p>",
-           "<table>",
-           ]
+    out = ["<table>"]
     for a, b, c, d in sorted(compact):
         r = str(a)
         if a != b:
@@ -919,9 +970,7 @@ def RenderNodeParameters(node: application_node.ApplicationNode):
 
 
 def RenderMiscValues(node: application_node.ApplicationNode):
-    out = ["<h2>Misc Values</h2>",
-           "<table>",
-           ]
+    out = ["<table>"]
     for _, name, values in sorted(node.values.Values()):
         if name.endswith("Report"):
             name = name[:-6]
@@ -934,40 +983,24 @@ def RenderMiscValues(node: application_node.ApplicationNode):
     return out
 
 
-def RenderNode(node: application_node.ApplicationNode):
-    global DB
-    out = [
-        "<pre>%s</pre>\n" % node.BasicString(),
-        MakeNodeButton(node, "ping", "Ping Node"),
-        "&nbsp;",
-        MakeNodeButton(node, "refresh_dynamic", "Refresh Dynamic"),
-        "&nbsp;",
-        MakeNodeButton(node, "refresh_semistatic", "Refresh Semi Static"),
-        "&nbsp;",
-        MakeNodeButton(node, "refresh_static", "Refresh Static"),
-        "&nbsp;",
-        MakeNodeButtonInput(node, "set_name/", "Change Name"),
-        "<input type=text value='%s'>" % DB.GetNodeName(node.n),
-        "<p>"
-        "<h2>Readings</h2>",
-    ]
-    out += RenderReadings(node.values.Sensors() +
-                          node.values.Meters() + node.values.MiscSensors())
-    out += ["<p>"]
-    out += ClassSpecificNodeButtons(node)
+def RenderNode(node: application_node.ApplicationNode, db):
+    readings = (RenderReadings(node.values.Sensors() +
+                               node.values.Meters() +
+                               node.values.MiscSensors()) +
+                ["<p>"] +
+                ClassSpecificNodeButtons(node))
 
-    columns = [
-        RenderNodeCommandClasses(node) + RenderNodeAssociations(node),
-        RenderMiscValues(node) + RenderNodeParameters(node),
-    ]
+    out = {
+        "one_node_name": db.GetNodeName(node.n),
+        "one_node_basics": "<pre>%s</pre>\n" % node.BasicString(),
+        "one_node_classes": "\n".join(RenderNodeCommandClasses(node)),
+        "one_node_associations": "\n".join(RenderNodeAssociations(node)),
+        "one_node_values": "\n".join(RenderMiscValues(node)),
+        "one_node_configurations":  "\n".join(RenderNodeParameters(node)),
+        "one_node_readings": "\n".join(readings),
+    }
 
-    out += ["<table class=node-sections width='100%'>",
-            "<tr>"
-            ]
-    for c in columns:
-        out += ["<td class=section>"] + c + ["</td>"]
-    out += ["</tr></table>"]
-    return "\n".join(out)
+    return out
 
 
 class NodeActionHandler(BaseHandler):
