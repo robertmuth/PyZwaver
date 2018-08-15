@@ -48,10 +48,11 @@ import tornado.options
 import tornado.web
 import tornado.websocket
 
-from pyzwaver import value
+from pyzwaver.value import CompactifyParams, SENSOR_KIND_SWITCH_BINARY, SENSOR_KIND_BATTERY, \
+    SENSOR_KIND_RELATIVE_HUMIDITY
 from pyzwaver import zmessage
-from pyzwaver import controller
-from pyzwaver import driver
+from pyzwaver.controller import Controller, EVENT_UPDATE_COMPLETE
+from pyzwaver.driver import Driver, MakeSerialDevice
 from pyzwaver import protocol_node
 from pyzwaver import application_node
 from pyzwaver import zwave as z
@@ -67,6 +68,18 @@ HTML = """
 </head>
 
 <body>
+%(body)s
+
+<script>
+%(script)s
+</script>
+
+</body>
+</html>
+"""
+
+# language=HTML
+BODY = """
 <div id=menu>
 <button class=menu onclick='HandleTab(event)' data-param='tab-controller'>Controller</button>
 <button class=menu onclick='HandleTab(event)' data-param='tab-all-nodes'>Nodes</button>
@@ -152,7 +165,7 @@ Simple demo app using the pyzwaver library
 &nbsp;
 
 <p>
-<button onclick='HandleUrlInput(event)' data-param='/node/<CURRENT>/set_name'>
+<button onclick='HandleUrlInput(event)' data-param='/node/<CURRENT>/set_name/'>
     Change Name</button>
     <input type=text id=one_node_name>
 <p> 
@@ -175,7 +188,12 @@ value <input id=value type='number' name='val' value=0 style='width: 7em'>
     On</button>
 &nbsp;
 </span>
-<span id=one_node_slide> SLIDE
+
+<input id=one_node_slide 
+       onchange='HandleChange(event)' 
+       data-param='/node/<CURRENT>/multilevel_switch/' 
+       class='multilevel' 
+       type=range min=0 max=100 value=0>
 </span>
   
 
@@ -246,9 +264,10 @@ value <input id=value type='number' name='val' value=0 style='width: 7em'>
 </table>
 <hr>
 <p><tt id=timestamp></tt></p>
+"""
 
-
-<script>
+# language=JShell
+SCRIPT = """
 "use strict";
 // ============================================================
 // The JS part of this demo is intentionally kept at a minimum.
@@ -258,9 +277,9 @@ value <input id=value type='number' name='val' value=0 style='width: 7em'>
 // Node that is currently shown in 'tab-one-node'
 var currentNode = "0";
 
-var gEventHistory = ["", "", "", "", "", ""];
+let gEventHistory = ["", "", "", "", "", ""];
 
-var gDebug = 0;
+const  gDebug = 0;
 // "enums" for tabs
 const TAB_CONTROLLER = "tab-controller";
 const TAB_ALL_NODES = "tab-all-nodes";
@@ -274,7 +293,7 @@ const HISTORY_FIELD = "history";
 const DRIVE_FIELD = "driver";
 // Is there a literal notation for this?
 
-var tabToDisplay = {
+const  tabToDisplay = {
     [TAB_CONTROLLER]: function() {return "/display/controller"; },
     [TAB_ALL_NODES]:  function() {return "/display/nodes"; },
     [TAB_ONE_NODE]:   function() {return "/display/node/" + currentNode; },
@@ -291,17 +310,17 @@ const listFailed = new List('driverfailed', {valueNames: [ 'd', 't', 'm' ]});
 
 
 function OpenSocket() {
-    var loc = window.location;
-    var prefix = loc.protocol === 'https:' ? 'wss://' : 'ws://';
+    const loc = window.location;
+    const prefix = loc.protocol === 'https:' ? 'wss://' : 'ws://';
     return new WebSocket(prefix + loc.host + "/updates");
 }
 
 // Redraws work by triggering event in the Python code that will result
 // in HTML fragments being sent to socket.
 function SocketMessageHandler(e) {
-    var colon = e.data.indexOf(":");
-    var tag = e.data.slice(0, colon);
-    var val = e.data.slice(colon + 1);
+    const colon = e.data.indexOf(":");
+    const tag = e.data.slice(0, colon);
+    const val = e.data.slice(colon + 1);
     if (gDebug) console.log("socket: " + tag);
 
     if (tag == "A") {
@@ -316,7 +335,7 @@ function SocketMessageHandler(e) {
          document.getElementById(HISTORY_FIELD).innerHTML = gEventHistory.join("\\n");
     } else if (tag == "c") {
          // CONTROLLER
-         var values = JSON.parse(val);
+         const values = JSON.parse(val);
          document.getElementById('controller_basics').innerHTML = 
              values.controller_basics;
          document.getElementById('controller_routes').innerHTML = 
@@ -325,17 +344,17 @@ function SocketMessageHandler(e) {
              values.controller_apis;
     } else if (tag == "l") {
          // LOGS (list)
-         var values = JSON.parse(val);
+         const values = JSON.parse(val);
          listLog.clear();
          listLog.add(values);
     } else if (tag == "b") {
          // BAD (list)
-         var values = JSON.parse(val);
+         const values = JSON.parse(val);
          listSlow.clear();
          listSlow.add(values);
     } else if (tag == "f") {
          // FAILED (list)
-         var values = JSON.parse(val);
+         const values = JSON.parse(val);
          listFailed.clear();
          listFailed.add(values);
     } else if (tag == "a") {
@@ -343,8 +362,8 @@ function SocketMessageHandler(e) {
          document.getElementById(TAB_ALL_NODES).innerHTML = val;
     } else if (tag[0] == "o") {
         // ONE-NODE
-        var values = JSON.parse(val);
-        var node = tag.slice(1);
+        const values = JSON.parse(val);
+        const node = tag.slice(1);
         if (node == currentNode) {
             document.getElementById("one_node_basics").innerHTML =
                 values.one_node_basics;
@@ -360,6 +379,8 @@ function SocketMessageHandler(e) {
                 values.one_node_readings;
             document.getElementById("one_node_name").value = 
                 values.one_node_name;
+            document.getElementById("one_node_slide").value = 
+                values.one_node_switch_level;
             for (let key in values.one_node_controls) {
                  let e = document.getElementById(key);
                  let val = values.one_node_controls[key];
@@ -375,8 +396,8 @@ function SocketMessageHandler(e) {
 
 // Show one tab while hiding the others.
 function ShowTab(id) {
-   var tabs = document.getElementsByClassName("tab");
-    for (var i = 0; i < tabs.length; i++) {
+   const tabs = document.getElementsByClassName("tab");
+    for (let i = 0; i < tabs.length; i++) {
         tabs[i].style.display = "none";
    }
    document.getElementById(id).style.display = "block";
@@ -385,8 +406,7 @@ function ShowTab(id) {
 function HandleUrl(ev) {
     ev.preventDefault();
     ev.stopPropagation();
-    var param = ev.target.dataset.param;
-    param = param.replace("<CURRENT>", currentNode);
+    const param = ev.target.dataset.param.replace("<CURRENT>", currentNode);
     console.log("HandleUrl: " + param + ": " + ev.target);
     RequestURL("//" + window.location.host + param);
 }
@@ -394,9 +414,8 @@ function HandleUrl(ev) {
 function HandleUrlInput(ev) {
     ev.preventDefault();
     ev.stopPropagation();
-    var param = ev.target.dataset.param;
-    param = param.replace("<CURRENT>", currentNode);
-    var input_elem = ev.target.parentElement.getElementsByTagName("input")[0];
+    const param = ev.target.dataset.param.replace("<CURRENT>", currentNode);
+    const input_elem = ev.target.parentElement.getElementsByTagName("input")[0];
     console.log("HandleUrl: " + param + ": " + input_elem.value + " " + ev.target);
     RequestURL("//" + window.location.host + param + input_elem.value);
 }
@@ -404,12 +423,11 @@ function HandleUrlInput(ev) {
 function HandleUrlInputConfig(ev) {
     ev.preventDefault();
     ev.stopPropagation();
-    var param = ev.target.dataset.param;
-    param = param.replace("<CURRENT>", currentNode);
-    var p = ev.target.parentElement;
-    var input_num = document.getElementById("num").value;
-    var input_size = document.getElementById("size").value;
-    var input_value = document.getElementById("value").value;
+    const param = ev.target.dataset.param.replace("<CURRENT>", currentNode);
+    const p = ev.target.parentElement;
+    const input_num = document.getElementById("num").value;
+    const input_size = document.getElementById("size").value;
+    const input_value = document.getElementById("value").value;
 
     console.log("HandleUrl: " + param + ": " + input_num + " " + input_size + " " + input_value);
     RequestURL("//" + window.location.host + param + input_num + "/" + input_size + "/" + input_value);
@@ -418,7 +436,7 @@ function HandleUrlInputConfig(ev) {
 function HandleTab(ev) {
     ev.preventDefault();
     ev.stopPropagation();
-    var param = ev.target.dataset.param;
+    const param = ev.target.dataset.param;
     console.log("HandleTab: " + param + ": " + ev.target);
     ShowTab(param);
     UpdateSome(param);
@@ -429,7 +447,7 @@ function HandleTab(ev) {
 function HandleTabNode(ev) {
     ev.preventDefault();
     ev.stopPropagation();
-    var param = ev.target.dataset.param;
+    const param = ev.target.dataset.param;
     console.log("HandleTabNode: " + param + ": " + ev.target);
     ShowTab(TAB_ONE_NODE);
     currentNode = param;
@@ -441,15 +459,15 @@ function HandleTabNode(ev) {
 function HandleChange(ev) {
     ev.preventDefault();
     ev.stopPropagation();
-    var param = ev.target.dataset.param;
-    var url = "//" + window.location.host + param + ev.target.value;
+    const param = ev.target.dataset.param.replace("<CURRENT>", currentNode);
+    const url = "//" + window.location.host + param + ev.target.value;
     console.log("change " + ev.target + " " +  url);
     RequestURL(url);
     return false;
 }
 
 function RequestURL(url) {
-    var xhr = new XMLHttpRequest();
+    const xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.send();
 }
@@ -463,13 +481,13 @@ function UpdateDriverInfo() {
 }
 
 function ProcessUrlHash() {
-  var hash = window.location.hash;
+  let hash = window.location.hash;
   if (hash == "") {
       hash = "tab-controller";
   } else {
      hash = hash.slice(1);
   }
-  var tokens = hash.split("/");
+  const tokens = hash.split("/");
   ShowTab(tokens[0]);
   if (tokens.length > 1) {
      currentNode = tokens[1];
@@ -480,19 +498,20 @@ function ProcessUrlHash() {
 function DateToString(d) {
     console.log(d);
     function pad(n, digits) {
-        var s = "" + n;
+        let s = "" + n;
         while (s.length < digits)  s = '0' + s;
         return s;
     }
-    var out = [pad(d.getUTCFullYear(), 4), '-',
-               pad(d.getUTCMonth()+1, 2), '-',
-               pad(d.getUTCDate(), 2),
-               ' ',
-               pad(d.getUTCHours(), 2), ':',
-               pad(d.getUTCMinutes(), 2), ':',
-               pad(d.getUTCSeconds(), 2),
-               ' UTC',
-             ];
+    const out = [
+            pad(d.getUTCFullYear(), 4), '-',
+            pad(d.getUTCMonth()+1, 2), '-',
+            pad(d.getUTCDate(), 2),
+            ' ',
+            pad(d.getUTCHours(), 2), ':',
+            pad(d.getUTCMinutes(), 2), ':',
+            pad(d.getUTCSeconds(), 2),
+            ' UTC',
+            ];
     return out.join("");
 }
 
@@ -510,7 +529,7 @@ window.parent.onpopstate = function(event) {
     ProcessUrlHash();
 };
 
-var gSocket = OpenSocket();
+const gSocket = OpenSocket();
 
 gSocket.onopen = function (e) {
   console.log("Connected to server socket");
@@ -519,33 +538,29 @@ gSocket.onopen = function (e) {
 gSocket.onmessage = SocketMessageHandler;
 
 gSocket.onerror = function (e) {
-   var m = "Cannot connect to Server: try reloading";
+   const m = "Cannot connect to Server: try reloading";
    console.log("ERROR: " + m);
    document.getElementById(STATUS_FIELD).innerHTML = m;
    tab.innerHTML = "ERROR: Cannot connect to Server: try reloading";
 }
 
 gSocket.onclose = function (e) {
-    var m =  "Server connection lost: you must reload";
+    const m =  "Server connection lost: you must reload";
     console.log("ERROR: " + m);
     document.getElementById(STATUS_FIELD).innerHTML = m;
 }
 
 ShowTab(TAB_CONTROLLER);
-for (var key in tabToDisplay) {
+for (let key in tabToDisplay) {
     UpdateSome(key);
 }
 
 UpdateDriverInfo();
 
-var created = DateToString(new Date());
+const created = DateToString(new Date());
 
 document.getElementById("timestamp").innerHTML = "" + created;
 
-</script>
-
-</body>
-</html>
 """
 
 # ======================================================================
@@ -599,15 +614,31 @@ def TimeFormatMs(t):
     return TimeFormat(t) + ms
 
 
+class Db(object):
+    """Simple persistent storage"""
+
+    def __init__(self, shelf_path):
+        self._shelf = shelve.open(shelf_path)
+        atexit.register(self._shelf.close)
+
+    def SetNodeName(self, num, name):
+        key = "NodeName:%d" % num
+        self._shelf[key] = name
+
+    def GetNodeName(self, num, ):
+        key = "NodeName:%d" % num
+        return self._shelf.get(key, "Node %d" % num)
+
+
 # ======================================================================
 # A few globals
 # ======================================================================
 
-DRIVER: driver.Driver = None
-CONTROLLER: controller.Controller = None
+DRIVER: Driver = None
+CONTROLLER: Controller = None
 PROTOCOL_NODESET: protocol_node.NodeSet = None
 APPLICATION_NODESET: application_node.ApplicationNodeSet = None
-DB = None
+DB: Db = None
 
 # ======================================================================
 # WebSocket Stuff
@@ -636,7 +667,7 @@ class NodeUpdater(object):
 
     def __init__(self):
         self._nodes_to_update = set()
-        self._update_controller = False
+        self._update_driver = False
         timerThread = threading.Thread(target=self._refresh_thread)
         timerThread.daemon = True
         timerThread.start()
@@ -645,7 +676,7 @@ class NodeUpdater(object):
         logging.warning("Refresher thread started")
         count = 0
         while True:
-            if self._update_controller:
+            if self._update_driver:
                 SendToSocket("d:" + RenderDriver(DRIVER))
             if not APPLICATION_NODESET:
                 continue
@@ -653,7 +684,7 @@ class NodeUpdater(object):
                 node = APPLICATION_NODESET.GetNode(n)
                 SendToSocket("o%d:" % n + json.dumps(RenderNode(node, DB),
                                                      sort_keys=True, indent=4))
-            self._update_controller = False
+            self._update_driver = False
             self._nodes_to_update.clear()
             if count % 20 == 0:
                 for n in CONTROLLER.nodes:
@@ -666,17 +697,18 @@ class NodeUpdater(object):
             count += 1
             time.sleep(1.0)
 
-    def put(self, n, ts, key, values):
+    def put(self, n, _ts, _key, _values):
         # SendToSocket("E:[%d] %s" % (n, "@NO EVENT@"))
         self._nodes_to_update.add(n)
-        self._update_controller = True
+        self._update_driver = True
 
 
 def ControllerEventCallback(action, event):
     SendToSocket("S:" + event)
     SendToSocket("A:" + action)
-    if event == controller.EVENT_UPDATE_COMPLETE:
-        SendToSocket("c:" + RenderController())
+    if event == EVENT_UPDATE_COMPLETE:
+        SendToSocket("c:" + json.dumps(RenderController(CONTROLLER),
+                                       sort_keys=True, indent=4))
 
 
 class EchoWebSocket(tornado.websocket.WebSocketHandler):
@@ -712,49 +744,47 @@ class MainHandler(BaseHandler):
 
     @tornado.web.asynchronous
     def get(self, *path):
-        self.write(HTML % GetPrologArgs("Web-Zwaver"))
+        args = {
+            "css_path": OPTIONS.css_style_file,
+            "title": "Web-Zwaver",
+            "body": BODY,
+            "script": SCRIPT,
+        }
+        self.write(HTML % args)
         self.finish()
 
 
-def GetPrologArgs(title):
-    return {
-        "css_path": OPTIONS.css_style_file,
-        "title": title
-    }
-
-
-def MakeButton(action, param, label, cls=""):
+def _MakeButton(action, param, label, cls=""):
     if cls:
         cls = "class='" + cls + "' "
     s = "<button onclick='%s(event)' %sdata-param='%s'>%s</button>"
     return s % (action, cls, param, label)
 
 
-def MakeNodeButton(node, action, label, cls=""):
-    return MakeButton("HandleUrl", "/node/%d/%s" % (node.n, action), label, cls)
+def _MakeNodeButton(node, action, label, cls=""):
+    return _MakeButton("HandleUrl", "/node/%d/%s" % (node.n, action), label, cls)
 
 
-def MakeNodeButtonInput(node, action, label):
-    return MakeButton("HandleUrlInput", "/node/%d/%s" % (node.n, action), label)
+def _MakeNodeButtonInput(node, action, label):
+    return _MakeButton("HandleUrlInput", "/node/%d/%s" % (node.n, action), label)
 
 
-
-def MakeNodeRange(node: application_node.ApplicationNode, action, lo, hi):
+def _MakeNodeRange(node: application_node.ApplicationNode, action, lo, hi):
     s = ("<input onchange='HandleChange(event)' data-param='/node/%d/%s/' class='multilevel' "
          "type=range min=%f max=%f value='%f'>")
     return s % (node.n, action, lo, hi, node.values.GetMultilevelSwitchLevel())
 
 
 def RenderReading(kind, unit, val):
-    if kind == value.SENSOR_KIND_BATTERY and val == 100:
+    if kind == SENSOR_KIND_BATTERY and val == 100:
         return ""
-    elif kind == value.SENSOR_KIND_SWITCH_BINARY:
+    elif kind == SENSOR_KIND_SWITCH_BINARY:
         if val == 0:
             return "Off"
         else:
             return "On"
 
-    elif kind == value.SENSOR_KIND_RELATIVE_HUMIDITY and unit == "%":
+    elif kind == SENSOR_KIND_RELATIVE_HUMIDITY and unit == "%":
         unit = "% (rel. hum.)"
     return "%.1f%s" % (val, unit)
 
@@ -774,31 +804,23 @@ def RenderReadings(readings):
 def ClassSpecificNodeButtons(node: application_node.ApplicationNode):
     out = []
     if node.values.HasCommandClass(z.SwitchBinary):
-        out.append(MakeNodeButton(node, "binary_switch/0", "Off"))
-        out.append(MakeNodeButton(node, "binary_switch/255", "On"))
+        out.append(_MakeNodeButton(node, "binary_switch/0", "Off"))
+        out.append(_MakeNodeButton(node, "binary_switch/255", "On"))
     if node.values.HasCommandClass(z.SwitchMultilevel):
-        out.append(MakeNodeRange(node, "multilevel_switch", 0, 100)),
+        out.append(_MakeNodeRange(node, "multilevel_switch", 0, 100)),
     if node.values.HasCommandClass(z.Meter):
         # reset
         pass
     return out
 
 
-def GetControls(node: application_node.ApplicationNode):
-    return {
-        "one_node_switch": node.values.HasCommandClass(z.SwitchBinary),
-        "one_node_slide": node.values.HasCommandClass(z.SwitchMultilevel),
-    }
-
-
-def MakeTableRowForNode(node: application_node.ApplicationNode, is_failed):
+def MakeTableRowForNode(node: application_node.ApplicationNode, _is_failed):
     global DB
-    readings = node.values.Sensors() + node.values.Meters() + \
-               node.values.MiscSensors()
+    readings = node.values.Sensors() + node.values.Meters() + node.values.MiscSensors()
 
     buttons = []
     if not node.IsSelf():
-        buttons.append(MakeNodeButton(node, "ping", "Ping"))
+        buttons.append(_MakeNodeButton(node, "ping", "Ping"))
     buttons += ClassSpecificNodeButtons(node)
 
     pnode = node.protocol_node
@@ -820,7 +842,7 @@ def MakeTableRowForNode(node: application_node.ApplicationNode, is_failed):
     return [
         "<tr>",
         "<td class=name>",
-        MakeButton(action, param, name, cls="details"),
+        _MakeButton(action, param, name, cls="details"),
         "</td>",
         "<td colspan=3 class=readings>%s</td>" % " ".join(
             RenderReadings(readings)),
@@ -947,6 +969,13 @@ class DisplayHandler(BaseHandler):
         self.finish()
 
 
+def GetControls(node: application_node.ApplicationNode):
+    return {
+        "one_node_switch": node.values.HasCommandClass(z.SwitchBinary),
+        "one_node_slide": node.values.HasCommandClass(z.SwitchMultilevel),
+    }
+
+
 def RenderAssociationGroup(node: application_node.ApplicationNode, no, group, name, info, lst):
     group_name = ""
     if name:
@@ -958,13 +987,13 @@ def RenderAssociationGroup(node: application_node.ApplicationNode, no, group, na
            ]
     for n in group["nodes"]:
         out += ["%d" % n,
-                MakeNodeButton(node, "association_remove/%d/%d" %
-                               (no, n), "X", "remove"),
+                _MakeNodeButton(node, "association_remove/%d/%d" %
+                                (no, n), "X", "remove"),
                 "&nbsp;"]
 
     out += ["</td>",
             "<td>",
-            MakeNodeButtonInput(node, "association_add/%d/" % no, "Add Node"),
+            _MakeNodeButtonInput(node, "association_add/%d/" % no, "Add Node"),
             "<input type=number min=0 max=232 value=0>",
             "</td>",
             "</tr>"]
@@ -981,9 +1010,9 @@ def RenderNodeCommandClasses(node: application_node.ApplicationNode):
 
 def RenderNodeAssociations(node: application_node.ApplicationNode):
     out = [
-           "<p>",
-           "<table>",
-           ]
+        "<p>",
+        "<table>",
+    ]
     for no, group, info, lst, name in node.values.Associations():
         if group:
             out.append(RenderAssociationGroup(
@@ -993,7 +1022,7 @@ def RenderNodeAssociations(node: application_node.ApplicationNode):
 
 
 def RenderNodeParameters(node: application_node.ApplicationNode):
-    compact = value.CompactifyParams(node.values.Configuration())
+    compact = CompactifyParams(node.values.Configuration())
     out = ["<table>"]
     for a, b, c, d in sorted(compact):
         r = str(a)
@@ -1031,7 +1060,7 @@ def RenderNode(node: application_node.ApplicationNode, db):
         "one_node_classes": "\n".join(RenderNodeCommandClasses(node)),
         "one_node_associations": "\n".join(RenderNodeAssociations(node)),
         "one_node_values": "\n".join(RenderMiscValues(node)),
-        "one_node_configurations":  "\n".join(RenderNodeParameters(node)),
+        "one_node_configurations": "\n".join(RenderNodeParameters(node)),
         "one_node_readings": "\n".join(readings),
     }
 
@@ -1044,7 +1073,7 @@ class NodeActionHandler(BaseHandler):
     def get(self, *path):
         global APPLICATION_NODESET, DB
         token = path[0].split("/")
-        logging.warning("NODE ACTION> %s", token)
+        logging.error("NODE ACTION> %s", token)
         num = int(token.pop(0))
         node: application_node.ApplicationNode = APPLICATION_NODESET.GetNode(num)
         cmd = token.pop(0)
@@ -1086,6 +1115,7 @@ class NodeActionHandler(BaseHandler):
                 n = int(token.pop(0))
                 node.AssociationRemove(group, n)
             elif cmd == "set_name" and token:
+                print ("TTTTTTTTTO: ", token)
                 DB.SetNodeName(num, token.pop(0))
             elif cmd == "reset_meter":
                 node.ResetMeter()
@@ -1097,7 +1127,7 @@ class NodeActionHandler(BaseHandler):
         self.finish()
 
 
-def BalanceNodes(m):
+def BalanceNodes(_m):
     logging.warning("balancing contoller %s vs nodeset %s",
                     repr(CONTROLLER.nodes), repr(set(PROTOCOL_NODESET.nodes.keys())))
 
@@ -1217,22 +1247,6 @@ class MyFormatter(logging.Formatter):
             record.msg % record.args)
 
 
-class Db:
-    """Simple persistent storage"""
-
-    def __init__(self, shelf_path):
-        self._shelf = shelve.open(shelf_path)
-        atexit.register(self._shelf.close)
-
-    def SetNodeName(self, num, name):
-        key = "NodeName:%d" % num
-        self._shelf[key] = name
-
-    def GetNodeName(self, num, ):
-        key = "NodeName:%d" % num
-        return self._shelf.get(key, "Node %d" % num)
-
-
 def main():
     global DRIVER, CONTROLLER, PROTOCOL_NODESET, APPLICATION_NODESET, DB
     # note: this makes sure we have at least one handler
@@ -1259,10 +1273,10 @@ def main():
     )
 
     logging.info("opening serial")
-    device = driver.MakeSerialDevice(OPTIONS.serial_port)
+    device = MakeSerialDevice(OPTIONS.serial_port)
 
-    DRIVER = driver.Driver(device)
-    CONTROLLER = controller.Controller(
+    DRIVER = Driver(device)
+    CONTROLLER = Controller(
         DRIVER, pairing_timeout_secs=OPTIONS.pairing_timeout_secs)
     CONTROLLER.Initialize()
     CONTROLLER.WaitUntilInitialized()
