@@ -14,6 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
+import sys
+import traceback
+
 from pyzwaver import zwave as z
 
 # sensor kinds
@@ -28,6 +31,7 @@ SENSOR_KIND_ELECTRIC = "Electric"
 SENSOR_KIND_GAS = "Gas"
 SENSOR_KIND_WATER = "Water"
 SENSOR_KIND_TEMPERTATURE = "Temperature"
+SENSOR_KIND_UNKNOWN = "Unknown"
 #
 SECURITY_SET_CLASS = "SecuritySetClass"
 SECURITY_SCHEME = "SecurityScheme"
@@ -201,21 +205,35 @@ VALUE_CHANGERS = {
 }
 
 
-
 def GetSensorMeta(values):
-    v = values["value"]
-    kind = values["type"]
-    info = SENSOR_TYPES[kind]
-    unit = v["unit"]
-    return info[0], info[1][unit]
+    try:
+        v = values["value"]
+        kind = values["type"]
+        info = SENSOR_TYPES[kind]
+        unit = v["unit"]
+        return info[0], info[1][unit]
+    except:
+        logging.error("bad meterunit/type in: %s", values)
+        print("-" * 60)
+        traceback.print_exc(file=sys.stdout)
+        print("-" * 60)
+        return SENSOR_KIND_UNKNOWN, "unknown unit"
 
 
 def GetMeterMeta(values):
-    v = values["value"]
-    kind = v["type"]
-    unit = v["unit"]
-    info = METER_TYPES[kind]
-    return info[0], info[1][unit]
+    try:
+        v = values["value"]
+        kind = v["type"]
+        unit = v["unit"]
+        info = METER_TYPES[kind]
+        return info[0], info[1][unit]
+    except:
+        logging.error("bad meterunit/type in: %s", values)
+        print("-" * 60)
+        traceback.print_exc(file=sys.stdout)
+        print("-" * 60)
+        return SENSOR_KIND_UNKNOWN, "unknown unit"
+
 
 def CompactifyParams(params):
     out = []
@@ -227,4 +245,3 @@ def CompactifyParams(params):
         else:
             last[1] = k  # increment range end
     return out
-
