@@ -162,9 +162,6 @@ class ControllerProperties:
         self.serial_api_version = serial_api_version
         self.product = (manu_id, type_id, prod_id)
         self._api_mask = api_mask
-        for func, name in z.API_TO_STRING.items():
-            if self.HasApi(func):
-                logging.info("has api %x %s", func, name)
 
     def SetInitAndReturnBits(self, serial_version, caps, num_bytes, bits, chip_type, version):
         assert num_bytes == _NUM_NODE_BITFIELD_BYTES
@@ -179,6 +176,13 @@ class ControllerProperties:
         if caps & z.SERIAL_CAP_SECONDARY:
             self.attrs.add("serial_secondary")
         return bits
+
+    def StringApis(self):
+        out = []
+        for func, name in z.API_TO_STRING.items():
+            if self.HasApi(func):
+                out.append("%s[%d]" % (name, func))
+        return "\n".join(out)
 
     def __str__(self):
         out = [
@@ -217,10 +221,25 @@ class Controller:
         self.routes = {}
 
     def __str__(self):
-        out = [str(self.props),
-               "nodes: %s" % repr(self.nodes),
-               "failed_nodes: %s" % repr(self.failed_nodes),
-               ""]
+        out = [
+            self.StringBasic(),
+            "",
+            self.StringRoutes(),
+        ]
+        return "\n".join(out)
+
+    @classmethod
+    def Priority(cls):
+        return zmessage.ControllerPriority()
+
+    def StringBasic(self):
+        return "\n".join([
+            str(self.props),
+            "nodes: %s" % repr(self.nodes),
+            "failed_nodes: %s" % repr(self.failed_nodes)])
+
+    def StringRoutes(self):
+        out = []
         nodes = sorted(self.nodes)
         for n in nodes:
             line = "%2d: " % n
@@ -231,13 +250,7 @@ class Controller:
                 else:
                     line += " "
             out.append(line)
-
-        out.append("")
         return "\n".join(out)
-
-    @classmethod
-    def Priority(cls):
-        return zmessage.ControllerPriority()
 
     def UpdateVersion(self):
         def handler(data):

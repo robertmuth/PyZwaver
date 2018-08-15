@@ -86,7 +86,7 @@ Simple demo app using the pyzwaver library
 <div id=controller_basics></div>
 
 <h2>Connectivity</h2>
-<div id=controller_connectivity></div>
+<div id=controller_routes></div>
 
 <h2>Actions</h2>
 <div id=controller_buttons</div>
@@ -113,6 +113,10 @@ Simple demo app using the pyzwaver library
 &nbsp;
 <button onclick='HandleUrl(event)' data-param='/controller/set_learn_mode'>
     Enter Learn Mode</button>
+    
+<h2>APIs</h2>
+<div id=controller_apis></div>
+    
 </div>
 
 <!-- ============================================================ -->
@@ -315,6 +319,10 @@ function SocketMessageHandler(e) {
          var values = JSON.parse(val);
          document.getElementById('controller_basics').innerHTML = 
              values.controller_basics;
+         document.getElementById('controller_routes').innerHTML = 
+             values.controller_routes;
+         document.getElementById('controller_apis').innerHTML = 
+             values.controller_apis;
     } else if (tag == "l") {
          // LOGS (list)
          var values = JSON.parse(val);
@@ -844,7 +852,9 @@ def RenderNodes():
 
 def RenderController(controller):
     out = {
-        "controller_basics": "<pre>%s</pre>\n" % controller,
+        "controller_basics": "<pre>%s</pre>" % controller.StringBasic(),
+        "controller_routes": "<pre>%s</pre>" % controller.StringRoutes(),
+        "controller_apis": "<pre>%s</pre>" % controller.props.StringApis(),
     }
     return out
 
