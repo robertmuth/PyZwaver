@@ -57,6 +57,7 @@ _COMMANDS_WITH_MAP_VALUES = {
     z.AssociationGroupInformation_NameReport: _AssociationSubkey,
     z.AssociationGroupInformation_InfoReport: _AssociationSubkey,
     z.AssociationGroupInformation_ListReport: _AssociationSubkey,
+    z.SceneActuatorConf_Report: lambda v: v["scene"],
     z.UserCode_Report: lambda v: v["user"],
     z.MultiChannel_CapabilityReport: lambda v: v["endpoint"],
 }
@@ -160,6 +161,10 @@ def _CommandVersionQueries(classes):
 
 def _MultiChannelEndpointQueries(endpoints):
     return [(z.MultiChannel_CapabilityGet, {"mode": 0, "endpoint": e}) for e in endpoints]
+
+
+def _SceneActuatorConfiguration(scenes):
+    return [(z.SceneActuatorConf_Get, {"scene": s}) for s in scenes]
 
 
 def _AssociationQueries(assocs):
@@ -298,7 +303,14 @@ class NodeValues:
 
     def Configuration(self):
         m = self.GetMap(z.Configuration_Report)
-        return [(no, val["value"]["size"], val["value"]["value"]) for no, (_, val) in m.items()]
+        return [(no, val["value"]["size"], val["value"]["value"])
+                for no, (_, val) in m.items()]
+
+
+    def SceneActuatorConfiguration(self):
+        m = self.GetMap(z.SceneActuatorConf_Report)
+        return [(no, val["level"], val["delay"])
+                for no, (_, val) in m.items()]
 
     def Values(self):
         return [(key, command.StringifyCommand(key), val)
@@ -494,9 +506,9 @@ class ApplicationNode:
         logging.warning("[%d] RefreshAllCommandVersions", self.n)
         self.RefreshCommandVersions(range(255))
 
-    def RefreshSceneActuatorConfigurations(self, scenes):
-        c = [(z.SceneActuatorConf_Get, {"group": s}) for s in scenes]
-        self.BatchCommandSubmitFilteredSlow(c, XMIT_OPTIONS)
+    def RefreshAllSceneActuatorConfigurations(self):
+        self.BatchCommandSubmitFilteredSlow(
+            _SceneActuatorConfiguration(range(1, 256)),  XMIT_OPTIONS)
 
     def RefreshAllParameters(self):
         logging.warning("[%d] RefreshAllParameter", self.n)
@@ -515,11 +527,11 @@ class ApplicationNode:
     def SetSceneConfig(self, scene, delay, extra, level, request_update=True):
         self.BatchCommandSubmitFilteredFast(
             [(z.SceneActuatorConf_Set,
-              {scene, delay, extra, level})], XMIT_OPTIONS)
+              {"scene": scene, "delay": delay, "extra": extra, "level": level})], XMIT_OPTIONS)
         if not request_update:
             return
         self.BatchCommandSubmitFilteredFast(
-            [(z.SceneActuatorConf, z.SceneActuatorConf_Get, {scene})], XMIT_OPTIONS)
+            [(z.SceneActuatorConf, z.SceneActuatorConf_Get, {"scene": scene})], XMIT_OPTIONS)
 
     def ResetMeter(self, request_update=True):
         # TODO

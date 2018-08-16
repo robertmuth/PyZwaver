@@ -156,12 +156,17 @@ Simple demo app using the pyzwaver library
 &nbsp;
 <button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/refresh_static'>
     Refresh Static</button>
-&nbsp;
+
+<p>
+
 <button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/refresh_commands'>
     Probe Command</button>
 &nbsp;
 <button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/refresh_parameters'>
     Probe Configuration</button>
+&nbsp;
+<button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/refresh_scenes'>
+    Probe Scenes</button>
 &nbsp;
 
 <p>
@@ -213,6 +218,9 @@ value <input id=value type='number' name='val' value=0 style='width: 7em'>
 
 <h2>Configuration</h2>
 <div id=one_node_configurations></div>
+
+<h2>Scenes</h2>
+<div id=one_node_scenes></div>
 </div>
 
 <!-- ============================================================ -->
@@ -377,6 +385,9 @@ function SocketMessageHandler(e) {
                 values.one_node_configurations;
             document.getElementById("one_node_readings").innerHTML =
                 values.one_node_readings;
+            document.getElementById("one_node_scenes").innerHTML =
+                values.one_node_scenes;
+                
             document.getElementById("one_node_name").value = 
                 values.one_node_name;
             document.getElementById("one_node_slide").value = 
@@ -1034,6 +1045,27 @@ def RenderNodeParameters(node: application_node.ApplicationNode):
     return out
 
 
+def RenderNodeScenesOld(node: application_node.ApplicationNode):
+    out = ["<table>"]
+    for a, b, c in sorted(node.values.SceneActuatorConfiguration()):
+        out += ["<tr> <td>%d</td> <td>%d</td> <td>%d</td></tr>" % (a, b, c)]
+    out += ["</table>"]
+    return out
+
+
+def RenderNodeScenes(node: application_node.ApplicationNode):
+    compact = CompactifyParams(node.values.SceneActuatorConfiguration())
+    out = ["<table>"]
+    for a, b, c, d in sorted(compact):
+        r = str(a)
+        if a != b:
+            r += " - " + str(b)
+        out += ["<tr><td>", r, "</td><td>", "[%d]" %
+                c, "</td><td>", str(d), "</td></tr>"]
+    out += ["</table>"]
+    return out
+
+
 def RenderMiscValues(node: application_node.ApplicationNode):
     out = ["<table>"]
     for _, name, values in sorted(node.values.Values()):
@@ -1062,6 +1094,7 @@ def RenderNode(node: application_node.ApplicationNode, db):
         "one_node_values": "\n".join(RenderMiscValues(node)),
         "one_node_configurations": "\n".join(RenderNodeParameters(node)),
         "one_node_readings": "\n".join(readings),
+        "one_node_scenes": "\n".join(RenderNodeScenes(node)),
     }
 
     return out
@@ -1098,6 +1131,8 @@ class NodeActionHandler(BaseHandler):
                 node.RefreshDynamicValues()
             elif cmd == "refresh_commands":
                 node.RefreshAllCommandVersions()
+            elif cmd == "refresh_scenes":
+                node.RefreshAllSceneActuatorConfigurations()
             elif cmd == "refresh_parameters":
                 node.RefreshAllParameters()
             elif cmd == "association_add":
@@ -1115,7 +1150,7 @@ class NodeActionHandler(BaseHandler):
                 n = int(token.pop(0))
                 node.AssociationRemove(group, n)
             elif cmd == "set_name" and token:
-                print ("TTTTTTTTTO: ", token)
+                print("TTTTTTTTTO: ", token)
                 DB.SetNodeName(num, token.pop(0))
             elif cmd == "reset_meter":
                 node.ResetMeter()
