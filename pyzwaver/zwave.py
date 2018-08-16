@@ -382,6 +382,7 @@ ThermostatSetBack = 0x47
 DoorLockLogging = 0x4c
 ScheduleEntryLock = 0x4e
 BasicWindowCovering = 0x50
+TransportService = 0x55
 CRC16Encap = 0x56
 AssociationGroupInformation = 0x59
 DeviceResetLocally = 0x5a
@@ -390,6 +391,7 @@ ZwavePlusInfo = 0x5e
 MultiChannel = 0x60
 DoorLock = 0x62
 UserCode = 0x63
+Supervision = 0x6c
 Configuration = 0x70
 Alarm = 0x71
 ManufacturerSpecific = 0x72
@@ -420,6 +422,7 @@ Security = 0x98
 AssociationCommandConfiguration = 0x9b
 SensorAlarm = 0x9c
 SilenceAlarm = 0x9d
+Security2 = 0x9f
 Mark = 0xef
 
 CMD_TO_STRING = {
@@ -450,6 +453,7 @@ CMD_TO_STRING = {
     0x4c: 'DoorLockLogging',
     0x4e: 'ScheduleEntryLock',
     0x50: 'BasicWindowCovering',
+    0x55: 'TransportService',
     0x56: 'CRC16Encap',
     0x59: 'AssociationGroupInformation',
     0x5a: 'DeviceResetLocally',
@@ -458,6 +462,7 @@ CMD_TO_STRING = {
     0x60: 'MultiChannel',
     0x62: 'DoorLock',
     0x63: 'UserCode',
+    0x6c: 'Supervision',
     0x70: 'Configuration',
     0x71: 'Alarm',
     0x72: 'ManufacturerSpecific',
@@ -488,6 +493,7 @@ CMD_TO_STRING = {
     0x9b: 'AssociationCommandConfiguration',
     0x9c: 'SensorAlarm',
     0x9d: 'SilenceAlarm',
+    0x9f: 'Security2',
     0xef: 'Mark',
 }
 
@@ -998,7 +1004,7 @@ SUBCMD_TO_PARSE_TABLE = {
 
     # CentralScene (0x5b = 91)
     0x5b01: [],  # SupportedGet (1)
-    0x5b02: ['B{count}'],  # SupportedReport (2)
+    0x5b02: ['B{count}', 'L{extra}'],  # SupportedReport (2)
     0x5b03: ['B{count}', 'B{mode}', 'B{scene}'],  # Notification (3)
 
     # ZwavePlusInfo (0x5e = 94)
