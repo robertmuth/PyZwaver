@@ -767,6 +767,13 @@ C("CentralScene", 0x5b,
   Notification=(0x03, "B{count},B{mode},B{scene}"),
   )
 
+C("TransportService", 0x55)
+
+C("Supervision", 0x6c)
+
+C("Security2", 0x9f)
+
+
 C("ManufacturerProprietary", 0x91)
 C("SimpleAvControl", 0x94)
 C("BasicWindowCovering", 0x50)
