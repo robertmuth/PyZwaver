@@ -142,69 +142,77 @@ Simple demo app using the pyzwaver library
 <h2>Basics</h2>
 <div id=one_node_basics></div>
 
-<h2>Actions</h2>
-<div id=one_node_actions>
+<h2>Maintenance</h2>
+<div id=one_node_maintenance>
 
-<button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/ping'>
+<button onclick='HandleAction(event)' data-param='/node/<CURRENT>/ping'>
     Ping Node</button>
 &nbsp;
-<button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/refresh_dynamic'>
+<button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_dynamic'>
     Refresh Dynamic</button>
 &nbsp;
-<button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/refresh_semistatic'>
+<button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_semistatic'>
     Refresh Semi Static</button>
 &nbsp;
-<button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/refresh_static'>
+<button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_static'>
     Refresh Static</button>
 
 <p>
 
-<button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/refresh_commands'>
+<button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_commands'>
     Probe Command</button>
 &nbsp;
-<button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/refresh_parameters'>
+<button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_parameters'>
     Probe Configuration</button>
 &nbsp;
-<button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/refresh_scenes'>
+<button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_scenes'>
     Probe Scenes</button>
 &nbsp;
 
 <p>
-<button onclick='HandleUrlInput(event)' data-param='/node/<CURRENT>/set_name/'>
+<button onclick='HandleAction(event)' 
+        data-param='/node/<CURRENT>/set_name/'
+        data-args='one_node_name'>
     Change Name</button>
     <input type=text id=one_node_name>
 <p> 
 
-<button onclick='HandleUrlInputConfig(event)' data-param='/node/<CURRENT>/change_parameter/'>
+<button onclick='HandleAction(event)' 
+        data-param='/node/<CURRENT>/change_parameter/'
+        data-args='one_node_config_num,one_node_config_size,one_node_config_value'>
     Change Config Param</button>    
-no <input id=num type='number' name='no' value=0 min=1 max=232 style='width: 3em'>
-size <select id=size name='size'>
+no <input id=one_node_config_num type='number' name='no' value=0 min=1 max=232 style='width: 3em'>
+size <select id=one_node_config_size name='size'>
 <option value='1'>1</option>
 <option value='2'>2</option>
 <option value='4'>4</option>
 </select>
-value <input id=value type='number' name='val' value=0 style='width: 7em'>
+value <input id=one_node_config_value type='number' name='val' value=0 style='width: 7em'>
 
 <p>
 
-<button onclick='HandleUrlInputScene(event)' data-param='/node/<CURRENT>/change_scene/'>
+<button onclick='HandleAction(event)' 
+        data-param='/node/<CURRENT>/change_scene/'
+        data-args='one_node_scene_num,one_node_scene_level,one_node_scene_delay,one_node_scene_extra'>
     Change Scene</button>    
-no <input id=scene_num type='number' name='num' value=1 min=1 max=255 style='width: 3em'>
-level <input id=scene_level type='number' name='level' value=0 min=0 max=255 style='width: 3em'>
-delay <input id=scene_delay type='number' name='delay' value=0 min=0 max=255 style='width: 3em'>
+no <input id=one_node_scene_num type='number' name='num' value=1 min=1 max=255 style='width: 3em'>
+level <input id=one_node_scene_level type='number' name='level' value=0 min=0 max=255 style='width: 3em'>
+delay <input id=one_node_scene_delay type='number' name='delay' value=0 min=0 max=255 style='width: 3em'>
 
-<select id=scene_extra name='extra'>
+<select id=one_node_scene_extra name='extra'>
 <option value='128'>on</option>
 <option value='0'>off</option>
 </select>
 
-<p>
+<h2>Actions</h2>
+<div id=one_node_actions>
+
 
 <span id=one_node_switch>
-<button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/binary_switch/0'>
+<button onclick='HandleAction(event)' data-param='/node/<CURRENT>/binary_switch/0'>
     Off</button>
 &nbsp;
-<button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/binary_switch/100'>
+<button onclick='HandleAction(event)' data-param='/node/<CURRENT>/binary_switch/100'>
     On</button>
 &nbsp;
 </span>
@@ -440,6 +448,22 @@ function RequestActionURL(param, args) {
     RequestURL(base + args.join("/"));
 }
 
+function HandleAction(ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const param = ev.target.dataset.param.replace("<CURRENT>", currentNode);
+    let args= [];
+    const elem_list = ev.target.dataset.args;
+    if (elem_list) {
+        for (let elem of elem_list.split(',')) {
+            args.push(document.getElementById(elem).value);
+        }
+    }
+    console.log("HandleUrl: " + param + ": " + args);
+    RequestActionURL(param, args);
+}
+
+
 function HandleUrl(ev) {
     ev.preventDefault();
     ev.stopPropagation();
@@ -457,32 +481,6 @@ function HandleUrlInput(ev) {
     RequestActionURL(param, [input_elem.value]);
 }
 
-function HandleUrlInputConfig(ev) {
-    ev.preventDefault();
-    ev.stopPropagation();
-    const param = ev.target.dataset.param.replace("<CURRENT>", currentNode);
-    const p = ev.target.parentElement;
-    const input_num = document.getElementById("num").value;
-    const input_size = document.getElementById("size").value;
-    const input_value = document.getElementById("value").value;
-
-    console.log(`HandleUrl: ${param}: ${input_num} ${input_size} ${input_value}`);
-    RequestActionURL(param, [input_num, input_size, input_value]);
-}
-
-function HandleUrlInputScene(ev) {
-    ev.preventDefault();
-    ev.stopPropagation();
-    const param = ev.target.dataset.param.replace("<CURRENT>", currentNode);
-    const p = ev.target.parentElement;
-    const input_num = document.getElementById("scene_num").value;
-    const input_level = document.getElementById("scene_level").value;
-    const input_delay = document.getElementById("scene_delay").value;
-    const input_extra = document.getElementById("scene_extra").value;
-
-    console.log(`HandleUrl: ${param}: ${input_num} ${input_level} ${input_delay} ${input_extra}`);
-    RequestActionURL(param, [input_num, input_level, input_delay, input_extra]);
-}
 
 function HandleTab(ev) {
     ev.preventDefault();
@@ -1302,6 +1300,10 @@ HANDLERS = [
     (r"/display/(.+)", DisplayHandler, {}),
     (r"/updates", EchoWebSocket, {}),
 ]
+
+
+def _ProductSearchLink(prod_type, prod_id):
+    return "http://www.google.com/search?q=site:products.z-wavealliance.org+0x%04x+0x%04x" % (prod_type, prod_id)
 
 
 # use --logging=none
