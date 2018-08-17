@@ -246,6 +246,9 @@ class Driver(object):
                MessageStatsString(self._history)]
         return "\n".join(out)
 
+    def HasInflight(self):
+        return self._inflight is not None
+
     def _LogSent(self, ts, m, comment):
         self._raw_history.append((ts, True, m, comment))
         logging.info("sent: %s", zmessage.PrettifyRawMessage(m))

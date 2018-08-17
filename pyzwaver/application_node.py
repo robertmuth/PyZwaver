@@ -168,7 +168,7 @@ def _MultiChannelEndpointQueries(endpoints):
 
 
 def _SceneActuatorConfiguration(scenes):
-    return [(z.SceneActuatorConf_Get, {"scene": s}) for s in scenes + [0, 0]]
+    return [(z.SceneActuatorConf_Get, {"scene": s}) for s in scenes]
 
 
 def _AssociationQueries(assocs):
@@ -511,8 +511,9 @@ class ApplicationNode:
         self.RefreshCommandVersions(range(255))
 
     def RefreshAllSceneActuatorConfigurations(self):
+        # append 0 to set current scene at very end
         self.BatchCommandSubmitFilteredSlow(
-            _SceneActuatorConfiguration(range(1, 256)),  XMIT_OPTIONS)
+            _SceneActuatorConfiguration(list(range(1, 256)) + [0]),  XMIT_OPTIONS)
 
     def RefreshAllParameters(self):
         logging.warning("[%d] RefreshAllParameter", self.n)

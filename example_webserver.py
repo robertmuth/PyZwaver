@@ -20,7 +20,7 @@ Simple Webserver built on top of PyZwaver
 
 Usage:
 Run
-    ./webserver --serial_port=<usb-zwave-device>
+    ./example_webserver --serial_port=<usb-zwave-device>
 Common values for usb-zwave-device are:
     /dev/ttyUSBx
     /dev/ttyACMx
@@ -150,7 +150,7 @@ Simple demo app using the pyzwaver library
          <button class='node_switch_on' onclick='HandleAction(event)' class='multilevel' 
                  data-param='/node/<CURRENT>/binary_switch/99'>On</button>
          &nbsp;
-         <input class='node_slide' onchange='HandleChange(event)' 
+         <input class='node_slide' onchange='HandleAction(event)'  data-args='node_slide'
                 data-param='/node/<CURRENT>/multilevel_switch/'  type=range min=0 max=100 value=0>
         </p>
     </td>
@@ -160,9 +160,8 @@ Simple demo app using the pyzwaver library
        <p>
          <span class=node_no>node</span>
          <span class=node_last_contact>last contact</span>
-
-        <span class=node_state>state</span>
-        <span class=node_product>product</span>
+         <span class=node_state>state</span>
+         <span class=node_product>product</span>
        </p>
    </td>
 </tr>
@@ -189,7 +188,7 @@ Simple demo app using the pyzwaver library
   <button class='node_switch_on' onclick='HandleAction(event)' class='multilevel' 
           data-param='/node/<CURRENT>/binary_switch/99'>On</button>
   &nbsp;
-  <input class='node_slide' onchange='HandleChange(event)' 
+  <input class='node_slide' onchange='HandleAction(event)' data-args='node_slide'
          data-param='/node/<CURRENT>/multilevel_switch/' type=range min=0 max=100 value=0>
  </td>
 
@@ -228,7 +227,7 @@ Simple demo app using the pyzwaver library
 <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_parameters'>
     Probe Configuration</button>
 &nbsp;
-<button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_scenes'>
+<button class='node_scene_refresh' onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_scenes'>
     Probe Scenes</button>
 &nbsp;
 
@@ -240,7 +239,7 @@ Simple demo app using the pyzwaver library
 <button onclick='HandleAction(event)' 
         data-param='/node/<CURRENT>/set_name/'
         data-args='node_name'>
-    Change Name</button>
+    Change Node Name</button>
     <input type=text class=node_name>
 <p> 
 
@@ -248,38 +247,46 @@ Simple demo app using the pyzwaver library
         data-param='/node/<CURRENT>/change_parameter/'
         data-args='config_num,config_size,config_value'>
     Change Config Param</button>    
-no <input class=config_num type='number' name='no' value=0 min=1 max=232 style='width: 3em'>
+no <input class=config_num type='number' value=0 min=1 max=232 style='width: 3em'>
 size <select class=config_size name='size'>
 <option value='1'>1</option>
 <option value='2'>2</option>
 <option value='4'>4</option>
 </select>
-value <input class=config_value type='number' name='val' value=0 style='width: 7em'>
+value <input class=config_value type='number' value=0 style='width: 7em'>
 
 <p>
 
 <button onclick='HandleAction(event)' 
         data-param='/node/<CURRENT>/change_scene/'
         data-args='scene_num,scene_level,scene_delay,scene_extra'>
-    Change Scene</button>    
-no <input class=scene_num type='number' name='num' value=1 min=1 max=255 style='width: 3em'>
-level <input class=scene_level type='number' name='level' value=0 min=0 max=255 style='width: 3em'>
-delay <input class=scene_delay type='number' name='delay' value=0 min=0 max=255 style='width: 3em'>
+    Change Scene Config</button>    
+no <input class=scene_num type='number'  value=1 min=1 max=255 style='width: 3em'>
+level <input class=scene_level type='number' value=0 min=0 max=255 style='width: 3em'>
+delay <input class=scene_delay type='number' value=0 min=0 max=255 style='width: 3em'>
 
 <select class=scene_extra name='extra'>
 <option value='128'>on</option>
 <option value='0'>off</option>
 </select>
 
+<p>
+   
+Association group <input class=assoc_group type='number' name='level' value=1 min=0 max=255 style='width: 3em'>
+node <input class=assoc_node type='number' name='level' value=0 min=0 max=255 style='width: 3em'>
+<button onclick='HandleAction(event)' 
+        data-param='/node/<CURRENT>/association_remove/'
+        data-args='assoc_group,assoc_node'>
+    Remove</button>  
+<button onclick='HandleAction(event)' 
+        data-param='/node/<CURRENT>/association_add/'
+        data-args='assoc_group,assoc_node'>
+    Add</button> 
 </td>
 </tr>
 
 </table>
 
-
- 
-<h2>Command Classes</h2>
-<div class=node_classes></div>
 
 <h2>Associations</h2>
 <div class=node_associations></div>
@@ -287,11 +294,27 @@ delay <input class=scene_delay type='number' name='delay' value=0 min=0 max=255 
 <h2>Values</h2>
 <div class=node_values></div>
 
+<table width='100%'>
+
+<tr>
+<td width='33%' valign='top'>
+<h2>Command Classes</h2>
+<div class=node_classes></div>
+</td>
+
+<td width='33%' valign='top'>
 <h2>Configuration</h2>
 <div class=node_configurations></div>
+</td>
 
+<td width='33%' valign='top'>
 <h2>Scenes</h2>
 <div class=node_scenes></div>
+</td>
+
+</tr>
+</table>
+ 
 </div>
 
 <!-- ============================================================ -->
@@ -387,8 +410,6 @@ const  tabToDisplay = {
     [TAB_FAILED]:     function() {return "/display/failed"; },
 };
 
-
-
 //  List visualization using the http://listjs.com/
 // t: timestamp
 // c: completion status
@@ -420,12 +441,14 @@ function OpenSocket() {
     return new WebSocket(prefix + loc.host + "/updates");
 }
 
-function ShowHideControls(elem, controls) {
+function ShowHideControls(root, controls) {
     for (let key in controls) {
-        let e = document.getElementsByClassName(key);
-        let val = controls[key];
-        console.log(`$e: ${key} -> ${val}`);
-        e[0].hidden = ! val;
+        let e = root.getElementsByClassName(key);
+        if (e.length > 0) {
+            let val = controls[key];
+            //console.log(`${e[0]}: ${key} -> ${val} [${e[0].dataset.param}]`);
+            e[0].hidden = ! val;
+        }
     }
 }
 
@@ -488,6 +511,10 @@ function SocketMessageHandler(e) {
              root.getElementsByClassName("node_name")[0].innerHTML = data.name;
              root.getElementsByClassName("node_slide")[0].value = data.switch_level;
              root.getElementsByClassName("node_readings")[0].innerHTML = data.readings;
+             root.getElementsByClassName("node_last_contact")[0].innerHTML = data.last_contact;
+             root.getElementsByClassName("node_product")[0].innerHTML = data.product;
+             root.getElementsByClassName("node_state")[0].innerHTML = data.state;
+             root.getElementsByClassName("node_no")[0].innerHTML = data.no;
              ShowHideControls(root, data.controls);
          }
          //document.getElementById(TAB_ALL_NODES).innerHTML = val;
@@ -543,11 +570,12 @@ function HandleAction(ev) {
     ev.stopPropagation();
     const param = ev.target.dataset.param.replace("<CURRENT>", currentNode);
     const root = ev.target.parentNode;
+    // console.log(`${root}: ${ev.target.dataset.args}`)
     let args= [];
     const elem_list = ev.target.dataset.args;
     if (elem_list) {
         for (let elem of elem_list.split(',')) {
-            args.push(root.getElementByClassName(elem)[0].value);
+            args.push(root.getElementsByClassName(elem)[0].value);
         }
     }
     console.log("HandleAction: " + param + ": " + args);
@@ -587,17 +615,6 @@ function HandleTabNode(ev) {
     ShowTab(TAB_ONE_NODE);
     window.history.pushState({}, "", "#tab-one-node/" + param);
 }
-
-function HandleChange(ev) {
-    ev.preventDefault();
-    ev.stopPropagation();
-    const param = ev.target.dataset.param.replace("<CURRENT>", currentNode);
-    const url = "//" + window.location.host + param + ev.target.value;
-    console.log("change " + ev.target + " " +  url);
-    RequestURL(url);
-    return false;
-}
-
 
 function UpdateSome(tab) {
     RequestURL(tabToDisplay[tab]());
@@ -659,6 +676,9 @@ window.onload = function () {
   }
   table.innerHTML = all.join("");
   
+  const created = DateToString(new Date());
+  document.getElementById("timestamp").innerHTML = "" + created;
+  
   console.log("on load finished");
 };
 
@@ -690,9 +710,7 @@ gSocket.onclose = function (e) {
 }
 
 
-const created = DateToString(new Date());
 
-document.getElementById("timestamp").innerHTML = "" + created;
 
 """
 
@@ -813,7 +831,7 @@ class NodeUpdater(object):
         logging.warning("Refresher thread started")
         count = 0
         while True:
-            if self._update_driver:
+            if self._update_driver or DRIVER.HasInflight():
                 SendToSocket("d:" + RenderDriver(DRIVER))
             if not APPLICATION_NODESET:
                 continue
@@ -835,6 +853,7 @@ class NodeUpdater(object):
             time.sleep(1.0)
 
     def put(self, n, _ts, _key, _values):
+        #print ("got event ", n, _key, _values)
         # SendToSocket("E:[%d] %s" % (n, "@NO EVENT@"))
         self._nodes_to_update.add(n)
         self._update_driver = True
@@ -862,54 +881,6 @@ class EchoWebSocket(tornado.websocket.WebSocketHandler):
         SOCKETS.remove(self)
 
 
-# ======================================================================
-# URL Handlers
-# ======================================================================
-
-
-class BaseHandler(tornado.web.RequestHandler):
-    """All handlers should inherit from this one
-    """
-
-    def initialize(self):
-        pass
-
-
-class MainHandler(BaseHandler):
-    """ Handler for root path - simply redirects to /about
-    """
-
-    @tornado.web.asynchronous
-    def get(self, *path):
-        args = {
-            "css_path": OPTIONS.css_style_file,
-            "title": "Web-Zwaver",
-            "body": BODY,
-            "script": SCRIPT,
-        }
-        self.write(HTML % args)
-        self.finish()
-
-
-def _MakeButton(action, param, label, cls=""):
-    if cls:
-        cls = "class='" + cls + "' "
-    s = "<button onclick='%s(event)' %sdata-param='%s'>%s</button>"
-    return s % (action, cls, param, label)
-
-
-def _MakeNodeButton(node, action, label, cls=""):
-    return _MakeButton("HandleAction", "/node/%d/%s" % (node.n, action), label, cls)
-
-
-def _MakeNodeButtonInput(node, action, label):
-    return _MakeButton("HandleUrlInput", "/node/%d/%s" % (node.n, action), label)
-
-
-def _MakeNodeRange(node: application_node.ApplicationNode, action, lo, hi):
-    s = ("<input onchange='HandleChange(event)' data-param='/node/%d/%s/' class='multilevel' "
-         "type=range min=%f max=%f value='%f'>")
-    return s % (node.n, action, lo, hi, node.values.GetMultilevelSwitchLevel())
 
 
 def RenderReading(kind, unit, val):
@@ -1003,12 +974,14 @@ def DriverBad(driver):
 
 
 def GetControls(node: application_node.ApplicationNode):
-    is_switch = node.values.HasCommandClass(z.SwitchMultilevel)
-    return {
+    is_switch = node.values.HasCommandClass(z.SwitchBinary)
+    out = {
         "node_switch_on": is_switch,
         "node_switch_off": is_switch,
         "node_slide": node.values.HasCommandClass(z.SwitchMultilevel),
+        "node_scene_refresh": node.values.HasCommandClass(z.SceneActuatorConf),
     }
+    return out
 
 
 def RenderAssociationGroup(node: application_node.ApplicationNode, no, group, name, info, lst):
@@ -1022,15 +995,9 @@ def RenderAssociationGroup(node: application_node.ApplicationNode, no, group, na
            ]
     for n in group["nodes"]:
         out += ["%d" % n,
-                _MakeNodeButton(node, "association_remove/%d/%d" %
-                                (no, n), "X", "remove"),
                 "&nbsp;"]
 
     out += ["</td>",
-            "<td>",
-            _MakeNodeButtonInput(node, "association_add/%d/" % no, "Add Node"),
-            "<input type=number min=0 max=232 value=0>",
-            "</td>",
             "</tr>"]
     return "".join(out)
 
@@ -1069,14 +1036,6 @@ def RenderNodeParameters(node: application_node.ApplicationNode):
     return out
 
 
-def RenderNodeScenesOld(node: application_node.ApplicationNode):
-    out = ["<table>"]
-    for a, b, c in sorted(node.values.SceneActuatorConfiguration()):
-        out += ["<tr> <td>%d</td> <td>%d</td> <td>%d</td></tr>" % (a, b, c)]
-    out += ["</table>"]
-    return out
-
-
 def RenderNodeScenes(node: application_node.ApplicationNode):
     compact = CompactifyParams(node.values.SceneActuatorConfiguration())
     out = ["<table>"]
@@ -1108,27 +1067,6 @@ def _ProductLink(_manu_id, prod_type, prod_id):
     return "http://www.google.com/search?q=site:products.z-wavealliance.org+0x%04x+0x%04x" % (prod_type, prod_id)
 
 
-def RenderNode(node: application_node.ApplicationNode, db):
-    readings = (RenderReadings(node.values.Sensors() +
-                               node.values.Meters() +
-                               node.values.MiscSensors()))
-    out = {
-        "name": db.GetNodeName(node.n),
-        "link": _ProductLink(*node.values.ProductInfo()),
-        "switch_level": node.values.GetMultilevelSwitchLevel(),
-        "controls": GetControls(node),
-        "basics": "<pre>%s</pre>\n" % node.BasicString(),
-        "classes": "\n".join(RenderNodeCommandClasses(node)),
-        "associations": "\n".join(RenderNodeAssociations(node)),
-        "values": "\n".join(RenderMiscValues(node)),
-        "configurations": "\n".join(RenderNodeParameters(node)),
-        "readings": "\n".join(readings),
-        "scenes": "\n".join(RenderNodeScenes(node)),
-    }
-
-    return out
-
-
 def RenderNodeBrief(node: application_node.ApplicationNode, db, _is_failed):
     readings = (RenderReadings(node.values.Sensors() +
                                node.values.Meters() +
@@ -1148,13 +1086,54 @@ def RenderNodeBrief(node: application_node.ApplicationNode, db, _is_failed):
         "controls": GetControls(node),
         "basics": "<pre>%s</pre>\n" % node.BasicString(),
         "readings": "\n".join(readings),
-        "n": node.n,
+        "no": node.n,
         "state": state,
         "last_contact": "(%s) [%s]" % (TimeFormat(pnode.last_contact), age),
         "product": "%s (%s)" % (pnode.device_description, pnode.device_type),
     }
 
     return out
+
+
+def RenderNode(node: application_node.ApplicationNode, db):
+    out = RenderNodeBrief(node, db, False)
+
+    out["classes"] = "\n".join(RenderNodeCommandClasses(node))
+    out["associations"] = "\n".join(RenderNodeAssociations(node))
+    out["values"] = "\n".join(RenderMiscValues(node))
+    out["configurations"] = "\n".join(RenderNodeParameters(node))
+    out["scenes"] = "\n".join(RenderNodeScenes(node))
+
+    return out
+
+
+# ======================================================================
+# URL Handlers
+# ======================================================================
+
+
+class BaseHandler(tornado.web.RequestHandler):
+    """All handlers should inherit from this one
+    """
+
+    def initialize(self):
+        pass
+
+
+class MainHandler(BaseHandler):
+    """ Handler for root path - simply redirects to /about
+    """
+
+    @tornado.web.asynchronous
+    def get(self, *path):
+        args = {
+            "css_path": OPTIONS.css_style_file,
+            "title": "Web-Zwaver",
+            "body": BODY,
+            "script": SCRIPT,
+        }
+        self.write(HTML % args)
+        self.finish()
 
 
 class NodeActionHandler(BaseHandler):
@@ -1380,10 +1359,13 @@ class DisplayHandler(BaseHandler):
 HANDLERS = [
     ("/", MainHandler, {}),
 
-    # handles controller actions which will typically result in updates being send to the
-    # websocket
+    # handles controller actions which will typically result in
+    # updates being send to the websocket(s)
     (r"/controller/(.+)", ControllerActionHandler, {}),
+    # handles node actions which will typically result in
+    # updates being send to the websocket(s)
     (r"/node/(.+)", NodeActionHandler, {}),
+    # Request updates being send to the websocket(s)
     (r"/display/(.+)", DisplayHandler, {}),
     # for debugging
     ("/json/(.+)", JsonHandler, {}),
@@ -1458,8 +1440,6 @@ def main():
         {'manufacturer': cp[0], 'type': cp[1], 'product': cp[2]})
     PROTOCOL_NODESET.AddListener(APPLICATION_NODESET)
     PROTOCOL_NODESET.AddListener(NodeUpdater())
-
-    # TODO n.InitializeExternally(CONTROLLER.props.product, CONTROLLER.props.library_type, True)
 
     logging.warning("listening on port %d", OPTIONS.port)
     application.listen(OPTIONS.port)
