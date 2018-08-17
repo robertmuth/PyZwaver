@@ -153,7 +153,7 @@ Simple demo app using the pyzwaver library
 <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/binary_switch/0'>
     Off</button>
 &nbsp;
-<button onclick='HandleAction(event)' data-param='/node/<CURRENT>/binary_switch/100'>
+<button onclick='HandleAction(event)' data-param='/node/<CURRENT>/binary_switch/99'>
     On</button>
 &nbsp;
 </span>
@@ -174,11 +174,16 @@ Simple demo app using the pyzwaver library
 </table>
 
 <h2>Maintenance</h2>
-<div id=one_node_maintenance>
+<table width='100%' id=one_node_maintenance>
+<tr>
+<td width='45%' valign='top'>
 
 <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/ping'>
     Ping Node</button>
 &nbsp;
+<button id=one_node_documentation onclick='HandleUrl(event)' data-param=''>
+    Search Documentation</button>
+<p>
 <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_dynamic'>
     Refresh Dynamic</button>
 &nbsp;
@@ -200,10 +205,11 @@ Simple demo app using the pyzwaver library
     Probe Scenes</button>
 &nbsp;
 
-<button id=one_node_documentation onclick='HandleUrl(event)' data-param=''>
-    Search Documentation</button>
+</td>
+
+
     
-<p>
+<td width='45%' valign='top'>
 <button onclick='HandleAction(event)' 
         data-param='/node/<CURRENT>/set_name/'
         data-args='one_node_name'>
@@ -238,9 +244,10 @@ delay <input id=one_node_scene_delay type='number' name='delay' value=0 min=0 ma
 <option value='0'>off</option>
 </select>
 
+</td>
+</tr>
 
-
-</div>
+</table>
 
 
  
