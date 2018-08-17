@@ -184,7 +184,22 @@ size <select id=size name='size'>
 <option value='4'>4</option>
 </select>
 value <input id=value type='number' name='val' value=0 style='width: 7em'>
+
 <p>
+
+<button onclick='HandleUrlInputScene(event)' data-param='/node/<CURRENT>/change_scene/'>
+    Change Scene</button>    
+no <input id=scene_num type='number' name='num' value=1 min=1 max=255 style='width: 3em'>
+level <input id=scene_level type='number' name='level' value=0 min=0 max=255 style='width: 3em'>
+delay <input id=scene_delay type='number' name='delay' value=0 min=0 max=255 style='width: 3em'>
+
+<select id=scene_extra name='extra'>
+<option value='128'>on</option>
+<option value='0'>off</option>
+</select>
+
+<p>
+
 <span id=one_node_switch>
 <button onclick='HandleUrl(event)' data-param='/node/<CURRENT>/binary_switch/0'>
     Off</button>
@@ -414,12 +429,23 @@ function ShowTab(id) {
    document.getElementById(id).style.display = "block";
 }
 
+function RequestURL(url) {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.send();
+}
+
+function RequestActionURL(param, args) {
+    const base = "//" + window.location.host + param;
+    RequestURL(base + args.join("/"));
+}
+
 function HandleUrl(ev) {
     ev.preventDefault();
     ev.stopPropagation();
     const param = ev.target.dataset.param.replace("<CURRENT>", currentNode);
     console.log("HandleUrl: " + param + ": " + ev.target);
-    RequestURL("//" + window.location.host + param);
+    RequestActionURL(param, []);
 }
 
 function HandleUrlInput(ev) {
@@ -428,7 +454,7 @@ function HandleUrlInput(ev) {
     const param = ev.target.dataset.param.replace("<CURRENT>", currentNode);
     const input_elem = ev.target.parentElement.getElementsByTagName("input")[0];
     console.log("HandleUrl: " + param + ": " + input_elem.value + " " + ev.target);
-    RequestURL("//" + window.location.host + param + input_elem.value);
+    RequestActionURL(param, [input_elem.value]);
 }
 
 function HandleUrlInputConfig(ev) {
@@ -440,8 +466,22 @@ function HandleUrlInputConfig(ev) {
     const input_size = document.getElementById("size").value;
     const input_value = document.getElementById("value").value;
 
-    console.log("HandleUrl: " + param + ": " + input_num + " " + input_size + " " + input_value);
-    RequestURL("//" + window.location.host + param + input_num + "/" + input_size + "/" + input_value);
+    console.log(`HandleUrl: ${param}: ${input_num} ${input_size} ${input_value}`);
+    RequestActionURL(param, [input_num, input_size, input_value]);
+}
+
+function HandleUrlInputScene(ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const param = ev.target.dataset.param.replace("<CURRENT>", currentNode);
+    const p = ev.target.parentElement;
+    const input_num = document.getElementById("scene_num").value;
+    const input_level = document.getElementById("scene_level").value;
+    const input_delay = document.getElementById("scene_delay").value;
+    const input_extra = document.getElementById("scene_extra").value;
+
+    console.log(`HandleUrl: ${param}: ${input_num} ${input_level} ${input_delay} ${input_extra}`);
+    RequestActionURL(param, [input_num, input_level, input_delay, input_extra]);
 }
 
 function HandleTab(ev) {
@@ -477,11 +517,7 @@ function HandleChange(ev) {
     return false;
 }
 
-function RequestURL(url) {
-    const xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.send();
-}
+
 
 function UpdateSome(tab) {
     RequestURL(tabToDisplay[tab]());
@@ -1149,6 +1185,12 @@ class NodeActionHandler(BaseHandler):
                 group = int(token.pop(0))
                 n = int(token.pop(0))
                 node.AssociationRemove(group, n)
+            elif cmd == "change_scene":
+                scene = int(token.pop(0))
+                level = int(token.pop(0))
+                delay = int(token.pop(0))
+                extra = int(token.pop(0))
+                node.SetSceneConfig(scene, delay, level, extra, True)
             elif cmd == "set_name" and token:
                 print("TTTTTTTTTO: ", token)
                 DB.SetNodeName(num, token.pop(0))

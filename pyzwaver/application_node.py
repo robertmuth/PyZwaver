@@ -531,7 +531,7 @@ class ApplicationNode:
         if not request_update:
             return
         self.BatchCommandSubmitFilteredFast(
-            [(z.SceneActuatorConf, z.SceneActuatorConf_Get, {"scene": scene})], XMIT_OPTIONS)
+            [(z.SceneActuatorConf_Get, {"scene": scene})], XMIT_OPTIONS)
 
     def ResetMeter(self, request_update=True):
         # TODO
