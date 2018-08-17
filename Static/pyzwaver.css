@@ -7,7 +7,7 @@ body {
 a { text-decoration: none; 
 }
 
-table.nodes td.no {
+.node_no {
 	//font-size: 250%;
 	font-size: 70%;
 }
@@ -17,38 +17,35 @@ table.nodes td.name {
     font-weight: bold;
 }
 
-table.nodes td.readings {
+.node_readings {
     font-size: 180%;
     font-weight: bold;
 }
 
-table.nodes td.product {
+.node_product {
     font-size: 70%;
 }
 
-table.nodes td.state {
+.node_state {
     font-size: 70%;
     font-weight: bold;
 }
 
-table.nodes td { 
-    padding: .5em;
-}
+.node_row {
+    // padding: .5em .5em .5em .5em;
+    // margin: .5em .5em .5em .5em;
 
-span.reading {
-	//border-radius: 25px;
-	//border: 2px solid #73AD21;
-	padding: .3em; 
-	margin-left: .3em
 }
-
+.node_row td {
+  padding-bottom: 1em;
+}
 
 pre.stats {
     font-size: 70%;
 }
 
 button {
-    border-color: #666; 
+    border-color: #666;
     background-color: #444;
 }
 
@@ -57,12 +54,12 @@ button.menu {
     font-weight: bold;
 }
 
-button.details {
+button.node_name {
     border-color: #666; 
     background-color: #222;
     color: #228;
     width: 8em;
-    font-size: 110%;
+    font-size: 250%;
     font-weight: bold;
 }
 
