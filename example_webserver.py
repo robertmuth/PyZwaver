@@ -269,6 +269,12 @@ delay <input id=one_node_scene_delay type='number' name='delay' value=0 min=0 ma
 
 <!-- ============================================================ -->
 <div class=tab id=tab-logs>
+    <p>
+    <input type=search 
+           oninput='InstallLogFilter(event)' 
+           id=log_filter_regexp 
+           placeholder="Regexp Filter"/>
+    </p>
     <!-- see http://www.listjs.com/ -->
     <div id="driverlog">
     <table border=1>
@@ -355,11 +361,33 @@ const  tabToDisplay = {
 };
 
 
+
 //  List visualization using the http://listjs.com/
+// t: timestamp
+// c: completion status
+// d: direction
+// m: message
 const listLog = new List('driverlog', {valueNames: [ 't', 'c', 'd', 'm' ]});
 const listSlow = new List('driverslow', {valueNames: [ 'd', 't', 'm' ]});
 const listFailed = new List('driverfailed', {valueNames: [ 'd', 't', 'm' ]});
 
+var regex = /node:02/;
+
+function InstallLogFilter(ev) {
+    if (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+    }
+    let text = document.getElementById('log_filter_regexp').value;
+    listLog.filter();
+    console.log(`Filter is: /${text}/`);
+    if (text) {
+        listLog.filter(
+            function (item) {
+                return item.values().m.match(new RegExp(text)); 
+        });
+    }
+}
 
 function OpenSocket() {
     const loc = window.location;
@@ -399,6 +427,7 @@ function SocketMessageHandler(e) {
          const values = JSON.parse(val);
          listLog.clear();
          listLog.add(values);
+         InstallLogFilter(null);
     } else if (tag == "b") {
          // BAD (list)
          const values = JSON.parse(val);

@@ -437,14 +437,14 @@ class Message:
                 return "unexpected"
             assert self._callback is not None
             if not self._callback(m):
-                return "continue"
+                return "Continue"
             return self._CompleteNoMessage(ts, MESSAGE_STATE_COMPLETED)
         elif self.action_requ[0] == ACTION_MATCH_CBID:
             if m[4] != cbid:
                 logging.error("[%d] %s unexpected call back id: %s",
                               self.node, PrettifyRawMessage(self.payload),
                               PrettifyRawMessage(m))
-                return "unexpected"
+                return "Unexpected"
             return self.Complete(ts, m, MESSAGE_STATE_COMPLETED)
 
         else:
@@ -467,7 +467,7 @@ class Message:
                 logging.debug("delivered to stack")
                 if self._callback:
                     self._callback(m)
-                return "continue"
+                return "Continue"
             else:
                 logging.warning("[%d] %s unexpected resp status is %d wanted %d",
                                 self.node, PrettifyRawMessage(self.payload),
