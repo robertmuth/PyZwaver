@@ -25,12 +25,15 @@ import logging
 
 from pyzwaver import zwave as z
 
+CUSTOM_COMMAND_ACTIVE_SCENE = (256, 1)
 
 def Hexify(t):
     return ["%02x" % i for i in t]
 
 
 def StringifyCommand(key):
+    if key == CUSTOM_COMMAND_ACTIVE_SCENE:
+        return "_Active_Scene"
     return z.SUBCMD_TO_STRING.get(key[0] * 256 + key[1], "Unknown:%02x:%02x" % (key[0], key[1]))
 
 
@@ -460,6 +463,8 @@ def MaybePatchCommand(m):
             "B fixing up SensorMultilevel_Report %s: [3] %02x-> %02x", Hexify(m), m[3], x)
         m[3] = x
 
+    if (m[0], m[1]) == z.Version_CommandClassReport and len(m) == 3:
+        m.append(1)
     # if (m[0], m[1]) == z.SensorMultilevel_Report and (m[3] & 7) not in (1, 2, 4):
     #     size = m[3] & 7
     #     if size == 3:

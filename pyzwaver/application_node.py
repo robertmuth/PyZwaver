@@ -44,6 +44,7 @@ NODE_STATE_INTERVIEWED = "3_Interviewed"
 _NO_VERSION = {"version": -1}
 _BAD_VERSION = {"version": 0}
 
+
 def _AssociationSubkey(v):
     return v["group"]
 
@@ -63,7 +64,10 @@ _COMMANDS_WITH_MAP_VALUES = {
 }
 
 _COMMANDS_WITH_SPECIAL_ACTIONS = {
-    z.ManufacturerSpecific_Report: lambda node, _: node.MaybeChangeState(NODE_STATE_INTERVIEWED),
+    z.ManufacturerSpecific_Report: lambda _ts, node, _values:
+        node.MaybeChangeState(NODE_STATE_INTERVIEWED),
+    z.SceneActuatorConf_Report: lambda ts, node, values:
+        node.values.Set(ts, command.CUSTOM_COMMAND_ACTIVE_SCENE, values)
 }
 
 XMIT_OPTIONS_NO_ROUTE = (z.TRANSMIT_OPTION_ACK |
@@ -139,7 +143,7 @@ _STATIC_PROPERTY_QUERIES = [
     (z.SwitchAll_Get, {}),
     (z.Alarm_SupportedGet, {}),
     # mostly static
-    # [zwave.AssociationCommandConfiguration, zwave.AssociationCommandConfiguration_SupportedGet],
+    # zwave.AssociationCommandConfiguration_SupportedGet],
     (z.NodeNaming_Get, {}),
     (z.NodeNaming_LocationGet, {}),
     (z.ColorSwitch_SupportedGet, {}),
@@ -164,7 +168,7 @@ def _MultiChannelEndpointQueries(endpoints):
 
 
 def _SceneActuatorConfiguration(scenes):
-    return [(z.SceneActuatorConf_Get, {"scene": s}) for s in scenes]
+    return [(z.SceneActuatorConf_Get, {"scene": s}) for s in scenes + [0, 0]]
 
 
 def _AssociationQueries(assocs):
@@ -630,7 +634,7 @@ class ApplicationNode:
 
         special = _COMMANDS_WITH_SPECIAL_ACTIONS.get(key)
         if special:
-            special(self, values)
+            special(ts, self, values)
 
         key_ex = _COMMANDS_WITH_MAP_VALUES.get(key)
         if key_ex:

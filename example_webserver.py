@@ -103,28 +103,28 @@ Simple demo app using the pyzwaver library
 
 <h2>Actions</h2>
 <div id=controller_buttons</div>
-<button onclick='HandleUrl(event)' data-param='/controller/refresh'>
+<button onclick='HandleAction(event)' data-param='/controller/refresh'>
     Refresh</button>
 &nbsp;
-<button onclick='HandleUrl(event)' data-param='/controller/soft_reset'>
+<button onclick='HandleAction(event)' data-param='/controller/soft_reset'>
     Soft Reset</button>
 &nbsp;
-<button onclick='HandleUrl(event)' data-param='/controller/hard_reset'>
+<button onclick='HandleAction(event)' data-param='/controller/hard_reset'>
     Hard Reset</button>
 </div>
 
 <h2>Pairing</h2>
 
-<button onclick='HandleUrl(event)' data-param='/controller/add_node'>
+<button onclick='HandleAction(event)' data-param='/controller/add_node'>
     Add Node</button>
 &nbsp;
-<button onclick='HandleUrl(event)' data-param='/controller/remove_node'>
+<button onclick='HandleAction(event)' data-param='/controller/remove_node'>
     Remove Node</button>
 &nbsp;
-<button onclick='HandleUrl(event)' data-param='/controller/add_controller_primary'>
+<button onclick='HandleAction(event)' data-param='/controller/add_controller_primary'>
     Add Primary Controller</button>
 &nbsp;
-<button onclick='HandleUrl(event)' data-param='/controller/set_learn_mode'>
+<button onclick='HandleAction(event)' data-param='/controller/set_learn_mode'>
     Enter Learn Mode</button>
     
 <h2>APIs</h2>
@@ -141,6 +141,37 @@ Simple demo app using the pyzwaver library
 
 <h2>Basics</h2>
 <div id=one_node_basics></div>
+
+<table width='100%'>
+<tr>
+
+<td width='45%' valign='top'><h2>Actions</h2>
+<div id=one_node_actions>
+
+
+<span id=one_node_switch>
+<button onclick='HandleAction(event)' data-param='/node/<CURRENT>/binary_switch/0'>
+    Off</button>
+&nbsp;
+<button onclick='HandleAction(event)' data-param='/node/<CURRENT>/binary_switch/100'>
+    On</button>
+&nbsp;
+</span>
+
+<input id=one_node_slide 
+       onchange='HandleChange(event)' 
+       data-param='/node/<CURRENT>/multilevel_switch/' 
+       class='multilevel' 
+       type=range min=0 max=100 value=0>
+</span>
+  </td>
+
+<td width='45%' valign='top'><h2>Readings</h2>
+<div id=one_node_readings></div>
+</td>
+
+</tr>
+</table>
 
 <h2>Maintenance</h2>
 <div id=one_node_maintenance>
@@ -169,6 +200,9 @@ Simple demo app using the pyzwaver library
     Probe Scenes</button>
 &nbsp;
 
+<button id=one_node_documentation onclick='HandleUrl(event)' data-param=''>
+    Search Documentation</button>
+    
 <p>
 <button onclick='HandleAction(event)' 
         data-param='/node/<CURRENT>/set_name/'
@@ -204,31 +238,11 @@ delay <input id=one_node_scene_delay type='number' name='delay' value=0 min=0 ma
 <option value='0'>off</option>
 </select>
 
-<h2>Actions</h2>
-<div id=one_node_actions>
 
-
-<span id=one_node_switch>
-<button onclick='HandleAction(event)' data-param='/node/<CURRENT>/binary_switch/0'>
-    Off</button>
-&nbsp;
-<button onclick='HandleAction(event)' data-param='/node/<CURRENT>/binary_switch/100'>
-    On</button>
-&nbsp;
-</span>
-
-<input id=one_node_slide 
-       onchange='HandleChange(event)' 
-       data-param='/node/<CURRENT>/multilevel_switch/' 
-       class='multilevel' 
-       type=range min=0 max=100 value=0>
-</span>
-  
 
 </div>
 
-<h2>Readings</h2>
-<div id=one_node_readings></div>
+
  
 <h2>Command Classes</h2>
 <div id=one_node_classes></div>
@@ -410,7 +424,9 @@ function SocketMessageHandler(e) {
                 values.one_node_readings;
             document.getElementById("one_node_scenes").innerHTML =
                 values.one_node_scenes;
-                
+            
+            document.getElementById("one_node_documentation").dataset.param =
+                values.one_node_link;
             document.getElementById("one_node_name").value = 
                 values.one_node_name;
             document.getElementById("one_node_slide").value = 
@@ -459,17 +475,13 @@ function HandleAction(ev) {
             args.push(document.getElementById(elem).value);
         }
     }
-    console.log("HandleUrl: " + param + ": " + args);
+    console.log("HandleAction: " + param + ": " + args);
     RequestActionURL(param, args);
 }
 
 
 function HandleUrl(ev) {
-    ev.preventDefault();
-    ev.stopPropagation();
-    const param = ev.target.dataset.param.replace("<CURRENT>", currentNode);
-    console.log("HandleUrl: " + param + ": " + ev.target);
-    RequestActionURL(param, []);
+    window.location = ev.target.dataset.param;
 }
 
 function HandleUrlInput(ev) {
@@ -1114,11 +1126,16 @@ def RenderMiscValues(node: application_node.ApplicationNode):
     return out
 
 
+def _ProductLink(manu_id, prod_type, prod_id):
+    return "http://www.google.com/search?q=site:products.z-wavealliance.org+0x%04x+0x%04x" % (prod_type, prod_id)
+
+
 def RenderNode(node: application_node.ApplicationNode, db):
     readings = (RenderReadings(node.values.Sensors() +
                                node.values.Meters() +
                                node.values.MiscSensors()))
     out = {
+        "one_node_link": _ProductLink(*node.values.ProductInfo()),
         "one_node_name": db.GetNodeName(node.n),
         "one_node_switch_level": node.values.GetMultilevelSwitchLevel(),
         "one_node_controls": GetControls(node),
@@ -1302,10 +1319,6 @@ HANDLERS = [
 ]
 
 
-def _ProductSearchLink(prod_type, prod_id):
-    return "http://www.google.com/search?q=site:products.z-wavealliance.org+0x%04x+0x%04x" % (prod_type, prod_id)
-
-
 # use --logging=none
 # to disable the tornado logging overrides caused by
 # tornado.options.parse_command_line(
@@ -1365,6 +1378,12 @@ def main():
     PROTOCOL_NODESET = protocol_node.NodeSet(DRIVER, CONTROLLER.GetNodeId())
     APPLICATION_NODESET = application_node.ApplicationNodeSet(PROTOCOL_NODESET)
 
+    cp = CONTROLLER.props.product
+    APPLICATION_NODESET.put(
+        CONTROLLER.GetNodeId(),
+        time.time(),
+        z.ManufacturerSpecific_Report,
+        {'manufacturer': cp[0], 'type': cp[1], 'product': cp[2]})
     PROTOCOL_NODESET.AddListener(APPLICATION_NODESET)
     PROTOCOL_NODESET.AddListener(NodeUpdater())
 
