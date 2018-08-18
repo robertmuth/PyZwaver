@@ -173,7 +173,7 @@ class Node(object):
             logging.warning("[%d] skip failed check for controller", self.n)
             return
 
-        def handler(_m):
+        def handler(m):
             if m is None:
                 return
             logging.info("[%d] is failed check: %d, %s", self.n,
@@ -322,7 +322,7 @@ class NodeSet(object):
                 "controls": controls,
             }
             for l in self._listeners:
-                l.put(n, ts, (None, None), value)
+                l.put(n, ts, command.CUSTOM_COMMAND_APPLICATION_UPDATE, value)
         elif kind == z.UPDATE_STATE_SUC_ID:
             logging.warning("succ id updated: needs work")
         else:
