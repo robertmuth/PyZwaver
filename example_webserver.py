@@ -1348,7 +1348,7 @@ class DisplayHandler(BaseHandler):
                     SendToSocketJson("o%d:" % num, RenderNode(node, DB))
             else:
                 logging.error("unknown command %s", token)
-        except:
+        except Exception as e:
             logging.error("cannot processed: %s", path[0])
             print("-" * 60)
             traceback.print_exc(file=sys.stdout)

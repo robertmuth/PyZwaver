@@ -31,7 +31,7 @@ from pyzwaver import zmessage
 from pyzwaver import command
 from pyzwaver import zwave as z
 # from pyzwaver import zsecurity
-from pyzwaver import driver
+from pyzwaver.driver import Driver
 
 
 def Hexify(t):
@@ -90,7 +90,7 @@ class Node(object):
     def SendCommand(self, key, values, priority: tuple, xmit: int):
         try:
             raw_cmd = command.AssembleCommand(key[0], key[1], values)
-        except Exception as e:
+        except Exception as _e:
             logging.error("cannot assemble command for %s %s %s",
                           command.StringifyCommand(key),
                           z.SUBCMD_TO_PARSE_TABLE[key[0] * 256 + key[1]],
@@ -220,8 +220,8 @@ class NodeSet(object):
 
     """
 
-    def __init__(self, message_queue: driver.Driver, controller_n):
-        self._driver = message_queue
+    def __init__(self, driver: Driver, controller_n):
+        self._driver = driver
         self._controller_n = controller_n
         self._listeners = []
         self.nodes = {}
@@ -282,7 +282,7 @@ class NodeSet(object):
             if value is None:
                 logging.error("[%d] parsing failed for %s", n, Hexify(data))
                 return
-        except:
+        except Exception as _e:
             logging.error("[%d] cannot parse: %s", n, zmessage.PrettifyRawMessage(m))
             print("-" * 60)
             traceback.print_exc(file=sys.stdout)
