@@ -843,7 +843,7 @@ class NodeUpdater(object):
             self._nodes_to_update.clear()
             if count % 20 == 0:
                 for n in CONTROLLER.nodes:
-                    node = APPLICATION_NODESET.GetNode(n)
+                    node: application_node.ApplicationNode = APPLICATION_NODESET.GetNode(n)
                     if node.state < application_node.NODE_STATE_DISCOVERED:
                         node.protocol_node.Ping(3, False)
                         time.sleep(0.5)
@@ -1076,8 +1076,8 @@ def RenderNodeBrief(node: application_node.ApplicationNode, db, _is_failed):
     if pnode.failed:
         state = "FAILED"
     age = "never"
-    if pnode.last_contact:
-        age = "%dm ago" % ((time.time() - pnode.last_contact) / 60.0)
+    if node.last_contact:
+        age = "%dm ago" % ((time.time() - node.last_contact) / 60.0)
 
     out = {
         "name": db.GetNodeName(node.n),
@@ -1088,7 +1088,7 @@ def RenderNodeBrief(node: application_node.ApplicationNode, db, _is_failed):
         "readings": "\n".join(readings),
         "no": node.n,
         "state": state,
-        "last_contact": "(%s) [%s]" % (TimeFormat(pnode.last_contact), age),
+        "last_contact": "(%s) [%s]" % (TimeFormat(node.last_contact), age),
         "product": "%s (%s)" % (pnode.device_description, pnode.device_type),
     }
 
@@ -1201,22 +1201,6 @@ class NodeActionHandler(BaseHandler):
             traceback.print_exc(file=sys.stdout)
             print("-" * 60)
         self.finish()
-
-
-def BalanceNodes(_m):
-    logging.warning("balancing contoller %s vs nodeset %s",
-                    repr(CONTROLLER.nodes), repr(set(PROTOCOL_NODESET.nodes.keys())))
-
-    # note, we are modifying NODESET.nodes while iterating
-    for n in list(APPLICATION_NODESET.nodes.keys()):
-        if n not in CONTROLLER.nodes:
-            logging.warning("dropping %d", n)
-            # TODO:
-            APPLICATION_NODESET.DropNode(n)
-    for n in CONTROLLER.nodes:
-        if n not in APPLICATION_NODESET.nodes:
-            logging.warning("request node info for %d", n)
-            CONTROLLER.RequestNodeInfo(n)
 
 
 class ControllerActionHandler(BaseHandler):
@@ -1402,8 +1386,8 @@ def main():
     tornado.options.parse_command_line()
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
-    logger.setLevel(logging.WARNING)
-    logger.setLevel(logging.ERROR)
+    #logger.setLevel(logging.WARNING)
+    #logger.setLevel(logging.ERROR)
     for h in logger.handlers:
         h.setFormatter(MyFormatter())
 
@@ -1430,7 +1414,7 @@ def main():
     DRIVER.WaitUntilAllPreviousMessagesHaveBeenHandled()
     print(CONTROLLER)
     PROTOCOL_NODESET = protocol_node.NodeSet(DRIVER, CONTROLLER.GetNodeId())
-    APPLICATION_NODESET = application_node.ApplicationNodeSet(PROTOCOL_NODESET)
+    APPLICATION_NODESET = application_node.ApplicationNodeSet(PROTOCOL_NODESET, CONTROLLER.GetNodeId())
 
     cp = CONTROLLER.props.product
     APPLICATION_NODESET.put(
@@ -1439,8 +1423,8 @@ def main():
         z.ManufacturerSpecific_Report,
         {'manufacturer': cp[0], 'type': cp[1], 'product': cp[2]})
     PROTOCOL_NODESET.AddListener(APPLICATION_NODESET)
+    # The updater will do the initial pings of the nodes
     PROTOCOL_NODESET.AddListener(NodeUpdater())
-
     logging.warning("listening on port %d", OPTIONS.port)
     application.listen(OPTIONS.port)
     tornado.ioloop.IOLoop.instance().start()

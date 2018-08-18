@@ -403,19 +403,21 @@ class ApplicationNode:
     Application level messages are passed to it via put()
     """
 
-    def __init__(self, n, proto_node: protocol_node.Node):
+    def __init__(self, n, proto_node: protocol_node.Node, is_controller):
         assert n >= 1
         self.n = n
+        self.is_controller = is_controller
         self.name = "Node %d" % n
         self.protocol_node = proto_node
         self.state = NODE_STATE_NONE
         self._controls = set()
         #
         self.values = NodeValues()
-        self.scenes = {}
+        self.is_controller = is_controller
+        self.last_contact = 0
 
     def IsSelf(self):
-        return self.protocol_node.is_controller
+        return self.is_controller
 
     def IsInterviewed(self):
         return self.state == NODE_STATE_INTERVIEWED
@@ -621,6 +623,7 @@ class ApplicationNode:
             self.RefreshSemiStaticValues()
 
     def put(self, ts, key, values):
+        self.last_contact = ts
 
         if key == command.CUSTOM_COMMAND_APPLICATION_UPDATE:
             self._InitializeCommands(values["type"], values["commands"], values["controls"])
@@ -678,7 +681,8 @@ class ApplicationNodeSet(object):
 
     """
 
-    def __init__(self, nodeset: protocol_node.NodeSet):
+    def __init__(self, nodeset: protocol_node.NodeSet, controller_n):
+        self._controller_n = controller_n
         self._nodeset = nodeset
         self.nodes = {}
 
@@ -689,7 +693,7 @@ class ApplicationNodeSet(object):
     def GetNode(self, n):
         node = self.nodes.get(n)
         if node is None:
-            node = ApplicationNode(n, self._nodeset.GetNode(n))
+            node = ApplicationNode(n, self._nodeset.GetNode(n), n == self._controller_n)
             self.nodes[n] = node
         return node
 

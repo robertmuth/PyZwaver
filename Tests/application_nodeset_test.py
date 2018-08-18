@@ -51,7 +51,7 @@ class FakeDriver(object):
 def main():
     fake_driver = FakeDriver()
     pnodeset = protocol_node.NodeSet(fake_driver, 1)
-    app_nodeset = application_node.ApplicationNodeSet(pnodeset)
+    app_nodeset = application_node.ApplicationNodeSet(pnodeset, 1)
 
     node = app_nodeset.GetNode(2)
 

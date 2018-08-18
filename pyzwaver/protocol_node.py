@@ -55,7 +55,6 @@ class Node(object):
         self.n = n
         self.is_controller = is_controller
         self._driver = driver
-        self.last_contact = 0
         self.flags = set()
         self.device_type = None
         self.device_description = ""
@@ -65,7 +64,7 @@ class Node(object):
     def __str__(self):
         out = [
             "NODE: %d" % self.n,
-            "last-contact: %s" % self.last_contact,
+            #"last-contact: %s" % self.last_contact,
             "flags %s" % self.flags,
             "device: %s(%s)" % (self.device_type, self.device_description),
         ]
@@ -274,7 +273,6 @@ class NodeSet(object):
         n = m[5]
         size = m[6]
         node = self.GetNode(n)
-        node.last_contact = ts
         try:
             data = [int(x) for x in m[7:7 + size]]
             data = command.MaybePatchCommand(data)
@@ -305,7 +303,6 @@ class NodeSet(object):
             length = m[6]
             m = m[7: 7 + length]
             node = self.GetNode(n)
-            node.last_contact = ts
             commands = []
             controls = []
             seen_marker = False
