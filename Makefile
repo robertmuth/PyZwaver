@@ -29,6 +29,10 @@ tests:
 	@echo "run message parsing test"
 	@echo "============================================================"
 	cd Tests;./command_test.py < ../TestData/commands.input.txt
+	@echo "============================================================"
+	@echo "application node test"
+	@echo "============================================================"
+	cd Tests;./application_nodeset_test.py
 	@echo "PASS"		
 
 tests_obsolete:
