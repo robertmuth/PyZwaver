@@ -622,7 +622,7 @@ class ApplicationNode:
 
     def put(self, ts, key, values):
 
-        if key[0] is None:
+        if key == command.CUSTOM_COMMAND_APPLICATION_UPDATE:
             self._InitializeCommands(values["type"], values["commands"], values["controls"])
             self.MaybeChangeState(NODE_STATE_DISCOVERED)
             return
@@ -664,7 +664,7 @@ class ApplicationNode:
 class ApplicationNodeSet(object):
     """NodeSet represents the collection of all nodes in a zwave network.
 
-    All incoming application messages from the nodes (to the controller) are arrving in the
+    All incoming application messages from the nodes (to the controller) are arrivng in the
     message_queue (_shared.mq).
 
     The class spawns a receiver thread, which listens to incoming messages and dispatches them
@@ -681,6 +681,10 @@ class ApplicationNodeSet(object):
     def __init__(self, nodeset: protocol_node.NodeSet):
         self._nodeset = nodeset
         self.nodes = {}
+
+    def DropNode(self, n):
+        del self.nodes[n]
+        self._nodeset.DropNode()
 
     def GetNode(self, n):
         node = self.nodes.get(n)

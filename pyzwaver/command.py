@@ -25,16 +25,27 @@ import logging
 
 from pyzwaver import zwave as z
 
-CUSTOM_COMMAND_ACTIVE_SCENE = (256, 1)
+CUSTOM_COMMAND_ACTIVE_SCENE = (256, 2)
+CUSTOM_COMMAND_APPLICATION_UPDATE = (256, 1)
+
+_CUSTOM_COMMAND_STRINGS = {
+    CUSTOM_COMMAND_ACTIVE_SCENE: "_Active_Scene",
+    CUSTOM_COMMAND_APPLICATION_UPDATE: "_Application_Update",
+}
+
 
 def Hexify(t):
     return ["%02x" % i for i in t]
 
 
 def StringifyCommand(key):
-    if key == CUSTOM_COMMAND_ACTIVE_SCENE:
-        return "_Active_Scene"
-    return z.SUBCMD_TO_STRING.get(key[0] * 256 + key[1], "Unknown:%02x:%02x" % (key[0], key[1]))
+    s = _CUSTOM_COMMAND_STRINGS.get(key)
+    if s:
+        return s
+    s = z.SUBCMD_TO_STRING.get(key[0] * 256 + key[1])
+    if s:
+        return s
+    return "Unknown:%02x:%02x" % (key[0], key[1])
 
 
 def StringifyCommandClass(cls):
