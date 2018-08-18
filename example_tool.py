@@ -23,15 +23,34 @@ Example command line tool for pairing/unpairing
 import logging
 import argparse
 import sys
+import time
 from typing import Dict, Tuple, List
 
 from pyzwaver.controller import Controller
 from pyzwaver.driver import Driver, MakeSerialDevice
+from pyzwaver import zmessage
 from pyzwaver import protocol_node
 from pyzwaver import zwave as z
 
+XMIT_OPTIONS_NO_ROUTE = (z.TRANSMIT_OPTION_ACK |
+                         z.TRANSMIT_OPTION_EXPLORE)
+
+XMIT_OPTIONS = (z.TRANSMIT_OPTION_ACK |
+                z.TRANSMIT_OPTION_AUTO_ROUTE |
+                z.TRANSMIT_OPTION_EXPLORE)
+
+XMIT_OPTIONS_SECURE = (z.TRANSMIT_OPTION_ACK |
+                       z.TRANSMIT_OPTION_AUTO_ROUTE)
+
+
+class NodeUpdateListener(object):
+
+    def put(self, n, _ts, key, values):
+        print("RECEIVED ", n, key, values)
+
+
 def ControllerEventCallback(action, event):
-    print (action, event)
+    print(action, event)
 
 
 def InitController(args, update_routing=False) -> Tuple[Driver, Controller]:
@@ -45,7 +64,10 @@ def InitController(args, update_routing=False) -> Tuple[Driver, Controller]:
     if update_routing:
         controller.UpdateRoutingInfo()
         driver.WaitUntilAllPreviousMessagesHaveBeenHandled()
-    print(controller)
+    print(controller.StringBasic())
+    if update_routing:
+        print(controller.StringRoutes())
+    # print(controller.props.StringApis())
     return driver, controller
 
 
@@ -75,9 +97,40 @@ def cmd_hard_reset(args):
     controller.SetDefault()
     driver.Terminate()
 
+
 def cmd_controller_details(args):
     driver, controller = InitController(args, True)
     driver.Terminate()
+
+
+def cmd_set_basic_multi(args):
+    driver, controller = InitController(args, True)
+    nodeset = protocol_node.NodeSet(driver, controller.GetNodeId())
+    nodes = [nodeset.GetNode(n) for n in args.node]
+    logging.info("sending command to %s", nodes)
+    nodeset.SendMultiCommand(nodes,
+                             z.Basic_Set,
+                             {"level": args.level},
+                             zmessage.ControllerPriority(),
+                             XMIT_OPTIONS
+                             )
+
+    driver.Terminate()
+
+
+def cmd_get_basic(args):
+    driver, controller = InitController(args, True)
+    nodeset = protocol_node.NodeSet(driver, controller.GetNodeId())
+    nodeset.AddListener(NodeUpdateListener())
+    for n in args.node:
+        node = nodeset.GetNode(n)
+        node.SendCommand(z.Basic_Get,
+                         {},
+                         zmessage.ControllerPriority(),
+                         XMIT_OPTIONS)
+    time.sleep(2)
+    driver.Terminate()
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -88,10 +141,11 @@ def main():
                         help="(un)pairing timeout")
 
     parser.add_argument("--serial_port", type=str, default="/dev/ttyUSB0",
-                        help='The USB serial device representing the Z-Wave controller stick. ' 
+                        help='The USB serial device representing the Z-Wave controller stick. '
                              'Common settings are: dev/ttyUSB0, dev/ttyACM0')
 
     subparsers = parser.add_subparsers(help="sub-commands")
+
     s = subparsers.add_parser("pair", help="Pair a Z-wave node")
     s.set_defaults(func=cmd_pair)
 
@@ -104,10 +158,23 @@ def main():
     s = subparsers.add_parser("controller_details", help="Show Z-wave controller details")
     s.set_defaults(func=cmd_controller_details)
 
+    s = subparsers.add_parser("set_basic_multi", help="Send mutlicast BasicSet command")
+    s.set_defaults(func=cmd_set_basic_multi)
+    s.add_argument("--level", type=int, default=99, help="level to set")
+    s.add_argument('--node', type=int, nargs='+', help="dest node(s) - separate multiple nodes with spaces")
+
+    s = subparsers.add_parser("get_basic", help="Run BasicGet command")
+    s.set_defaults(func=cmd_get_basic)
+    s.add_argument('--node', type=int, nargs='+', help="dest node(s) - separate multiple nodes with spaces")
+
     args = parser.parse_args()
     logging.basicConfig(level=args.verbosity)
-    args.func(args)
-
+    if "func" in args:
+        print(args)
+        args.func(args)
+    else:
+        # we should not reach here but there seems to be a bug
+        parser.error("No command specified - try -h option")
     return 0
 
 

@@ -25,6 +25,8 @@ import sys
 import threading
 import traceback
 
+from typing import List
+
 from pyzwaver import zmessage
 from pyzwaver import command
 from pyzwaver import zwave as z
@@ -88,7 +90,7 @@ class Node(object):
     def SendCommand(self, key, values, priority: tuple, xmit: int):
         try:
             raw_cmd = command.AssembleCommand(key[0], key[1], values)
-        except:
+        except Exception as e:
             logging.error("cannot assemble command for %s %s %s",
                           command.StringifyCommand(key),
                           z.SUBCMD_TO_PARSE_TABLE[key[0] * 256 + key[1]],
@@ -171,7 +173,7 @@ class Node(object):
             logging.warning("[%d] skip failed check for controller", self.n)
             return
 
-        def handler(m):
+        def handler(_m):
             if m is None:
                 return
             logging.info("[%d] is failed check: %d, %s", self.n,
@@ -242,6 +244,30 @@ class NodeSet(object):
 
     def DropNode(self, n):
         del self.nodes[n]
+
+    def _SendMessageMulti(self, nn, m, priority: tuple, handler):
+        mesg = zmessage.Message(m, priority, handler, nn[0])
+        self._driver.SendMessage(mesg)
+
+    def SendMultiCommand(self, nodes: List[Node], key, values, priority: tuple, xmit: int):
+        try:
+            raw_cmd = command.AssembleCommand(key[0], key[1], values)
+        except Exception as e:
+            logging.error("cannot assemble command for %s %s %s",
+                          command.StringifyCommand(key),
+                          z.SUBCMD_TO_PARSE_TABLE[key[0] * 256 + key[1]],
+                          values)
+            print("-" * 60)
+            traceback.print_exc(file=sys.stdout)
+            print("-" * 60)
+            return
+
+        def handler(_):
+            logging.debug("@@handler invoked")
+
+        nn = [node.n for node in nodes]
+        m = zmessage.MakeRawCommandMultiWithId(nn, raw_cmd, xmit)
+        self._SendMessageMulti(nn, m, priority, handler)
 
     def _HandleMessageApplicationCommand(self, ts, m):
         _ = m[4]  # status
