@@ -35,10 +35,9 @@ class FakeDriver(object):
 
     def __init__(self):
         self.history = []
-        self.in_queue = queue.Queue()
 
-    def GetIncommingRawMessage(self):
-        return self.in_queue.get()
+    def AddListener(self, l):
+        pass
 
     def SendMessage(self, m: zmessage.Message):
         self.history.append(m)
@@ -56,7 +55,6 @@ def main():
     node.put(0, z.Version_CommandClassReport, {"class": z.Basic, "version": 10})
     assert node.values.HasCommandClass(z.Basic)
 
-    fake_driver.in_queue.put((None, None))
     print ("OK")
     return 0
 
