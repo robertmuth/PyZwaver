@@ -274,9 +274,8 @@ class Driver(object):
     def SendMessage(self, m: zmessage.Message):
         self._out_queue.put(m.priority, m)
 
-
     def WaitUntilAllPreviousMessagesHaveBeenHandled(self):
-        lock = threading.Lock()
+        lock: threading.Lock = threading.Lock()
         lock.acquire()
         # send dummy message to clear out pipe
         mesg = zmessage.Message(None, zmessage.LowestPriority(), lambda _: lock.release(), None)
@@ -411,5 +410,5 @@ class Driver(object):
             if m is None:
                 break
             for l in self._listeners:
-                 l.put(ts, m)
+                l.put(ts, m)
         logging.warning("_DriverForwardingThread terminated")

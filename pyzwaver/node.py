@@ -195,6 +195,17 @@ def BitsToSetWithOffset(x, offset):
 
 
 class NodeValues:
+    """
+    NodeValues is a cache of all recently received commands sent to a Node.
+
+    The commands are usually of kind "XXXReport".
+
+    The command kinds fall in two categories:
+    1. We only cache one recent message
+       The corresponding  "XXXGet" command does not take an argument.
+    2. We cache several recent messages
+       The corresponding  "XXXGet" command takes an argument.
+    """
 
     def __init__(self):
         self._values = {}
@@ -403,9 +414,10 @@ class NodeValues:
 
 
 class Node:
-    """ANode represents a single node in a zwave network at the application level.
+    """A Node represents a single node in a network.
 
-    Application level messages are passed to it via put()
+    Incoming commands are passed to it from Nodeset via put()
+    Outgoing commands are send to the CommandTranslator.
     """
 
     def __init__(self, n, translator: command_translator.CommandTranslator, is_controller):
@@ -538,7 +550,7 @@ class Node:
 
     def SetSceneConfig(self, scene, delay, extra, level, request_update=True):
         c = [(z.SceneActuatorConf_Set, {"scene": scene, "delay": delay, "extra": extra, "level": level})]
-        if  request_update:
+        if request_update:
             c += [(z.SceneActuatorConf_Get, {"scene": scene})]
         self.BatchCommandSubmitFilteredFast(c, XMIT_OPTIONS)
 
@@ -670,20 +682,13 @@ class Node:
 
 
 class Nodeset(object):
-    """NodeSet represents the collection of all nodes in a zwave network.
+    """NodeSet represents the collection of all nodes in the network.
 
-    All incoming application messages from the nodes (to the controller) are arrivng in the
-    message_queue (_shared.mq).
+    It handles incoming commands from the CommandTranslators and dispatches
+    them to the corresponding node- creating new nodes as necessary.
 
-    The class spawns a receiver thread, which listens to incoming messages and dispatches them
-    to the node object they are coming to.
-
-    It also spawns a refresher Thread that will occasionally prompt nodes
-    that has not been active for a while to send update requests.
-
-    Outgoing messages from the controller to the nodes are put in the message_queue directly
-    by the individual node objects.
-
+    It is not involved in outgoing messages which have to be sent directly to the
+    CommandTranslator.
     """
 
     def __init__(self, translator: command_translator.CommandTranslator, controller_n):
