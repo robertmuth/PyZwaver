@@ -409,12 +409,12 @@ class ApplicationNode:
     Application level messages are passed to it via put()
     """
 
-    def __init__(self, n, proto_node: protocol_node.Node, is_controller):
+    def __init__(self, n, nodeset: protocol_node.NodeSet, is_controller):
         assert n >= 1
         self.n = n
         self.is_controller = is_controller
         self.name = "Node %d" % n
-        self.protocol_node = proto_node
+        self._nodeset = nodeset
         self.state = NODE_STATE_NONE
         self._controls = set()
         #
@@ -473,7 +473,7 @@ class ApplicationNode:
             #    self._secure_messaging.Send(cmd)
             #    continue
 
-            self.protocol_node.SendCommand(key, values, priority, xmit)
+            self._nodeset.SendCommand(self.n, key, values, priority, xmit)
 
     def BatchCommandSubmitFilteredSlow(self, commands, xmit):
         self.BatchCommandSubmitFiltered(commands, zmessage.NodePriorityLo(self.n), xmit)
@@ -637,7 +637,9 @@ class ApplicationNode:
             return
 
         if self.state < NODE_STATE_DISCOVERED:
-            self.protocol_node.Ping(3, False)
+            #TODO
+            # self._nodeset.Ping(self.n, 3, False)
+            pass
 
         if key == z.MultiChannel_CapabilityReport:
             logging.warning("FOUND MULTICHANNEL ENDPOINT: %s", values)
@@ -694,12 +696,11 @@ class ApplicationNodeSet(object):
 
     def DropNode(self, n):
         del self.nodes[n]
-        self._nodeset.DropNode()
 
     def GetNode(self, n):
         node = self.nodes.get(n)
         if node is None:
-            node = ApplicationNode(n, self._nodeset.GetNode(n), n == self._controller_n)
+            node = ApplicationNode(n, self._nodeset, n == self._controller_n)
             self.nodes[n] = node
         return node
 

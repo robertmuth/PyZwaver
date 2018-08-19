@@ -847,7 +847,7 @@ class NodeUpdater(object):
                 for n in CONTROLLER.nodes:
                     node: application_node.ApplicationNode = APPLICATION_NODESET.GetNode(n)
                     if node.state < application_node.NODE_STATE_DISCOVERED:
-                        node.protocol_node.Ping(3, False)
+                        PROTOCOL_NODESET.Ping(n, 3, False)
                         time.sleep(0.5)
                     elif node.state < application_node.NODE_STATE_INTERVIEWED:
                         node.RefreshStaticValues()
@@ -1073,10 +1073,10 @@ def RenderNodeBrief(node: application_node.ApplicationNode, db, _is_failed):
     readings = (RenderReadings(node.values.Sensors() +
                                node.values.Meters() +
                                node.values.MiscSensors()))
-    pnode = node.protocol_node
     state = node.state[2:]
-    if pnode.failed:
-        state = "FAILED"
+    # TODO
+    #if pnode.failed:
+    #    state = "FAILED"
     age = "never"
     if node.last_contact:
         age = "%dm ago" % ((time.time() - node.last_contact) / 60.0)
@@ -1163,7 +1163,7 @@ class NodeActionHandler(BaseHandler):
                 node.SetMultilevelSwitch(p)
             elif cmd == "ping":
                 # force it
-                node.protocol_node.Ping(3, True)
+                node._nodeset.Ping(3, True)
             elif cmd == "refresh_static":
                 node.RefreshStaticValues()
             elif cmd == "refresh_semistatic":
@@ -1418,7 +1418,7 @@ def main():
     CONTROLLER.UpdateRoutingInfo()
     DRIVER.WaitUntilAllPreviousMessagesHaveBeenHandled()
     print(CONTROLLER)
-    PROTOCOL_NODESET = protocol_node.NodeSet(DRIVER, CONTROLLER.GetNodeId())
+    PROTOCOL_NODESET = protocol_node.NodeSet(DRIVER)
     APPLICATION_NODESET = application_node.ApplicationNodeSet(PROTOCOL_NODESET, CONTROLLER.GetNodeId())
 
     cp = CONTROLLER.props.product

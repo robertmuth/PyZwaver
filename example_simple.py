@@ -114,8 +114,8 @@ def main():
     Banner("Initialized Controller")
     print(CONTROLLER)
 
-    PROTOCOL_NODESET = protocol_node.NodeSet(DRIVER, CONTROLLER.GetNodeId())
-    APPLICATION_NODESET = application_node.ApplicationNodeSet(PROTOCOL_NODESET)
+    PROTOCOL_NODESET = protocol_node.NodeSet(DRIVER)
+    APPLICATION_NODESET = application_node.ApplicationNodeSet(PROTOCOL_NODESET, CONTROLLER.GetNodeId())
 
     PROTOCOL_NODESET.AddListener(APPLICATION_NODESET)
     PROTOCOL_NODESET.AddListener(TestListener())
@@ -123,8 +123,7 @@ def main():
 
     logging.info("Pinging %d nodes", len(CONTROLLER.nodes))
     for n in CONTROLLER.nodes:
-        node = PROTOCOL_NODESET.GetNode(n)
-        node.Ping(5, False)
+        PROTOCOL_NODESET.Ping(n, 5, False)
         time.sleep(0.5)
 
     logging.info("Waiting for all nodes to be interviewed")

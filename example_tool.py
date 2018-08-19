@@ -105,10 +105,9 @@ def cmd_controller_details(args):
 
 def cmd_set_basic_multi(args):
     driver, controller = InitController(args, True)
-    nodeset = protocol_node.NodeSet(driver, controller.GetNodeId())
-    nodes = [nodeset.GetNode(n) for n in args.node]
-    logging.info("sending command to %s", nodes)
-    nodeset.SendMultiCommand(nodes,
+    nodeset = protocol_node.NodeSet(driver)
+    logging.info("sending command to %s", args.node)
+    nodeset.SendMultiCommand(args.node,
                              z.Basic_Set,
                              {"level": args.level},
                              zmessage.ControllerPriority(),
@@ -120,14 +119,14 @@ def cmd_set_basic_multi(args):
 
 def cmd_get_basic(args):
     driver, controller = InitController(args, True)
-    nodeset = protocol_node.NodeSet(driver, controller.GetNodeId())
+    nodeset = protocol_node.NodeSet(driver)
     nodeset.AddListener(NodeUpdateListener())
     for n in args.node:
-        node = nodeset.GetNode(n)
-        node.SendCommand(z.Basic_Get,
-                         {},
-                         zmessage.ControllerPriority(),
-                         XMIT_OPTIONS)
+        nodeset.SendCommand(n,
+                            z.Basic_Get,
+                            {},
+                            zmessage.ControllerPriority(),
+                            XMIT_OPTIONS)
     time.sleep(2)
     driver.Terminate()
 

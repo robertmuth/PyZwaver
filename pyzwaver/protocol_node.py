@@ -51,119 +51,6 @@ _BAUD = [
 ]
 
 
-class Node(object):
-    def __init__(self, n, is_controller, nodeset, driver):
-        self.n = n
-        self.nodeset:NodeSet = nodeset
-        self.is_controller = is_controller
-        self._driver = driver
-        self.failed = False
-
-    def __str__(self):
-        out = [
-            "NODE: %d" % self.n,
-            #"last-contact: %s" % self.last_contact,
-            #"flags %s" % self.flags,
-            #"device: %s(%s)" % (self.device_type, self.device_description),
-        ]
-        return "  ".join(out)
-
-
-
-    def _SendMessage(self, m, priority: tuple, handler):
-        mesg = zmessage.Message(m, priority, handler, self.n)
-        self._driver.SendMessage(mesg)
-
-    def SendCommand(self, key, values, priority: tuple, xmit: int):
-        try:
-            raw_cmd = command.AssembleCommand(key[0], key[1], values)
-        except Exception as _e:
-            logging.error("cannot assemble command for %s %s %s",
-                          command.StringifyCommand(key),
-                          z.SUBCMD_TO_PARSE_TABLE[key[0] * 256 + key[1]],
-                          values)
-            print("-" * 60)
-            traceback.print_exc(file=sys.stdout)
-            print("-" * 60)
-            return
-
-        def handler(_):
-            logging.debug("@@handler invoked")
-
-        m = zmessage.MakeRawCommandWithId(self.n, raw_cmd, xmit)
-        self._SendMessage(m, priority, handler)
-
-
-
-    def _RequestNodeInfo(self, retries):
-        """This usually triggers send "API_ZW_APPLICATION_UPDATE:"""
-
-        def handler(_):
-            # if we timeout  m will be None
-            if m is not None and m[4] != 0:
-                return  # success
-            logging.warning("[%d] RequestNodeInfo failed: %s",
-                            self.n, zmessage.PrettifyRawMessage(m))
-            self._RequestNodeInfo(retries - 1)
-
-        if retries > 0:
-            logging.warning("[%d] RequestNodeInfo try:%d", self.n, retries)
-            m = zmessage.MakeRawMessage(z.API_ZW_REQUEST_NODE_INFO, [self.n])
-            self._SendMessage(m, zmessage.ControllerPriority(), handler)
-
-        else:
-            logging.error("[%d] RequestNodeInfo failed permanently", self.n)
-
-    def GetNodeProtocolInfo(self):
-        def handler(message):
-            if not message:
-                logging.error("ProtocolInfo failed")
-                return
-            payload = message[4:-1]
-            if len(payload) < 5:
-                logging.error("bad ProtocolInfo payload: %s", message)
-                return
-            self.nodeset._ProcessProtocolInfo(self.n, payload)
-
-        logging.warning("[%d] GetNodeProtocolInfo", self.n)
-        m = zmessage.MakeRawMessage(z.API_ZW_GET_NODE_PROTOCOL_INFO, [self.n])
-        self._SendMessage(m, zmessage.ControllerPriority(), handler)
-
-    def _UpdateIsFailedNode(self, cb):
-        if self.is_controller:
-            logging.warning("[%d] skip failed check for controller", self.n)
-            return
-
-        def handler(m):
-            if m is None:
-                return
-            logging.info("[%d] is failed check: %d, %s", self.n,
-                         m[4], zmessage.PrettifyRawMessage(m))
-            self.failed = m[4] != 0
-            if cb:
-                cb(m)
-
-        m = zmessage.MakeRawMessage(z.API_ZW_IS_FAILED_NODE_ID, [self.n])
-        self._SendMessage(m, zmessage.ControllerPriority(), handler)
-
-    def Ping(self, retries, force):
-        logging.warning("[%d] Ping retries %d, force: %s", self.n, retries, force)
-        if self.is_controller:
-            logging.warning("[%d] skip ping for controller", self.n)
-            return
-
-        self.GetNodeProtocolInfo()
-        if force:
-            self._UpdateIsFailedNode(None)
-            self._RequestNodeInfo(retries)
-        else:
-            def handler(_):
-                if not self.failed:
-                    self._RequestNodeInfo(retries)
-
-            self._UpdateIsFailedNode(handler)
-
-
 class NodeSet(object):
     """NodeSet represents the collection of all nodes in a zwave network.
 
@@ -181,11 +68,9 @@ class NodeSet(object):
 
     """
 
-    def __init__(self, driver: Driver, controller_n):
+    def __init__(self, driver: Driver):
         self._driver = driver
-        self._controller_n = controller_n
         self._listeners = []
-        self.nodes = {}
         self._receiver_thread = threading.Thread(target=self._NodesetReceiverThread,
                                                  name="NodeSetReceive")
         self._receiver_thread.start()
@@ -193,24 +78,15 @@ class NodeSet(object):
     def AddListener(self, l):
         self._listeners.append(l)
 
-    def GetNode(self, n):
-        node = self.nodes.get(n)
-        if node is None:
-            node = Node(n, n == self._controller_n, self, self._driver)
-            self.nodes[n] = node
-        return node
-
-    def GetNodesExceptController(self):
-        return [node.n for node in self.nodes.values() if node.n != self._controller_n]
-
-    def DropNode(self, n):
-        del self.nodes[n]
+    def _PushToListeners(self, n, ts, key, value):
+         for l in self._listeners:
+                l.put(n, ts, key, value)
 
     def _SendMessageMulti(self, nn, m, priority: tuple, handler):
         mesg = zmessage.Message(m, priority, handler, nn[0])
         self._driver.SendMessage(mesg)
 
-    def SendMultiCommand(self, nodes: List[Node], key, values, priority: tuple, xmit: int):
+    def SendMultiCommand(self, nodes: List[int], key, values, priority: tuple, xmit: int):
         try:
             raw_cmd = command.AssembleCommand(key[0], key[1], values)
         except Exception as e:
@@ -226,14 +102,10 @@ class NodeSet(object):
         def handler(_):
             logging.debug("@@handler invoked")
 
-        nn = [node.n for node in nodes]
-        m = zmessage.MakeRawCommandMultiWithId(nn, raw_cmd, xmit)
-        self._SendMessageMulti(nn, m, priority, handler)
-
-
+        m = zmessage.MakeRawCommandMultiWithId(nodes, raw_cmd, xmit)
+        self._SendMessageMulti(nodes, m, priority, handler)
 
     def _ProcessProtocolInfo(self, n, data):
-
         a, b, _, basic, generic, specific = struct.unpack(">BBBBBB", data)
         flags = set()
         if a & 0x80:
@@ -244,7 +116,7 @@ class NodeSet(object):
         flags.add(_BAUD[baud])
 
         if b & 0x01:
-           flags.add("security")
+            flags.add("security")
         if b & 0x02:
             flags.add("controller")
         if b & 0x04:
@@ -264,17 +136,98 @@ class NodeSet(object):
             "flags": flags,
             "device_type": (basic, generic, specific),
         }
+        self._PushToListeners(n, time.time(), command.CUSTOM_COMMAND_PROTOCOL_INFO, out)
 
-        for l in self._listeners:
-            l.put(n, time.time(), command.CUSTOM_COMMAND_PROTOCOL_INFO, out)
+    def _SendMessage(self, n, m, priority: tuple, handler):
+        mesg = zmessage.Message(m, priority, handler, n)
+        self._driver.SendMessage(mesg)
 
+    def SendCommand(self, n, key, values, priority: tuple, xmit: int):
+        try:
+            raw_cmd = command.AssembleCommand(key[0], key[1], values)
+        except Exception as _e:
+            logging.error("cannot assemble command for %s %s %s",
+                          command.StringifyCommand(key),
+                          z.SUBCMD_TO_PARSE_TABLE[key[0] * 256 + key[1]],
+                          values)
+            print("-" * 60)
+            traceback.print_exc(file=sys.stdout)
+            print("-" * 60)
+            return
 
+        def handler(_):
+            logging.debug("@@handler invoked")
+
+        m = zmessage.MakeRawCommandWithId(n, raw_cmd, xmit)
+        self._SendMessage(n, m, priority, handler)
+
+    def _RequestNodeInfo(self, n, retries):
+        """This usually triggers send "API_ZW_APPLICATION_UPDATE:"""
+
+        def handler(_):
+            # if we timeout  m will be None
+            if m is not None and m[4] != 0:
+                return  # success
+            logging.warning("[%d] RequestNodeInfo failed: %s",
+                            n, zmessage.PrettifyRawMessage(m))
+            self._RequestNodeInfo(n, retries - 1)
+
+        if retries > 0:
+            logging.warning("[%d] RequestNodeInfo try:%d", n, retries)
+            m = zmessage.MakeRawMessage(z.API_ZW_REQUEST_NODE_INFO, [n])
+            self._SendMessage(n, m, zmessage.ControllerPriority(), handler)
+
+        else:
+            logging.error("[%d] RequestNodeInfo failed permanently", n)
+
+    def GetNodeProtocolInfo(self, n):
+        def handler(message):
+            if not message:
+                logging.error("ProtocolInfo failed")
+                return
+            payload = message[4:-1]
+            if len(payload) < 5:
+                logging.error("bad ProtocolInfo payload: %s", message)
+                return
+            self._ProcessProtocolInfo(n, payload)
+
+        logging.warning("[%d] GetNodeProtocolInfo", n)
+        m = zmessage.MakeRawMessage(z.API_ZW_GET_NODE_PROTOCOL_INFO, [n])
+        self._SendMessage(n, m, zmessage.ControllerPriority(), handler)
+
+    def _UpdateIsFailedNode(self, n, cb):
+
+        def handler(m):
+            if m is None:
+                return
+            logging.info("[%d] is failed check: %d, %s", n,
+                         m[4], zmessage.PrettifyRawMessage(m))
+            failed = m[4] != 0
+            self._PushToListeners(n, time.time(), command.CUSTOM_COMMAND_FAILED_NODE, {"failed": failed})
+            if cb:
+                cb(failed)
+
+        m = zmessage.MakeRawMessage(z.API_ZW_IS_FAILED_NODE_ID, [n])
+        self._SendMessage(n, m, zmessage.ControllerPriority(), handler)
+
+    def Ping(self, n, retries, force):
+        logging.warning("[%d] Ping retries %d, force: %s", n, retries, force)
+
+        self.GetNodeProtocolInfo(n)
+        if force:
+            self._UpdateIsFailedNode(n, None)
+            self._RequestNodeInfo(n, retries)
+        else:
+            def handler(failed):
+                if not failed:
+                    self._RequestNodeInfo(n, retries)
+
+            self._UpdateIsFailedNode(n, handler)
 
     def _HandleMessageApplicationCommand(self, ts, m):
         _ = m[4]  # status
         n = m[5]
         size = m[6]
-        node = self.GetNode(n)
         try:
             data = [int(x) for x in m[7:7 + size]]
             data = command.MaybePatchCommand(data)
@@ -289,8 +242,7 @@ class NodeSet(object):
             print("-" * 60)
             return
 
-        for l in self._listeners:
-            l.put(n, ts, (data[0], data[1]), value)
+        self._PushToListeners(n, ts, (data[0], data[1]), value)
 
     def _HandleMessageApplicationUpdate(self, ts, m):
         kind = m[4]
@@ -304,7 +256,6 @@ class NodeSet(object):
             n = m[5]
             length = m[6]
             m = m[7: 7 + length]
-            node = self.GetNode(n)
             commands = []
             controls = []
             seen_marker = False
@@ -320,8 +271,8 @@ class NodeSet(object):
                 "commands": commands,
                 "controls": controls,
             }
-            for l in self._listeners:
-                l.put(n, ts, command.CUSTOM_COMMAND_APPLICATION_UPDATE, value)
+            self._PushToListeners(n, ts, command.CUSTOM_COMMAND_APPLICATION_UPDATE, value)
+
         elif kind == z.UPDATE_STATE_SUC_ID:
             logging.warning("succ id updated: needs work")
         else:
