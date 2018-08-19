@@ -690,6 +690,7 @@ class Nodeset(object):
         self._controller_n = controller_n
         self._translator = translator
         self.nodes: Mapping[int: Node] = {}
+        translator.AddListener(self)
 
     def DropNode(self, n):
         del self.nodes[n]

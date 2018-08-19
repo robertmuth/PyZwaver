@@ -22,7 +22,6 @@
 import logging
 import struct
 import sys
-import threading
 import traceback
 import time
 
@@ -52,19 +51,13 @@ _BAUD = [
 
 
 class CommandTranslator(object):
-    """CommandTranslator
+    """CommandTranslator is responsible for translating between raw messages and "commands"
 
-    All incoming application messages from the nodes (to the controller) are arrving in the
-    message_queue (_shared.mq).
+    It is layered between the Eriver and the Nodes/Nodeset.
 
-    The class spawns a receiver thread, which listens to incoming messages and dispatches them
-    to the node obect they are coming to.
-
-    It also spawns a refresher Thread that will occasionally prompt nodes
-    that has not been active for a while to send update requests.
-
-    Outgoing messages from the controller to the nodes are put in the message_queue directly
-    by the individual node objects.
+    Raw message arrive from the Driver via the put() API and are send to the Driver via the
+    SendMultiCommand() and SendCommand().
+    Certain non-command message are translated as custom (pseudo) commands.
 
     """
 
@@ -73,13 +66,12 @@ class CommandTranslator(object):
         self._listeners = []
         driver.AddListener(self)
 
-
     def AddListener(self, l):
         self._listeners.append(l)
 
     def _PushToListeners(self, n, ts, key, value):
-         for l in self._listeners:
-                l.put(n, ts, key, value)
+        for l in self._listeners:
+            l.put(n, ts, key, value)
 
     def _SendMessageMulti(self, nn, m, priority: tuple, handler):
         mesg = zmessage.Message(m, priority, handler, nn[0])
@@ -131,7 +123,7 @@ class CommandTranslator(object):
         if b & 0x80:
             flags.add("optional_functionality")
         out = {
-            "protocol_version":  1 + (a & 0x7),
+            "protocol_version": 1 + (a & 0x7),
             "flags": flags,
             "device_type": (basic, generic, specific),
         }
@@ -278,8 +270,6 @@ class CommandTranslator(object):
             logging.error("unknown kind: %x", kind)
             assert False
 
-
-
     def put(self, ts, m):
         if m[3] == z.API_APPLICATION_COMMAND_HANDLER:
             self._HandleMessageApplicationCommand(ts, m)
@@ -287,4 +277,3 @@ class CommandTranslator(object):
             self._HandleMessageApplicationUpdate(ts, m)
         else:
             logging.error("unhandled message: %s", zmessage.PrettifyRawMessage(m))
-

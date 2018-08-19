@@ -1426,7 +1426,6 @@ def main():
         time.time(),
         z.ManufacturerSpecific_Report,
         {'manufacturer': cp[0], 'type': cp[1], 'product': cp[2]})
-    TRANSLATOR.AddListener(NODESET)
     # The updater will do the initial pings of the nodes
     TRANSLATOR.AddListener(NodeUpdater())
     logging.warning("listening on port %d", OPTIONS.port)
