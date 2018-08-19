@@ -269,6 +269,12 @@ class NodeValues:
             return 0, 0, 0
         return v.get("manufacturer", 0), v.get("type", 0), v.get("product", 0)
 
+    def DeviceType(self):
+        v = self.Get(command.CUSTOM_COMMAND_PROTOCOL_INFO)
+        if not v:
+            return 0, 0, 0
+        return v["device_type"]
+
     def AssociationGroupIds(self):
         m = self.GetMap(z.Association_Report)
         if m:

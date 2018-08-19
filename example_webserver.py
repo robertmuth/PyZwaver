@@ -53,9 +53,11 @@ from pyzwaver.value import CompactifyParams, SENSOR_KIND_SWITCH_BINARY, SENSOR_K
 from pyzwaver import zmessage
 from pyzwaver.controller import Controller, EVENT_UPDATE_COMPLETE
 from pyzwaver.driver import Driver, MakeSerialDevice
+from pyzwaver.command import NodeDescription
 from pyzwaver import protocol_node
 from pyzwaver import application_node
 from pyzwaver import zwave as z
+
 
 HTML = """
 <html>
@@ -1079,6 +1081,9 @@ def RenderNodeBrief(node: application_node.ApplicationNode, db, _is_failed):
     if node.last_contact:
         age = "%dm ago" % ((time.time() - node.last_contact) / 60.0)
 
+    device_type = node.values.DeviceType()
+    description = NodeDescription(device_type)
+
     out = {
         "name": db.GetNodeName(node.n),
         "link": _ProductLink(*node.values.ProductInfo()),
@@ -1089,7 +1094,7 @@ def RenderNodeBrief(node: application_node.ApplicationNode, db, _is_failed):
         "no": node.n,
         "state": state,
         "last_contact": "(%s) [%s]" % (TimeFormat(node.last_contact), age),
-        "product": "%s (%s)" % (pnode.device_description, pnode.device_type),
+        "product": "%s (%s)" % (description, device_type),
     }
 
     return out

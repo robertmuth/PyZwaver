@@ -24,6 +24,7 @@ import struct
 import sys
 import threading
 import traceback
+import time
 
 from typing import List
 
@@ -51,36 +52,23 @@ _BAUD = [
 
 
 class Node(object):
-    def __init__(self, n, is_controller, driver):
+    def __init__(self, n, is_controller, nodeset, driver):
         self.n = n
+        self.nodeset:NodeSet = nodeset
         self.is_controller = is_controller
         self._driver = driver
-        self.flags = set()
-        self.device_type = None
-        self.device_description = ""
-        self.protocol_version = -1
         self.failed = False
 
     def __str__(self):
         out = [
             "NODE: %d" % self.n,
             #"last-contact: %s" % self.last_contact,
-            "flags %s" % self.flags,
-            "device: %s(%s)" % (self.device_type, self.device_description),
+            #"flags %s" % self.flags,
+            #"device: %s(%s)" % (self.device_type, self.device_description),
         ]
         return "  ".join(out)
 
-    def SetDeviceType(self, device_type):
-        self.device_type = device_type
-        k = device_type[1] * 256 + device_type[2]
-        v = z.GENERIC_SPECIFIC_DB.get(k)
-        if v is None:
-            logging.error(
-                "[%d] unknown generic device : %s", self.n, device_type)
-            self.device_description = "unknown device_description: %s" % (
-                device_type,)
-        else:
-            self.device_description = v[0]
+
 
     def _SendMessage(self, m, priority: tuple, handler):
         mesg = zmessage.Message(m, priority, handler, self.n)
@@ -105,33 +93,7 @@ class Node(object):
         m = zmessage.MakeRawCommandWithId(self.n, raw_cmd, xmit)
         self._SendMessage(m, priority, handler)
 
-    def _ProcessProtocolInfo(self, data):
 
-        a, b, _, basic, generic, specific = struct.unpack(">BBBBBB", data)
-        self.SetDeviceType((basic, generic, specific))
-        if a & 0x80:
-            self.flags.add("listening")
-        if a & 0x40:
-            self.flags.add("routing")
-        baud = (a & 0x38) >> 3
-        self.flags.add(_BAUD[baud])
-        self.protocol_version = 1 + (a & 0x7)
-        if b & 0x01:
-            self.flags.add("security")
-        if b & 0x02:
-            self.flags.add("controller")
-        if b & 0x04:
-            self.flags.add("specific_device")
-        if b & 0x08:
-            self.flags.add("routing_slave")
-        if b & 0x10:
-            self.flags.add("beam_capable")
-        if b & 0x20:
-            self.flags.add("sensor_250ms")
-        if b & 0x40:
-            self.flags.add("sensor_1000ms")
-        if b & 0x80:
-            self.flags.add("optional_functionality")
 
     def _RequestNodeInfo(self, retries):
         """This usually triggers send "API_ZW_APPLICATION_UPDATE:"""
@@ -161,7 +123,7 @@ class Node(object):
             if len(payload) < 5:
                 logging.error("bad ProtocolInfo payload: %s", message)
                 return
-            self._ProcessProtocolInfo(payload)
+            self.nodeset._ProcessProtocolInfo(self.n, payload)
 
         logging.warning("[%d] GetNodeProtocolInfo", self.n)
         m = zmessage.MakeRawMessage(z.API_ZW_GET_NODE_PROTOCOL_INFO, [self.n])
@@ -234,7 +196,7 @@ class NodeSet(object):
     def GetNode(self, n):
         node = self.nodes.get(n)
         if node is None:
-            node = Node(n, n == self._controller_n, self._driver)
+            node = Node(n, n == self._controller_n, self, self._driver)
             self.nodes[n] = node
         return node
 
@@ -267,6 +229,46 @@ class NodeSet(object):
         nn = [node.n for node in nodes]
         m = zmessage.MakeRawCommandMultiWithId(nn, raw_cmd, xmit)
         self._SendMessageMulti(nn, m, priority, handler)
+
+
+
+    def _ProcessProtocolInfo(self, n, data):
+
+        a, b, _, basic, generic, specific = struct.unpack(">BBBBBB", data)
+        flags = set()
+        if a & 0x80:
+            flags.add("listening")
+        if a & 0x40:
+            flags.add("routing")
+        baud = (a & 0x38) >> 3
+        flags.add(_BAUD[baud])
+
+        if b & 0x01:
+           flags.add("security")
+        if b & 0x02:
+            flags.add("controller")
+        if b & 0x04:
+            flags.add("specific_device")
+        if b & 0x08:
+            flags.add("routing_slave")
+        if b & 0x10:
+            flags.add("beam_capable")
+        if b & 0x20:
+            flags.add("sensor_250ms")
+        if b & 0x40:
+            flags.add("sensor_1000ms")
+        if b & 0x80:
+            flags.add("optional_functionality")
+        out = {
+            "protocol_version":  1 + (a & 0x7),
+            "flags": flags,
+            "device_type": (basic, generic, specific),
+        }
+
+        for l in self._listeners:
+            l.put(n, time.time(), command.CUSTOM_COMMAND_PROTOCOL_INFO, out)
+
+
 
     def _HandleMessageApplicationCommand(self, ts, m):
         _ = m[4]  # status

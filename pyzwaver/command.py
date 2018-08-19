@@ -25,12 +25,14 @@ import logging
 
 from pyzwaver import zwave as z
 
-CUSTOM_COMMAND_ACTIVE_SCENE = (256, 2)
 CUSTOM_COMMAND_APPLICATION_UPDATE = (256, 1)
+CUSTOM_COMMAND_PROTOCOL_INFO = (256, 2)
+CUSTOM_COMMAND_ACTIVE_SCENE = (256, 3)
 
 _CUSTOM_COMMAND_STRINGS = {
     CUSTOM_COMMAND_ACTIVE_SCENE: "_Active_Scene",
     CUSTOM_COMMAND_APPLICATION_UPDATE: "_Application_Update",
+    CUSTOM_COMMAND_PROTOCOL_INFO: "_ProtocolInfo",
 }
 
 
@@ -51,6 +53,14 @@ def StringifyCommand(key):
 def StringifyCommandClass(cls):
     return z.CMD_TO_STRING.get(cls, "UNKNOWN:%d" % cls)
 
+
+def NodeDescription(basic_generic_specific):
+    k = basic_generic_specific[1] * 256 + basic_generic_specific[2]
+    v = z.GENERIC_SPECIFIC_DB.get(k)
+    if v is None:
+        logging.error("unknown generic device : %s", str(basic_generic_specific))
+        return "unknown device_description: %s" % str(basic_generic_specific)
+    return v[0]
 
 # ======================================================================
 def _GetSignedValue(data):
