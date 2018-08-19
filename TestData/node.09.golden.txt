@@ -1,73 +1,61 @@
 
 incoming:  SOF len:13 REQU API_ZW_APPLICATION_UPDATE:49 84 node:09 0d 04 10 01 25 31 32 27 70 85 72 86 ef 82 chk:5d
-hex:  [1, 19, 0, 73, 132, 9, 13, 4, 16, 1, 37, 49, 50, 39, 112, 133, 114, 134, 239, 130, 93]
+hex:  ['01', '13', '00', '49', '84', '09', '0d', '04', '10', '01', '25', '31', '32', '27', '70', '85', '72', '86', 'ef', '82', '5d']
 
 incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:03 Association_GroupingsReport:85 X:06 01 chk:7a
-hex:  [1, 9, 0, 4, 0, 9, 3, 133, 6, 1, 122]
+hex:  ['01', '09', '00', '04', '00', '09', '03', '85', '06', '01', '7a']
 
 incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:04 Meter_SupportedReport:32 X:04 81 05 chk:4e
-hex:  [1, 10, 0, 4, 0, 9, 4, 50, 4, 129, 5, 78]
+hex:  ['01', '0a', '00', '04', '00', '09', '04', '32', '04', '81', '05', '4e']
 
 incoming:  SOF len:0d REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:07 Version_Report:86 X:12 03 02 4e 01 2b chk:09
-hex:  [1, 13, 0, 4, 0, 9, 7, 134, 18, 3, 2, 78, 1, 43, 9]
+hex:  ['01', '0d', '00', '04', '00', '09', '07', '86', '12', '03', '02', '4e', '01', '2b', '09']
 
 incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:03 SwitchAll_Report:27 X:03 ff chk:23
-hex:  [1, 9, 0, 4, 0, 9, 3, 39, 3, 255, 35]
+hex:  ['01', '09', '00', '04', '00', '09', '03', '27', '03', 'ff', '23']
 
 incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:04 Version_CommandClassReport:86 X:14 70 01 chk:1f
-hex:  [1, 10, 0, 4, 0, 9, 4, 134, 20, 112, 1, 31]
+hex:  ['01', '0a', '00', '04', '00', '09', '04', '86', '14', '70', '01', '1f']
 
 incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:04 Version_CommandClassReport:86 X:14 31 03 chk:5c
-hex:  [1, 10, 0, 4, 0, 9, 4, 134, 20, 49, 3, 92]
+hex:  ['01', '0a', '00', '04', '00', '09', '04', '86', '14', '31', '03', '5c']
 
 incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:04 Version_CommandClassReport:86 X:14 32 02 chk:5e
-hex:  [1, 10, 0, 4, 0, 9, 4, 134, 20, 50, 2, 94]
+hex:  ['01', '0a', '00', '04', '00', '09', '04', '86', '14', '32', '02', '5e']
 
 incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:04 Version_CommandClassReport:86 X:14 20 01 chk:4f
-hex:  [1, 10, 0, 4, 0, 9, 4, 134, 20, 32, 1, 79]
+hex:  ['01', '0a', '00', '04', '00', '09', '04', '86', '14', '20', '01', '4f']
 
 incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:04 Version_CommandClassReport:86 X:14 25 01 chk:4a
-hex:  [1, 10, 0, 4, 0, 9, 4, 134, 20, 37, 1, 74]
+hex:  ['01', '0a', '00', '04', '00', '09', '04', '86', '14', '25', '01', '4a']
 
 incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:04 Version_CommandClassReport:86 X:14 86 01 chk:e9
-hex:  [1, 10, 0, 4, 0, 9, 4, 134, 20, 134, 1, 233]
+hex:  ['01', '0a', '00', '04', '00', '09', '04', '86', '14', '86', '01', 'e9']
 
 incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:04 Version_CommandClassReport:86 X:14 27 01 chk:48
-hex:  [1, 10, 0, 4, 0, 9, 4, 134, 20, 39, 1, 72]
+hex:  ['01', '0a', '00', '04', '00', '09', '04', '86', '14', '27', '01', '48']
 
 incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:04 Version_CommandClassReport:86 X:14 72 01 chk:1d
-hex:  [1, 10, 0, 4, 0, 9, 4, 134, 20, 114, 1, 29]
+hex:  ['01', '0a', '00', '04', '00', '09', '04', '86', '14', '72', '01', '1d']
 
 incoming:  SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:04 Version_CommandClassReport:86 X:14 85 01 chk:ea
-hex:  [1, 10, 0, 4, 0, 9, 4, 134, 20, 133, 1, 234]
+hex:  ['01', '0a', '00', '04', '00', '09', '04', '86', '14', '85', '01', 'ea']
 
 incoming:  SOF len:0e REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:08 ManufacturerSpecific_Report:72 X:05 00 86 00 03 00 06 chk:00
-hex:  [1, 14, 0, 4, 0, 9, 8, 114, 5, 0, 134, 0, 3, 0, 6, 0]
+hex:  ['01', '0e', '00', '04', '00', '09', '08', '72', '05', '00', '86', '00', '03', '00', '06', '00']
 
 incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:03 Basic_Report:20 X:03 ff chk:24
-hex:  [1, 9, 0, 4, 0, 9, 3, 32, 3, 255, 36]
+hex:  ['01', '09', '00', '04', '00', '09', '03', '20', '03', 'ff', '24']
 
 incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:03 SwitchBinary_Report:25 X:03 ff chk:21
-hex:  [1, 9, 0, 4, 0, 9, 3, 37, 3, 255, 33]
+hex:  ['01', '09', '00', '04', '00', '09', '03', '25', '03', 'ff', '21']
 
 incoming:  SOF len:0e REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:08 SensorMultilevel_Report:31 X:05 04 64 00 00 a8 a7 chk:af
-hex:  [1, 14, 0, 4, 0, 9, 8, 49, 5, 4, 100, 0, 0, 168, 167, 175]
+hex:  ['01', '0e', '00', '04', '00', '09', '08', '31', '05', '04', '64', '00', '00', 'a8', 'a7', 'af']
 
 incoming:  SOF len:14 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:0e Meter_Report:32 X:02 21 64 00 02 60 12 00 53 00 02 60 11 chk:cd
-hex:  [1, 20, 0, 4, 0, 9, 14, 50, 2, 33, 100, 0, 2, 96, 18, 0, 83, 0, 2, 96, 17, 205]
+hex:  ['01', '14', '00', '04', '00', '09', '0e', '32', '02', '21', '64', '00', '02', '60', '12', '00', '53', '00', '02', '60', '11', 'cd']
 
 incoming:  SOF len:14 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:0e Meter_Report:32 X:02 21 74 00 00 a8 a7 00 53 00 02 60 11 chk:a2
-hex:  [1, 20, 0, 4, 0, 9, 14, 50, 2, 33, 116, 0, 0, 168, 167, 0, 83, 0, 2, 96, 17, 162]
-NODE: 9  state: 3_Interviewed  last: 0 sec ago  protocol_version: 0  lib_type: 3  sdk_version: 2:78  app_version: 1:43  
-device: 4:16:1  (Binary Power Switch)  product: 0086:0003:0006  
-flags:        set()
-  meters supp.:['kWh', 'W']  meters:      ['43.175[Electric, W]', '155.666[Electric, kWh]']
-  sensors supp.:[]  sensors:      ['255[Basic, level]', '43.175[Power, W]', '255[SwitchBinary, level]']
-  values:       ['[134, 3, 6][ManufacturerSpecific]', '255[SwitchAll]', '[3, 2, 78, 1, 43][Version]']
-  events:       {}
-  parameters:
-[]
-  commands:
-[('Configuration', 112, 1), ('SensorMultilevel', 49, 3), ('Meter', 50, 2), ('Basic', 32, 1), ('SwitchBinary', 37, 1), ('Version', 134, 1), ('SwitchAll', 39, 1), ('Hail', 130, -1), ('ManufacturerSpecific', 114, 1), ('Association', 133, 1)]
-  associations:
-
+hex:  ['01', '14', '00', '04', '00', '09', '0e', '32', '02', '21', '74', '00', '00', 'a8', 'a7', '00', '53', '00', '02', '60', '11', 'a2']
+OK

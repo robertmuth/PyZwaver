@@ -38,7 +38,16 @@ tests:
 	@echo "============================================================"
 	@echo "Replay Test 09"
 	@echo "============================================================"
+	./Tests/replay_test.py  < TestData/node.09.input.txt > node.09.output.txt
+	diff TestData/node.09.golden.txt  node.09.output.txt
+	rm node.09.output.txt
+	#
+	@echo "============================================================"
+	@echo "Replay Test 10"
+	@echo "============================================================"
 	./Tests/replay_test.py  < TestData/node.10.input.txt > node.10.output.txt
 	diff TestData/node.10.golden.txt  node.10.output.txt
+	rm node.10.output.txt
+	#
 	@echo "PASS"		
 
