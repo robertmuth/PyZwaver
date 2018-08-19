@@ -219,13 +219,14 @@ class Driver(object):
     def __init__(self, serialDevice):
         self._device = serialDevice
         self._out_queue = MessageQueueOut()  # stuff being send to the stick
-
         self._raw_history: List[Tuple[int, bool, zmessage.Message, str]] = []
         # a message is copied into this once if makes it into _inflight.
         self._history: List[zmessage.Message] = []
         self._device_idle = True
         self._terminate = False  # True if we want to shut things down
         self._in_queue = queue.Queue()  # stuff coming from the stick unrelated to _inflight
+        self._listeners = []   # receive all the stuff from _in_queue
+
         # Make sure we flush old stuff
         self._ClearDevice()
         self._ClearDevice()
@@ -233,9 +234,16 @@ class Driver(object):
         self._tx_thread = threading.Thread(target=self._DriverSendingThread,
                                            name="DriverSend")
         self._tx_thread.start()
+
         self._rx_thread = threading.Thread(target=self._DriverReceivingThread,
                                            name="DriverReceive")
         self._rx_thread.start()
+
+        self._forwarding_thread = threading.Thread(target=self._DriverForwardingThread,
+                                                   name="DriverForward")
+        self._forwarding_thread.start()
+
+
         self._last = None
         self._inflight = None  # out bound message waiting for responses
         self._delay = collections.defaultdict(int)
@@ -245,6 +253,9 @@ class Driver(object):
                "inflight: " + str(self._inflight),
                MessageStatsString(self._history)]
         return "\n".join(out)
+
+    def AddListener(self, l):
+        self._listeners.append(l)
 
     def HasInflight(self):
         return self._inflight is not None
@@ -263,8 +274,6 @@ class Driver(object):
     def SendMessage(self, m: zmessage.Message):
         self._out_queue.put(m.priority, m)
 
-    def GetIncommingRawMessage(self):
-        return self._in_queue.get()
 
     def WaitUntilAllPreviousMessagesHaveBeenHandled(self):
         lock = threading.Lock()
@@ -394,3 +403,13 @@ class Driver(object):
                 self._in_queue.put((ts, m))
 
         logging.warning("_DriverReceivingThread terminated")
+
+    def _DriverForwardingThread(self):
+        logging.warning("_DriverForwardingThread started")
+        while True:
+            ts, m = self._in_queue.get()
+            if m is None:
+                break
+            for l in self._listeners:
+                 l.put(ts, m)
+        logging.warning("_DriverForwardingThread terminated")

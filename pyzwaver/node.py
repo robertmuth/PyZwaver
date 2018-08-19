@@ -20,7 +20,7 @@
 """
 
 import logging
-from typing import Set, Any
+from typing import Set, Mapping
 
 from pyzwaver import zmessage
 from pyzwaver import zwave as z
@@ -689,7 +689,7 @@ class Nodeset(object):
     def __init__(self, translator: command_translator.CommandTranslator, controller_n):
         self._controller_n = controller_n
         self._translator = translator
-        self.nodes = {}
+        self.nodes: Mapping[int: Node] = {}
 
     def DropNode(self, n):
         del self.nodes[n]

@@ -985,7 +985,7 @@ def GetControls(node: Node):
     return out
 
 
-def RenderAssociationGroup(node: Node, no, group, name, info, lst):
+def RenderAssociationGroup(no, group, name, info, lst):
     group_name = ""
     if name:
         group_name = name["name"]
@@ -1019,7 +1019,7 @@ def RenderNodeAssociations(node: Node):
     for no, group, info, lst, name in node.values.Associations():
         if group:
             out.append(RenderAssociationGroup(
-                node, no, group, info, lst, name))
+                no, group, info, lst, name))
     out += ["</table>"]
     return out
 

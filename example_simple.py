@@ -118,7 +118,6 @@ def main():
 
     translator = CommandTranslator(driver)
     nodeset = Nodeset(translator, controller.GetNodeId())
-
     translator.AddListener(nodeset)
     translator.AddListener(TestListener())
     # n.InitializeExternally(CONTROLLER.props.product, CONTROLLER.props.library_type, True)
