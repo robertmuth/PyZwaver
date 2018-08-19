@@ -14,7 +14,6 @@ It supports a wide range of Command Classes but some are still missing.
 Most notable omissions are:
 
 * MultiChannel support (in progress)
-* Scene support
 * Security 
 
 ## Examples
@@ -48,6 +47,14 @@ A simple webserver which can be launched like so:
 Then start exploring using the URL:
 http://localhost:44444
 
+## Testing
+
+Rudimentary test can be run with
+
+````
+make tests
+````
+
 ## License
 
 All code is governed by LICENSE.txt (GPL 3) unless otherwise noted.
@@ -57,7 +64,7 @@ For alternative licensing please contact the author.
 
 The core PyZwaver library does not have any non-standard dependencies.
 
-However the webserver demo app depends on:
+However the example_webserver.py depends on:
 
 * tornado
   http://www.tornadoweb.org/
