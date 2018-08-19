@@ -54,8 +54,8 @@ from pyzwaver import zmessage
 from pyzwaver.controller import Controller, EVENT_UPDATE_COMPLETE
 from pyzwaver.driver import Driver, MakeSerialDevice
 from pyzwaver.command import NodeDescription
-from pyzwaver import protocol_node
-from pyzwaver import application_node
+from pyzwaver.command_translator import CommandTranslator
+from pyzwaver.node import Node, Nodeset, NODE_STATE_INTERVIEWED, NODE_STATE_DISCOVERED
 from pyzwaver import zwave as z
 
 
@@ -789,8 +789,8 @@ class Db(object):
 
 DRIVER: Driver = None
 CONTROLLER: Controller = None
-PROTOCOL_NODESET: protocol_node.NodeSet = None
-APPLICATION_NODESET: application_node.ApplicationNodeSet = None
+TRANSLATOR: CommandTranslator = None
+NODESET: Nodeset = None
 DB: Db = None
 
 # ======================================================================
@@ -835,21 +835,21 @@ class NodeUpdater(object):
         while True:
             if self._update_driver or DRIVER.HasInflight():
                 SendToSocket("d:" + RenderDriver(DRIVER))
-            if not APPLICATION_NODESET:
+            if not NODESET:
                 continue
             for n in self._nodes_to_update:
-                node = APPLICATION_NODESET.GetNode(n)
+                node = NODESET.GetNode(n)
                 SendToSocket("o%d:" % n + json.dumps(RenderNode(node, DB),
                                                      sort_keys=True, indent=4))
             self._update_driver = False
             self._nodes_to_update.clear()
             if count % 20 == 0:
                 for n in CONTROLLER.nodes:
-                    node: application_node.ApplicationNode = APPLICATION_NODESET.GetNode(n)
-                    if node.state < application_node.NODE_STATE_DISCOVERED:
-                        PROTOCOL_NODESET.Ping(n, 3, False)
+                    node: Node = NODESET.GetNode(n)
+                    if node.state < NODE_STATE_DISCOVERED:
+                        TRANSLATOR.Ping(n, 3, False)
                         time.sleep(0.5)
-                    elif node.state < application_node.NODE_STATE_INTERVIEWED:
+                    elif node.state < NODE_STATE_INTERVIEWED:
                         logging.warning("[%d] (%s) trigger static", n, node.state)
                         node.RefreshStaticValues()
             count += 1
@@ -882,9 +882,6 @@ class EchoWebSocket(tornado.websocket.WebSocketHandler):
     def on_close(self):
         logging.info("WebSocket closed")
         SOCKETS.remove(self)
-
-
-
 
 def RenderReading(kind, unit, val):
     if kind == SENSOR_KIND_BATTERY and val == 100:
@@ -976,7 +973,7 @@ def DriverBad(driver):
     return out
 
 
-def GetControls(node: application_node.ApplicationNode):
+def GetControls(node: Node):
     is_switch = node.values.HasCommandClass(z.SwitchBinary)
     out = {
         "node_switch_on": is_switch,
@@ -987,7 +984,7 @@ def GetControls(node: application_node.ApplicationNode):
     return out
 
 
-def RenderAssociationGroup(node: application_node.ApplicationNode, no, group, name, info, lst):
+def RenderAssociationGroup(node: Node, no, group, name, info, lst):
     group_name = ""
     if name:
         group_name = name["name"]
@@ -1005,7 +1002,7 @@ def RenderAssociationGroup(node: application_node.ApplicationNode, no, group, na
     return "".join(out)
 
 
-def RenderNodeCommandClasses(node: application_node.ApplicationNode):
+def RenderNodeCommandClasses(node: Node):
     out = ["<table>"]
     for cls, name, version in sorted(node.values.CommandVersions()):
         out += ["<tr><td>%s [%d]</td><td>%d</td></tr>" % (name, cls, version)]
@@ -1013,7 +1010,7 @@ def RenderNodeCommandClasses(node: application_node.ApplicationNode):
     return out
 
 
-def RenderNodeAssociations(node: application_node.ApplicationNode):
+def RenderNodeAssociations(node: Node):
     out = [
         "<p>",
         "<table>",
@@ -1026,7 +1023,7 @@ def RenderNodeAssociations(node: application_node.ApplicationNode):
     return out
 
 
-def RenderNodeParameters(node: application_node.ApplicationNode):
+def RenderNodeParameters(node: Node):
     compact = CompactifyParams(node.values.Configuration())
     out = ["<table>"]
     for a, b, c, d in sorted(compact):
@@ -1039,7 +1036,7 @@ def RenderNodeParameters(node: application_node.ApplicationNode):
     return out
 
 
-def RenderNodeScenes(node: application_node.ApplicationNode):
+def RenderNodeScenes(node: Node):
     compact = CompactifyParams(node.values.SceneActuatorConfiguration())
     out = ["<table>"]
     for a, b, c, d in sorted(compact):
@@ -1052,7 +1049,7 @@ def RenderNodeScenes(node: application_node.ApplicationNode):
     return out
 
 
-def RenderMiscValues(node: application_node.ApplicationNode):
+def RenderMiscValues(node: Node):
     out = ["<table>"]
     for _, name, values in sorted(node.values.Values()):
         if name.endswith("Report"):
@@ -1070,7 +1067,7 @@ def _ProductLink(_manu_id, prod_type, prod_id):
     return "http://www.google.com/search?q=site:products.z-wavealliance.org+0x%04x+0x%04x" % (prod_type, prod_id)
 
 
-def RenderNodeBrief(node: application_node.ApplicationNode, db, _is_failed):
+def RenderNodeBrief(node: Node, db, _is_failed):
     readings = (RenderReadings(node.values.Sensors() +
                                node.values.Meters() +
                                node.values.MiscSensors()))
@@ -1101,7 +1098,7 @@ def RenderNodeBrief(node: application_node.ApplicationNode, db, _is_failed):
     return out
 
 
-def RenderNode(node: application_node.ApplicationNode, db):
+def RenderNode(node: Node, db):
     out = RenderNodeBrief(node, db, False)
 
     out["classes"] = "\n".join(RenderNodeCommandClasses(node))
@@ -1146,11 +1143,11 @@ class NodeActionHandler(BaseHandler):
     """Single Node Actions"""
 
     def get(self, *path):
-        global APPLICATION_NODESET, DB
+        global NODESET, DB
         token = path[0].split("/")
         logging.error("NODE ACTION> %s", token)
         num = int(token.pop(0))
-        node: application_node.ApplicationNode = APPLICATION_NODESET.GetNode(num)
+        node = NODESET.GetNode(num)
         cmd = token.pop(0)
         try:
             if cmd == "basic":
@@ -1164,7 +1161,7 @@ class NodeActionHandler(BaseHandler):
                 node.SetMultilevelSwitch(p)
             elif cmd == "ping":
                 # force it
-                PROTOCOL_NODESET.Ping(num, 3, True)
+                TRANSLATOR.Ping(num, 3, True)
             elif cmd == "refresh_static":
                 node.RefreshStaticValues()
             elif cmd == "refresh_semistatic":
@@ -1201,7 +1198,7 @@ class NodeActionHandler(BaseHandler):
                 DB.SetNodeName(num, token.pop(0))
             elif cmd == "reset_meter":
                 node.ResetMeter()
-        except:
+        except Exception as e:
             logging.error("cannot processed: %s", path[0])
             print("-" * 60)
             traceback.print_exc(file=sys.stdout)
@@ -1273,7 +1270,7 @@ class JsonHandler(BaseHandler):
         out = None
         try:
             if cmd == "nodes":
-                out = RenderNodes(APPLICATION_NODESET, CONTROLLER, DB)
+                out = RenderNodes(NODESET, CONTROLLER, DB)
             elif cmd == "driver":
                 out = RenderDriver(DRIVER)
             elif cmd == "logs":
@@ -1289,7 +1286,7 @@ class JsonHandler(BaseHandler):
                 if num == 0:
                     logging.error("no current node")
                 else:
-                    node = APPLICATION_NODESET.GetNode(num)
+                    node = NODESET.GetNode(num)
                     out = RenderNode(node, DB)
             else:
                 logging.error("unknown command %s", token)
@@ -1318,7 +1315,7 @@ class DisplayHandler(BaseHandler):
         cmd = token.pop(0)
         try:
             if cmd == "nodes":
-                SendToSocketJson("a:", RenderNodes(APPLICATION_NODESET, CONTROLLER, DB))
+                SendToSocketJson("a:", RenderNodes(NODESET, CONTROLLER, DB))
             elif cmd == "driver":
                 SendToSocket("d:" + RenderDriver(DRIVER))
             elif cmd == "logs":
@@ -1334,7 +1331,7 @@ class DisplayHandler(BaseHandler):
                 if num == 0:
                     logging.error("no current node")
                 else:
-                    node = APPLICATION_NODESET.GetNode(num)
+                    node = NODESET.GetNode(num)
                     SendToSocketJson("o%d:" % num, RenderNode(node, DB))
             else:
                 logging.error("unknown command %s", token)
@@ -1384,7 +1381,7 @@ class MyFormatter(logging.Formatter):
 
 
 def main():
-    global DRIVER, CONTROLLER, PROTOCOL_NODESET, APPLICATION_NODESET, DB
+    global DRIVER, CONTROLLER, TRANSLATOR, NODESET, DB
     # note: this makes sure we have at least one handler
     # logging.basicConfig(level=logging.WARNING)
     # logging.basicConfig(level=logging.ERROR)
@@ -1419,18 +1416,18 @@ def main():
     CONTROLLER.UpdateRoutingInfo()
     DRIVER.WaitUntilAllPreviousMessagesHaveBeenHandled()
     print(CONTROLLER)
-    PROTOCOL_NODESET = protocol_node.NodeSet(DRIVER)
-    APPLICATION_NODESET = application_node.ApplicationNodeSet(PROTOCOL_NODESET, CONTROLLER.GetNodeId())
+    TRANSLATOR = CommandTranslator(DRIVER)
+    NODESET = Nodeset(TRANSLATOR, CONTROLLER.GetNodeId())
 
     cp = CONTROLLER.props.product
-    APPLICATION_NODESET.put(
+    NODESET.put(
         CONTROLLER.GetNodeId(),
         time.time(),
         z.ManufacturerSpecific_Report,
         {'manufacturer': cp[0], 'type': cp[1], 'product': cp[2]})
-    PROTOCOL_NODESET.AddListener(APPLICATION_NODESET)
+    TRANSLATOR.AddListener(NODESET)
     # The updater will do the initial pings of the nodes
-    PROTOCOL_NODESET.AddListener(NodeUpdater())
+    TRANSLATOR.AddListener(NodeUpdater())
     logging.warning("listening on port %d", OPTIONS.port)
     application.listen(OPTIONS.port)
     tornado.ioloop.IOLoop.instance().start()

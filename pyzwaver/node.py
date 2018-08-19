@@ -24,7 +24,7 @@ from typing import Set, Any
 
 from pyzwaver import zmessage
 from pyzwaver import zwave as z
-from pyzwaver import protocol_node
+from pyzwaver import command_translator
 from pyzwaver import command
 from pyzwaver import value
 
@@ -403,18 +403,18 @@ class NodeValues:
         return "\n".join(out)
 
 
-class ApplicationNode:
-    """ApplicationNode represents a single node in a zwave network at the application level.
+class Node:
+    """ANode represents a single node in a zwave network at the application level.
 
     Application level messages are passed to it via put()
     """
 
-    def __init__(self, n, nodeset: protocol_node.NodeSet, is_controller):
+    def __init__(self, n, translator: command_translator.CommandTranslator, is_controller):
         assert n >= 1
         self.n = n
         self.is_controller = is_controller
         self.name = "Node %d" % n
-        self._nodeset = nodeset
+        self._translator = translator
         self.state = NODE_STATE_NONE
         self._controls = set()
         #
@@ -473,7 +473,7 @@ class ApplicationNode:
             #    self._secure_messaging.Send(cmd)
             #    continue
 
-            self._nodeset.SendCommand(self.n, key, values, priority, xmit)
+            self._translator.SendCommand(self.n, key, values, priority, xmit)
 
     def BatchCommandSubmitFilteredSlow(self, commands, xmit):
         self.BatchCommandSubmitFiltered(commands, zmessage.NodePriorityLo(self.n), xmit)
@@ -641,7 +641,7 @@ class ApplicationNode:
 
         if self.state < NODE_STATE_DISCOVERED:
             #TODO
-            self._nodeset.Ping(self.n, 3, False)
+            self._translator.Ping(self.n, 3, False)
 
         if key == z.MultiChannel_CapabilityReport:
             logging.warning("FOUND MULTICHANNEL ENDPOINT: %s", values)
@@ -674,14 +674,14 @@ class ApplicationNode:
         return
 
 
-class ApplicationNodeSet(object):
+class Nodeset(object):
     """NodeSet represents the collection of all nodes in a zwave network.
 
     All incoming application messages from the nodes (to the controller) are arrivng in the
     message_queue (_shared.mq).
 
     The class spawns a receiver thread, which listens to incoming messages and dispatches them
-    to the node obect they are coming to.
+    to the node object they are coming to.
 
     It also spawns a refresher Thread that will occasionally prompt nodes
     that has not been active for a while to send update requests.
@@ -691,18 +691,18 @@ class ApplicationNodeSet(object):
 
     """
 
-    def __init__(self, nodeset: protocol_node.NodeSet, controller_n):
+    def __init__(self, translator: command_translator.CommandTranslator, controller_n):
         self._controller_n = controller_n
-        self._nodeset = nodeset
+        self._translator = translator
         self.nodes = {}
 
     def DropNode(self, n):
         del self.nodes[n]
 
-    def GetNode(self, n):
+    def GetNode(self, n) -> Node:
         node = self.nodes.get(n)
         if node is None:
-            node = ApplicationNode(n, self._nodeset, n == self._controller_n)
+            node = Node(n, self._translator, n == self._controller_n)
             self.nodes[n] = node
         return node
 

@@ -23,7 +23,7 @@ import logging
 import struct
 import time
 
-from pyzwaver import driver
+from pyzwaver.driver import Driver
 from pyzwaver import zwave as z
 from pyzwaver import zmessage
 
@@ -205,7 +205,7 @@ class Controller:
 
     """
 
-    def __init__(self, message_queue: driver.Driver, pairing_timeout_secs=15.0):
+    def __init__(self, message_queue: Driver, pairing_timeout_secs=15.0):
         """
         :param message_queue:  is used to send commands to the controller and other zwave nodes.
                                The other end of the queue must be handled by the driver.

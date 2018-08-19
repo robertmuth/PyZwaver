@@ -29,7 +29,7 @@ from typing import Dict, Tuple, List
 from pyzwaver.controller import Controller
 from pyzwaver.driver import Driver, MakeSerialDevice
 from pyzwaver import zmessage
-from pyzwaver import protocol_node
+from pyzwaver import command_translator
 from pyzwaver import zwave as z
 
 XMIT_OPTIONS_NO_ROUTE = (z.TRANSMIT_OPTION_ACK |
@@ -105,9 +105,9 @@ def cmd_controller_details(args):
 
 def cmd_set_basic_multi(args):
     driver, controller = InitController(args, True)
-    nodeset = protocol_node.NodeSet(driver)
+    translator = command_translator.CommandTranslator(driver)
     logging.info("sending command to %s", args.node)
-    nodeset.SendMultiCommand(args.node,
+    translator.SendMultiCommand(args.node,
                              z.Basic_Set,
                              {"level": args.level},
                              zmessage.ControllerPriority(),
@@ -119,10 +119,10 @@ def cmd_set_basic_multi(args):
 
 def cmd_get_basic(args):
     driver, controller = InitController(args, True)
-    nodeset = protocol_node.NodeSet(driver)
-    nodeset.AddListener(NodeUpdateListener())
+    translator = command_translator.CommandTranslator(driver)
+    translator.AddListener(NodeUpdateListener())
     for n in args.node:
-        nodeset.SendCommand(n,
+        translator.SendCommand(n,
                             z.Basic_Get,
                             {},
                             zmessage.ControllerPriority(),

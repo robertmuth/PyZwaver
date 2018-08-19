@@ -33,12 +33,11 @@ import argparse
 import sys
 import time
 
-from pyzwaver import controller
-from pyzwaver import driver
-from pyzwaver import protocol_node
+from pyzwaver.controller import Controller, EVENT_UPDATE_COMPLETE
+from pyzwaver.driver import Driver, MakeSerialDevice
+from pyzwaver.command_translator import CommandTranslator
 from pyzwaver import command
-from pyzwaver import application_node
-
+from pyzwaver.node import Nodeset
 
 class MyFormatter(logging.Formatter):
     """
@@ -81,7 +80,7 @@ def Banner(m):
 
 
 def main():
-    global DRIVER, CONTROLLER, PROTOCOL_NODESET, APPLICATION_NODESET
+    global driver, controller, translator, nodeset
 
     parser = argparse.ArgumentParser(description='Process some integers.')
 
@@ -103,46 +102,46 @@ def main():
         h.setFormatter(MyFormatter())
 
     logging.info("opening serial: [%s]", args.serial_port)
-    device = driver.MakeSerialDevice(args.serial_port)
+    device = MakeSerialDevice(args.serial_port)
 
-    DRIVER = driver.Driver(device)
-    CONTROLLER = controller.Controller(DRIVER, pairing_timeout_secs=60)
-    CONTROLLER.Initialize()
-    CONTROLLER.WaitUntilInitialized()
-    CONTROLLER.UpdateRoutingInfo()
+    driver = Driver(device)
+    controller = Controller(driver, pairing_timeout_secs=60)
+    controller.Initialize()
+    controller.WaitUntilInitialized()
+    controller.UpdateRoutingInfo()
     time.sleep(2)
     Banner("Initialized Controller")
-    print(CONTROLLER)
+    print(controller)
 
-    PROTOCOL_NODESET = protocol_node.NodeSet(DRIVER)
-    APPLICATION_NODESET = application_node.ApplicationNodeSet(PROTOCOL_NODESET, CONTROLLER.GetNodeId())
+    translator = CommandTranslator(driver)
+    nodeset = Nodeset(translator, controller.GetNodeId())
 
-    PROTOCOL_NODESET.AddListener(APPLICATION_NODESET)
-    PROTOCOL_NODESET.AddListener(TestListener())
+    translator.AddListener(nodeset)
+    translator.AddListener(TestListener())
     # n.InitializeExternally(CONTROLLER.props.product, CONTROLLER.props.library_type, True)
 
-    logging.info("Pinging %d nodes", len(CONTROLLER.nodes))
-    for n in CONTROLLER.nodes:
-        PROTOCOL_NODESET.Ping(n, 5, False)
+    logging.info("Pinging %d nodes", len(controller.nodes))
+    for n in controller.nodes:
+        translator.Ping(n, 5, False)
         time.sleep(0.5)
 
     logging.info("Waiting for all nodes to be interviewed")
-    not_ready = CONTROLLER.nodes.copy()
-    not_ready.remove(CONTROLLER.GetNodeId())
+    not_ready = controller.nodes.copy()
+    not_ready.remove(controller.GetNodeId())
     while not_ready:
         interviewed = set()
         for n in not_ready:
-            node = APPLICATION_NODESET.GetNode(n)
+            node = nodeset.GetNode(n)
             if node.IsInterviewed():
                     interviewed.add(node)
         time.sleep(2.0)
         for node in interviewed:
-            Banner ("Node %s has been interviewed" % node.n)
+            Banner("Node %s has been interviewed" % node.n)
             print(node)
             not_ready.remove(node.n)
             if not_ready:
                 print("\nStill waiting for %s" % str(not_ready))
-    DRIVER.Terminate()
+    driver.Terminate()
     return 0
 
 

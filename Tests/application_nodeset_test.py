@@ -21,16 +21,13 @@ Example command line tool for pairing/unpairing
 
 # python import
 import logging
-import argparse
 import sys
-import time
 from typing import Dict, Tuple, List
 import queue
 
 from pyzwaver import zmessage
-from pyzwaver import protocol_node
-from pyzwaver import application_node
-
+from pyzwaver.command_translator import CommandTranslator
+from pyzwaver.node import Nodeset, Node
 from pyzwaver import zwave as z
 
 
@@ -50,10 +47,10 @@ class FakeDriver(object):
 
 def main():
     fake_driver = FakeDriver()
-    pnodeset = protocol_node.NodeSet(fake_driver)
-    app_nodeset = application_node.ApplicationNodeSet(pnodeset, 1)
+    translator = CommandTranslator(fake_driver)
+    nodeset = Nodeset(translator, 1)
 
-    node = app_nodeset.GetNode(2)
+    node = nodeset.GetNode(2)
 
     assert not node.values.HasCommandClass(z.Basic)
     node.put(0, z.Version_CommandClassReport, {"class": z.Basic, "version": 10})
