@@ -55,6 +55,21 @@ Rudimentary test can be run with
 make tests
 ````
 
+## Supporting New Command Classes
+
+The message format of all support Command Classes is described 
+in machine readable form in [constants_generator.py](constants_generator.py)
+This can be used to generate python code (see Makefile target)
+for [zwave.py](pyzwaver/zwave.py). 
+
+The generated code in combination with 
+[command.py](pyzwaver/command.py) represents
+a assembler/disassembler for zwave commands
+(see entry points: AssembleCommand/ParseCommand).
+
+Handling of parsed commands occurs in [node.py](pyzwaver/node.py)
+
+
 ## License
 
 All code is governed by LICENSE.txt (GPL 3) unless otherwise noted.
