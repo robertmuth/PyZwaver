@@ -614,17 +614,17 @@ class ApplicationNode:
 
     def MaybeChangeState(self, new_state):
         old_state = self.state
-        if old_state < new_state:
-            logging.warning(
-                "[%d] state transition %s -- %s", self.n, old_state, new_state)
-            self.state = new_state
+        if old_state >= new_state:
+            return
+        logging.warning("[%d] state transition %s -- %s", self.n, old_state, new_state)
+        self.state = new_state
+
         if new_state == NODE_STATE_DISCOVERED:
             if old_state < new_state and self.values.HasCommandClass(z.Security):
                 pass
             # self._InitializeSecurity()
-            elif old_state < NODE_STATE_INTERVIEWED:
-                self.RefreshStaticValues()
-        else:
+            self.RefreshStaticValues()
+        elif new_state == NODE_STATE_INTERVIEWED:
             self.RefreshDynamicValues()
             self.RefreshSemiStaticValues()
 
@@ -634,12 +634,14 @@ class ApplicationNode:
         if key == command.CUSTOM_COMMAND_APPLICATION_UPDATE:
             self._InitializeCommands(values["type"], values["commands"], values["controls"])
             self.MaybeChangeState(NODE_STATE_DISCOVERED)
+            if self.state >= NODE_STATE_INTERVIEWED:
+                self.RefreshDynamicValues()
+                self.RefreshSemiStaticValues()
             return
 
         if self.state < NODE_STATE_DISCOVERED:
             #TODO
-            # self._nodeset.Ping(self.n, 3, False)
-            pass
+            self._nodeset.Ping(self.n, 3, False)
 
         if key == z.MultiChannel_CapabilityReport:
             logging.warning("FOUND MULTICHANNEL ENDPOINT: %s", values)

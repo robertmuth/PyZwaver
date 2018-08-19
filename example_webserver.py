@@ -850,6 +850,7 @@ class NodeUpdater(object):
                         PROTOCOL_NODESET.Ping(n, 3, False)
                         time.sleep(0.5)
                     elif node.state < application_node.NODE_STATE_INTERVIEWED:
+                        logging.warning("[%d] (%s) trigger static", n, node.state)
                         node.RefreshStaticValues()
             count += 1
             time.sleep(1.0)
@@ -1163,7 +1164,7 @@ class NodeActionHandler(BaseHandler):
                 node.SetMultilevelSwitch(p)
             elif cmd == "ping":
                 # force it
-                node._nodeset.Ping(3, True)
+                PROTOCOL_NODESET.Ping(num, 3, True)
             elif cmd == "refresh_static":
                 node.RefreshStaticValues()
             elif cmd == "refresh_semistatic":
@@ -1391,7 +1392,7 @@ def main():
     tornado.options.parse_command_line()
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
-    #logger.setLevel(logging.WARNING)
+    logger.setLevel(logging.WARNING)
     #logger.setLevel(logging.ERROR)
     for h in logger.handlers:
         h.setFormatter(MyFormatter())
