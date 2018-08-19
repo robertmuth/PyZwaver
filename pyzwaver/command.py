@@ -37,6 +37,8 @@ _CUSTOM_COMMAND_STRINGS = {
     CUSTOM_COMMAND_FAILED_NODE: "_FailedNode",
 }
 
+def IsCustom(key):
+    return key in _CUSTOM_COMMAND_STRINGS
 
 def Hexify(t):
     return ["%02x" % i for i in t]

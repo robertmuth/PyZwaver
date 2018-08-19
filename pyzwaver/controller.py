@@ -254,6 +254,8 @@ class Controller:
 
     def UpdateVersion(self):
         def handler(data):
+            if not data:
+                raise ValueError("Cannot read controller version. Check serial device.")
             self.props.SetVersion(*struct.unpack(">12sB", data[4:-1]))
 
         self.SendCommand(z.API_ZW_GET_VERSION, [], handler)

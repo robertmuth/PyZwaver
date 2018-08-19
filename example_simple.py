@@ -33,16 +33,18 @@ import argparse
 import sys
 import time
 
-from pyzwaver.controller import Controller, EVENT_UPDATE_COMPLETE
+from pyzwaver.controller import Controller
 from pyzwaver.driver import Driver, MakeSerialDevice
 from pyzwaver.command_translator import CommandTranslator
 from pyzwaver import command
 from pyzwaver.node import Nodeset
 
+
 class MyFormatter(logging.Formatter):
     """
     Nicer logging format
     """
+
     def __init__(self):
         super(MyFormatter, self).__init__()
 
@@ -63,6 +65,7 @@ class TestListener(object):
     Demonstrates how to hook into the stream of messages
     sent to the controller from other nodes
     """
+
     def __init__(self):
         pass
 
@@ -74,9 +77,9 @@ class TestListener(object):
 
 
 def Banner(m):
-    print ("=" * 60)
-    print (m)
-    print ("=" * 60)
+    print("=" * 60)
+    print(m)
+    print("=" * 60)
 
 
 def main():
@@ -122,7 +125,7 @@ def main():
 
     logging.info("Pinging %d nodes", len(controller.nodes))
     for n in controller.nodes:
-        translator.Ping(n, 5, False)
+        translator.Ping(n, 5, False, "initial")
         time.sleep(0.5)
 
     logging.info("Waiting for all nodes to be interviewed")
@@ -133,7 +136,7 @@ def main():
         for n in not_ready:
             node = nodeset.GetNode(n)
             if node.IsInterviewed():
-                    interviewed.add(node)
+                interviewed.add(node)
         time.sleep(2.0)
         for node in interviewed:
             Banner("Node %s has been interviewed" % node.n)

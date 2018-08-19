@@ -847,7 +847,7 @@ class NodeUpdater(object):
                 for n in CONTROLLER.nodes:
                     node: Node = NODESET.GetNode(n)
                     if node.state < NODE_STATE_DISCOVERED:
-                        TRANSLATOR.Ping(n, 3, False)
+                        TRANSLATOR.Ping(n, 3, False, "refresher")
                         time.sleep(0.5)
                     elif node.state < NODE_STATE_INTERVIEWED:
                         logging.warning("[%d] (%s) trigger static", n, node.state)
@@ -882,6 +882,7 @@ class EchoWebSocket(tornado.websocket.WebSocketHandler):
     def on_close(self):
         logging.info("WebSocket closed")
         SOCKETS.remove(self)
+
 
 def RenderReading(kind, unit, val):
     if kind == SENSOR_KIND_BATTERY and val == 100:
@@ -1161,7 +1162,7 @@ class NodeActionHandler(BaseHandler):
                 node.SetMultilevelSwitch(p)
             elif cmd == "ping":
                 # force it
-                TRANSLATOR.Ping(num, 3, True)
+                TRANSLATOR.Ping(num, 3, True, "manual")
             elif cmd == "refresh_static":
                 node.RefreshStaticValues()
             elif cmd == "refresh_semistatic":

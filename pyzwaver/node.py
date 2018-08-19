@@ -316,7 +316,6 @@ class NodeValues:
         return [(no, val["value"]["size"], val["value"]["value"])
                 for no, (_, val) in m.items()]
 
-
     def SceneActuatorConfiguration(self):
         m = self.GetMap(z.SceneActuatorConf_Report)
         return [(no, val["level"], val["delay"])
@@ -538,13 +537,10 @@ class Node:
         self.BatchCommandSubmitFilteredFast(c, XMIT_OPTIONS)
 
     def SetSceneConfig(self, scene, delay, extra, level, request_update=True):
-        self.BatchCommandSubmitFilteredFast(
-            [(z.SceneActuatorConf_Set,
-              {"scene": scene, "delay": delay, "extra": extra, "level": level})], XMIT_OPTIONS)
-        if not request_update:
-            return
-        self.BatchCommandSubmitFilteredFast(
-            [(z.SceneActuatorConf_Get, {"scene": scene})], XMIT_OPTIONS)
+        c = [(z.SceneActuatorConf_Set, {"scene": scene, "delay": delay, "extra": extra, "level": level})]
+        if  request_update:
+            c += [(z.SceneActuatorConf_Get, {"scene": scene})]
+        self.BatchCommandSubmitFilteredFast(c, XMIT_OPTIONS)
 
     def ResetMeter(self, request_update=True):
         # TODO
@@ -639,9 +635,8 @@ class Node:
                 self.RefreshSemiStaticValues()
             return
 
-        if self.state < NODE_STATE_DISCOVERED:
-            #TODO
-            self._translator.Ping(self.n, 3, False)
+        if self.state < NODE_STATE_DISCOVERED and not command.IsCustom(key):
+            self._translator.Ping(self.n, 3, False, "undiscovered")
 
         if key == z.MultiChannel_CapabilityReport:
             logging.warning("FOUND MULTICHANNEL ENDPOINT: %s", values)
