@@ -394,12 +394,12 @@ def _MakeMeter(args):
 
 
 # raw_cmd: [class, subcommand, arg1, arg2, ....]
-def AssembleCommand(cmd0, cmd1, args):
-    table = z.SUBCMD_TO_PARSE_TABLE[cmd0 * 256 + cmd1]
+def AssembleCommand(key, args):
+    table = z.SUBCMD_TO_PARSE_TABLE[key[0] * 256 + key[1]]
     assert table is not None
     data = [
-        cmd0,
-        cmd1
+        key[0],
+        key[1]
     ]
     # logging.debug("${raw_cmd[0]} ${raw_cmd[1]}: table length:
     # ${table.length}")

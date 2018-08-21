@@ -64,7 +64,7 @@ def ProcessApplicationData(data):
 
     value = command.ParseCommand(data)
     print (value)
-    data2 = command.AssembleCommand(k[0], k[1], value)
+    data2 = command.AssembleCommand(k, value)
     print("assembled data: ", Hexify(data2))
     assert data == data2
 
