@@ -667,6 +667,20 @@ SensorAlarm_Get = (0x9c, 0x01)
 SensorAlarm_Report = (0x9c, 0x02)
 SensorAlarm_SupportedGet = (0x9c, 0x03)
 SensorAlarm_SupportedReport = (0x9c, 0x04)
+Security2_NonceGet = (0x9f, 0x01)
+Security2_NonceReport = (0x9f, 0x02)
+Security2_MessageEncapsulation = (0x9f, 0x03)
+Security2_KexGet = (0x9f, 0x04)
+Security2_KexReport = (0x9f, 0x05)
+Security2_KexSet = (0x9f, 0x06)
+Security2_KexFail = (0x9f, 0x07)
+Security2_PublicKeyReport = (0x9f, 0x08)
+Security2_NetworkKeyGet = (0x9f, 0x09)
+Security2_NetworkKeyReport = (0x9f, 0x0a)
+Security2_NetworkKeyVerify = (0x9f, 0x0b)
+Security2_TransferEnd = (0x9f, 0x0c)
+Security2_CommandsSupportedGet = (0x9f, 0x0d)
+Security2_CommandsSupportedReport = (0x9f, 0x0e)
 
 SUBCMD_TO_STRING = {
     0x0000: 'NoOperation_Set',
@@ -838,6 +852,20 @@ SUBCMD_TO_STRING = {
     0x9c02: 'SensorAlarm_Report',
     0x9c03: 'SensorAlarm_SupportedGet',
     0x9c04: 'SensorAlarm_SupportedReport',
+    0x9f01: 'Security2_NonceGet',
+    0x9f02: 'Security2_NonceReport',
+    0x9f03: 'Security2_MessageEncapsulation',
+    0x9f04: 'Security2_KexGet',
+    0x9f05: 'Security2_KexReport',
+    0x9f06: 'Security2_KexSet',
+    0x9f07: 'Security2_KexFail',
+    0x9f08: 'Security2_PublicKeyReport',
+    0x9f09: 'Security2_NetworkKeyGet',
+    0x9f0a: 'Security2_NetworkKeyReport',
+    0x9f0b: 'Security2_NetworkKeyVerify',
+    0x9f0c: 'Security2_TransferEnd',
+    0x9f0d: 'Security2_CommandsSupportedGet',
+    0x9f0e: 'Security2_CommandsSupportedReport',
 }
 
 GENERIC_SPECIFIC_DB = {
@@ -1149,4 +1177,20 @@ SUBCMD_TO_PARSE_TABLE = {
     0x9c02: ['B{node}', 'B{alarm}'],  # Report (2)
     0x9c03: [],  # SupportedGet (3)
     0x9c04: ['T{bits}'],  # SupportedReport (4)
+
+    # Security2 (0x9f = 159)
+    0x9f01: ['B{seq}'],  # NonceGet (1)
+    0x9f02: ['B{seq}', 'B{mode}', 'L{nonce}'],  # NonceReport (2)
+    0x9f03: ['B{seq}', 'B{mode}', 'L{extensions}'],  # MessageEncapsulation (3)
+    0x9f04: [],  # KexGet (4)
+    0x9f05: ['B{mode}', 'B{schemes}', 'B{profiles}', 'B{keys}'],  # KexReport (5)
+    0x9f06: ['B{mode}', 'B{schemes}', 'B{profiles}', 'B{keys}'],  # KexSet (6)
+    0x9f07: ['B{type}'],  # KexFail (7)
+    0x9f08: ['B{mode}', 'L{key}'],  # PublicKeyReport (8)
+    0x9f09: ['B{key}'],  # NetworkKeyGet (9)
+    0x9f0a: ['B{key}', 'L{key}'],  # NetworkKeyReport (10)
+    0x9f0b: [],  # NetworkKeyVerify (11)
+    0x9f0c: ['B{mode}'],  # TransferEnd (12)
+    0x9f0d: [],  # CommandsSupportedGet (13)
+    0x9f0e: ['L{classes}'],  # CommandsSupportedReport (14)
 }

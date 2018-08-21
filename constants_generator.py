@@ -365,6 +365,8 @@ ALLOWED_PARAMETER_FORMATS = {
     "B{extra}",
     "B{generic}",
     "B{group}",
+    "B{key}",
+    "B{keys}",
     "B{level}",
     "B{user}",
     "B{library}",
@@ -374,11 +376,13 @@ ALLOWED_PARAMETER_FORMATS = {
     "B{node}",
     "B{parameter}",
     "B{percent}",
+    "B{profiles}",
     "B{protection}",
     "B{role}",
     "B{scales}",
     "B{scale}",
     "B{scene}",
+    "B{schemes}",
     "B{sec}",
     "B{seq}",
     "B{specific}",
@@ -398,7 +402,10 @@ ALLOWED_PARAMETER_FORMATS = {
     "F{bytes}",
     "K{key}",
     "L{command}",
+    "L{extensions}",
+    "L{key}",
     "L{nodes}",
+    "L{nonce}",
     "L{sensor}",
     "L{classes}",
     "L{extra}",
@@ -771,8 +778,23 @@ C("TransportService", 0x55)
 
 C("Supervision", 0x6c)
 
-C("Security2", 0x9f)
+C("Security2", 0x9f,
+  NonceGet=(0x01, "B{seq}"),
+  NonceReport=(0x02, "B{seq},B{mode},L{nonce}"),
+  MessageEncapsulation=(0x03, "B{seq},B{mode},L{extensions}"),
+  KexGet=(0x04, ""),
+  KexReport=(0x05, "B{mode},B{schemes},B{profiles},B{keys}"),
+  KexSet=(0x06, "B{mode},B{schemes},B{profiles},B{keys}"),
+  KexFail=(0x07, "B{type}"),
+  PublicKeyReport=(0x08, "B{mode},L{key}"),
+  NetworkKeyGet=(0x09, "B{key}"),
+  NetworkKeyReport=(0x0a, "B{key},L{key}"),
+  NetworkKeyVerify=(0x0b, ""),
+  TransferEnd=(0x0c, "B{mode}"),
+  CommandsSupportedGet=(0x0d, ""),
+  CommandsSupportedReport=(0x0e, "L{classes}"),
 
+  )
 
 C("ManufacturerProprietary", 0x91)
 C("SimpleAvControl", 0x94)
