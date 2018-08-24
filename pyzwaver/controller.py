@@ -390,10 +390,10 @@ class Controller:
         def Handler(m):
             if m is None:
                 logging.error("[%s] Aborted", activity)
-                event_cb(activity, EVENT_PAIRING_ABORTED)
+                event_cb(activity, EVENT_PAIRING_ABORTED, None)
                 return True
             if len(m) == 0:
-                event_cb(activity, EVENT_PAIRING_STARTED)
+                event_cb(activity, EVENT_PAIRING_STARTED, None)
                 return True
 
             status = m[5]
@@ -403,23 +403,23 @@ class Controller:
             logging.warning("pairing status update: %s", a)
             if a == PAIRING_ACTION_CONTINUE:
                 logging.warning("[%s] Continue - %s [%d]" % (activity, name, node))
-                event_cb(activity, EVENT_PAIRING_CONTINUE)
+                event_cb(activity, EVENT_PAIRING_CONTINUE, node)
                 return False
             elif a == PAIRING_ACTION_DONE:
                 logging.warning("[%s] Success", node)
-                event_cb(activity, EVENT_PAIRING_SUCCESS)
+                event_cb(activity, EVENT_PAIRING_SUCCESS, node)
                 return True
 
             elif a == PAIRING_ACTION_DONE_UPDATE:
                 logging.warning("[%s] Success - updating nodes %s [%d]" % (activity, name, node))
-                event_cb(activity, EVENT_PAIRING_SUCCESS)
+                event_cb(activity, EVENT_PAIRING_SUCCESS, node)
                 # This not make much sense for node removals but does not hurt either
                 self.RequestNodeInfo(node)
                 self.Update(None)
                 return True
             elif a == PAIRING_ACTION_FAILED:
                 logging.warning("[%s] Failure - %s [%d]" % (activity, name, node))
-                event_cb(activity, EVENT_PAIRING_FAILED)
+                event_cb(activity, EVENT_PAIRING_FAILED, node)
                 return True
             else:
                 logging.error("activity unexpected: ${name}")
@@ -427,7 +427,7 @@ class Controller:
 
         return Handler
 
-    def AddNodeToNetwork(self, event_cb):
+    def AddNodeToNetwork(self, event_cb, secure=False):
         logging.warning("AddNodeToNetwork")
         mode = [z.ADD_NODE_ANY]
         cb = self.MakeFancyReceiver(ACTIVITY_ADD_NODE, HANDLER_TYPE_ADD_NODE, event_cb)

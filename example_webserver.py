@@ -149,7 +149,7 @@ Simple demo app using the pyzwaver library
          <button class='node_switch_off' onclick='HandleAction(event)' 
                  data-param='/node/<CURRENT>/binary_switch/0'>Off</button>
          &nbsp;
-         <button class='node_switch_on' onclick='HandleAction(event)' class='multilevel' 
+         <button class='node_switch_on' onclick='HandleAction(event)' 
                  data-param='/node/<CURRENT>/binary_switch/99'>On</button>
          &nbsp;
          <input class='node_slide' onchange='HandleAction(event)'  data-args='node_slide'
@@ -158,7 +158,7 @@ Simple demo app using the pyzwaver library
     </td>
 
    <td class=node_info valign='top'>
-       <div class=node_readings class=readings>READINGS</div>
+       <div class=node_readings >READINGS</div>
        <p>
          <span class=node_no>node</span>
          <span class=node_last_contact>last contact</span>
@@ -187,7 +187,7 @@ Simple demo app using the pyzwaver library
   <button class='node_switch_off' onclick='HandleAction(event)' 
          data-param='/node/<CURRENT>/binary_switch/0'>Off</button>
   &nbsp;
-  <button class='node_switch_on' onclick='HandleAction(event)' class='multilevel' 
+  <button class='node_switch_on' onclick='HandleAction(event)'  
           data-param='/node/<CURRENT>/binary_switch/99'>On</button>
   &nbsp;
   <input class='node_slide' onchange='HandleAction(event)' data-args='node_slide'
@@ -856,13 +856,13 @@ class NodeUpdater(object):
             time.sleep(1.0)
 
     def put(self, n, _ts, _key, _values):
-        #print ("got event ", n, _key, _values)
+        # print ("got event ", n, _key, _values)
         # SendToSocket("E:[%d] %s" % (n, "@NO EVENT@"))
         self._nodes_to_update.add(n)
         self._update_driver = True
 
 
-def ControllerEventCallback(action, event):
+def ControllerEventCallback(action, event, node):
     SendToSocket("S:" + event)
     SendToSocket("A:" + action)
     if event == EVENT_UPDATE_COMPLETE:
@@ -1072,9 +1072,9 @@ def RenderNodeBrief(node: Node, db, _is_failed):
     readings = (RenderReadings(node.values.Sensors() +
                                node.values.Meters() +
                                node.values.MiscSensors()))
-    state = node.state[2:]
+    state = node.state[3:]
     # TODO
-    #if pnode.failed:
+    # if pnode.failed:
     #    state = "FAILED"
     age = "never"
     if node.last_contact:
@@ -1248,7 +1248,7 @@ class ControllerActionHandler(BaseHandler):
                 CONTROLLER.Update(None)
             else:
                 logging.error("unsupported command: %s", repr(token))
-        except:
+        except Exception as e:
             logging.error("cannot processed: %s", path[0])
             print("-" * 60)
             traceback.print_exc(file=sys.stdout)
