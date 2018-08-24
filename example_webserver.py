@@ -57,6 +57,7 @@ from pyzwaver.command import NodeDescription
 from pyzwaver.command_translator import CommandTranslator
 from pyzwaver.node import Node, Nodeset, NODE_STATE_INTERVIEWED, NODE_STATE_DISCOVERED
 from pyzwaver import zwave as z
+from pyzwaver import command_helper as ch
 
 
 HTML = """
@@ -1148,18 +1149,18 @@ class NodeActionHandler(BaseHandler):
         token = path[0].split("/")
         logging.error("NODE ACTION> %s", token)
         num = int(token.pop(0))
-        node = NODESET.GetNode(num)
+        node: Node = NODESET.GetNode(num)
         cmd = token.pop(0)
         try:
             if cmd == "basic":
                 p = int(token.pop(0))
-                node.SetBasic(p)
+                node.BatchCommandSubmitFilteredFast(ch.BasicSet(p))
             elif cmd == "binary_switch":
                 p = int(token.pop(0))
-                node.SetBinarySwitch(p)
+                node.BatchCommandSubmitFilteredFast(ch.BinarySwitchSet(p))
             elif cmd == "multilevel_switch":
                 p = int(token.pop(0))
-                node.SetMultilevelSwitch(p)
+                node.BatchCommandSubmitFilteredFast(ch.MultilevelSwitchSet(p))
             elif cmd == "ping":
                 # force it
                 TRANSLATOR.Ping(num, 3, True, "manual")
@@ -1178,27 +1179,28 @@ class NodeActionHandler(BaseHandler):
             elif cmd == "association_add":
                 group = int(token.pop(0))
                 n = int(token.pop(0))
-                node.AssociationAdd(group, n)
+                node.BatchCommandSubmitFilteredFast(ch.AssociationAdd(group, n))
             elif cmd == "change_parameter":
                 num = int(token.pop(0))
                 size = int(token.pop(0))
                 value = int(token.pop(0))
                 print(num, size, value)
-                node.SetConfigValue(num, size, value)
+                node.BatchCommandSubmitFilteredFast(ch.ConfigurationSet(num, size, value))
             elif cmd == "association_remove":
                 group = int(token.pop(0))
                 n = int(token.pop(0))
-                node.AssociationRemove(group, n)
+                node.BatchCommandSubmitFilteredFast(ch.AssociationRemove(group, n))
             elif cmd == "change_scene":
                 scene = int(token.pop(0))
                 level = int(token.pop(0))
                 delay = int(token.pop(0))
                 extra = int(token.pop(0))
-                node.SetSceneConfig(scene, delay, level, extra, True)
+                node.BatchCommandSubmitFilteredFast(
+                    ch.SceneActuatorConfSet(scene, delay, level, extra))
             elif cmd == "set_name" and token:
                 DB.SetNodeName(num, token.pop(0))
             elif cmd == "reset_meter":
-                node.ResetMeter()
+                node.BatchCommandSubmitFilteredFast(ch.ResetMeter())
         except Exception as e:
             logging.error("cannot processed: %s", path[0])
             print("-" * 60)
@@ -1390,7 +1392,7 @@ def main():
     tornado.options.parse_command_line()
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
-    logger.setLevel(logging.WARNING)
+    #logger.setLevel(logging.WARNING)
     #logger.setLevel(logging.ERROR)
     for h in logger.handlers:
         h.setFormatter(MyFormatter())
