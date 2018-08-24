@@ -52,26 +52,45 @@ NODE_STATE_KEX_REPORT = "22_KexReport"
 NODE_STATE_KEX_SET = "23_KexSet"
 NODE_STATE_PUBLIC_KEY_REPORT1 = "24_PublicKeyReport1"
 
-_NO_VERSION = {"version": -1}
-_BAD_VERSION = {"version": 0}
+_NO_VERSION =  -1
+_BAD_VERSION =  0
 
 
 def _AssociationSubkey(v):
     return v["group"]
 
 
+def _ExtractMeter(v):
+    value = v["value"]
+    key = (value["type"], value["unit"])
+    return [(key, value)]
+
+
+def _ExtractSensor(v):
+    value = v["value"]
+    key = (v["type"], value["unit"])
+    return [(key, value)]
+
+
+def _ExtractAssociationInfo(v):
+    out = []
+    for t in v["groups"]:
+        out.append((t[0], t))
+    return out
+
+
 _COMMANDS_WITH_MAP_VALUES = {
-    z.Version_CommandClassReport: lambda v: v["class"],
-    z.Meter_Report: lambda v: (v["value"]["type"], v["value"]["unit"]),
-    z.Configuration_Report: lambda v: v["parameter"],
-    z.SensorMultilevel_Report: lambda v: (v["type"], v["value"]["unit"]),
-    z.Association_Report: _AssociationSubkey,
-    z.AssociationGroupInformation_NameReport: _AssociationSubkey,
-    z.AssociationGroupInformation_InfoReport: _AssociationSubkey,
-    z.AssociationGroupInformation_ListReport: _AssociationSubkey,
-    z.SceneActuatorConf_Report: lambda v: v["scene"],
-    z.UserCode_Report: lambda v: v["user"],
-    z.MultiChannel_CapabilityReport: lambda v: v["endpoint"],
+    z.Version_CommandClassReport: lambda v: [(v["class"], v["version"])],
+    z.Meter_Report: _ExtractMeter,
+    z.Configuration_Report: lambda v: [(v["parameter"], v["value"])],
+    z.SensorMultilevel_Report: _ExtractSensor,
+    z.Association_Report: lambda v: [(v["group"], v)],
+    z.AssociationGroupInformation_NameReport:  lambda v:  [(v["group"], v["name"])],
+    z.AssociationGroupInformation_InfoReport: _ExtractAssociationInfo,
+    z.AssociationGroupInformation_ListReport: lambda v:  [(v["group"], v["commands"])],
+    z.SceneActuatorConf_Report: lambda v: [(v["scene"], v)],
+    z.UserCode_Report: lambda v: [(v["user"], v)],
+    z.MultiChannel_CapabilityReport: lambda v: [(v["endpoint"], v)],
 }
 
 _COMMANDS_WITH_SPECIAL_ACTIONS = {
@@ -215,7 +234,7 @@ class NodeValues:
         e = m.get(cls)
         if not e:
             return False
-        return e[1]["version"] != 0
+        return e != 0
 
     def NumCommands(self):
         m = self.GetMap(z.Version_CommandClassReport)
@@ -231,13 +250,12 @@ class NodeValues:
 
     def CommandVersions(self):
         m = self.GetMap(z.Version_CommandClassReport)
-        return [(cls, command.StringifyCommandClass(cls), val["version"])
-                for cls, (_, val) in m.items()
-                if val["version"] != 0]
+        return [(cls, command.StringifyCommandClass(cls), val)
+                for cls, (_, val) in m.items() if val != 0]
 
     def Configuration(self):
         m = self.GetMap(z.Configuration_Report)
-        return [(no, val["value"]["size"], val["value"]["value"])
+        return [(no, val["size"], val["value"])
                 for no, (_, val) in m.items()]
 
     def SceneActuatorConfiguration(self):
@@ -251,12 +269,12 @@ class NodeValues:
 
     def Sensors(self):
         m = self.GetMap(z.SensorMultilevel_Report)
-        return [(key, *value.GetSensorMeta(val), val["value"]["_value"])
+        return [(key, *value.GetSensorMeta(*key), val["_value"])
                 for key, (_, val) in m.items()]
 
     def Meters(self):
         m = self.GetMap(z.Meter_Report)
-        return [(key, *value.GetMeterMeta(val), val["value"]["_value"])
+        return [(key, *value.GetMeterMeta(*key), val["_value"])
                 for key, (_, val) in m.items()]
 
     def MiscSensors(self):
@@ -514,9 +532,10 @@ class Node:
         if key == z.MultiChannel_CapabilityReport:
             logging.warning("FOUND MULTICHANNEL ENDPOINT: %s", values)
 
-        key_extractor = _COMMANDS_WITH_MAP_VALUES.get(key)
-        if key_extractor:
-            self.values.SetMapEntry(ts, key, key_extractor(values), values)
+        items_extractor = _COMMANDS_WITH_MAP_VALUES.get(key)
+        if items_extractor:
+            for k, v in items_extractor(values):
+                self.values.SetMapEntry(ts, key, k, v)
         else:
             self.values.Set(ts, key, values)
 

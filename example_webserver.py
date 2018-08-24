@@ -989,7 +989,7 @@ def GetControls(node: Node):
 def RenderAssociationGroup(no, group, name, info, lst):
     group_name = ""
     if name:
-        group_name = name["name"]
+        group_name = name
     out = ["<tr>"
            "<th>", "Group %d %s [%d]:" % (
                no, group_name, group["count"]), "</th>",
@@ -1392,7 +1392,7 @@ def main():
     tornado.options.parse_command_line()
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
-    #logger.setLevel(logging.WARNING)
+    logger.setLevel(logging.WARNING)
     #logger.setLevel(logging.ERROR)
     for h in logger.handlers:
         h.setFormatter(MyFormatter())

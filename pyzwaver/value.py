@@ -205,30 +205,24 @@ VALUE_CHANGERS = {
 }
 
 
-def GetSensorMeta(values):
+def GetSensorMeta(kind, unit):
     try:
-        v = values["value"]
-        kind = values["type"]
         info = SENSOR_TYPES[kind]
-        unit = v["unit"]
         return info[0], info[1][unit]
     except:
-        logging.error("bad meterunit/type in: %s", values)
+        logging.error("bad sensorunit/type in: %d %d", kind, unit)
         print("-" * 60)
         traceback.print_exc(file=sys.stdout)
         print("-" * 60)
         return SENSOR_KIND_UNKNOWN, "unknown unit"
 
 
-def GetMeterMeta(values):
+def GetMeterMeta(kind, unit):
     try:
-        v = values["value"]
-        kind = v["type"]
-        unit = v["unit"]
         info = METER_TYPES[kind]
         return info[0], info[1][unit]
     except:
-        logging.error("bad meterunit/type in: %s", values)
+        logging.error("bad meterunit/type in: %d %d", kind, unit)
         print("-" * 60)
         traceback.print_exc(file=sys.stdout)
         print("-" * 60)

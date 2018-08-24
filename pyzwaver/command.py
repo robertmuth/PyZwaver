@@ -37,8 +37,10 @@ _CUSTOM_COMMAND_STRINGS = {
     CUSTOM_COMMAND_FAILED_NODE: "_FailedNode",
 }
 
+
 def IsCustom(key):
     return key in _CUSTOM_COMMAND_STRINGS
+
 
 def Hexify(t):
     return ["%02x" % i for i in t]
@@ -67,6 +69,8 @@ def NodeDescription(basic_generic_specific):
     return v[0]
 
 # ======================================================================
+# Parse Helpers
+# ======================================================================
 def _GetSignedValue(data):
     value = 0
     negative = (data[0] & 0x80) != 0
@@ -84,7 +88,6 @@ def _GetSignedValue(data):
         return value
 
 
-# ======================================================================
 def _GetReading(m, index, units_extra):
     c = m[index]
     size = c & 0x7
@@ -137,12 +140,6 @@ def _ParseMeter(m, index):
     return index, out
 
 
-# ======================================================================
-# all parsers return the amount of consumed bytes or a negative number to indicate
-# success
-
-_OPTIONAL_COMPONENTS = {'b', 't'}
-
 
 def _ParseByte(m, index):
     if len(m) <= index:
@@ -179,7 +176,7 @@ def _ParseName(m, index):
 
 def _ParseStringWithLength(m, index):
     size = m[index]
-    return 1 + size + index, bytes(m[index + 1: size])
+    return 1 + size + index, bytes(m[index + 1: index + 1 + size])
 
 
 def _ParseStringWithLengthAndEncoding(m, index):
@@ -194,13 +191,10 @@ def _ParseListRest(m, index):
 
 
 def _ParseGroups(m, index):
-    misc = m[index]
-    count = misc & 0x3f
-    if len(m) < index + 1 + count * 7:
-        raise ValueError("malformed groups section: %d (%d)" % (len(m), count))
+    if (len(m) - index) %  7 != 0:
+        raise ValueError("malformed groups section: %d" % len(m))
     groups = []
-    index += 1
-    for i in range(count):
+    while index < len(m):
         num = m[index + 0]
         profile = m[index + 2] * 256 + m[index + 3]
         event = m[index + 5] * 256 + m[index + 6]
@@ -213,11 +207,6 @@ def _ParseNonce(m, index):
     size = 8
     if len(m) < index + size:
         raise ValueError("malformed nonce:")
-    return index + size, m[index:index + size]
-
-
-def _ParseDataRest(m, index):
-    size = len(m) - index
     return index + size, m[index:index + size]
 
 
@@ -304,60 +293,9 @@ def _ParseDate(m, index):
     return index + 7, [year, month, day, hours, mins, secs]
 
 
-_PARSE_ACTIONS = {
-    'A': _ParseStringWithLength,
-    'F': _ParseStringWithLengthAndEncoding,
-    'B': _ParseByte,
-    'C': _ParseDate,
-    'G': _ParseGroups,
-    'N': _ParseName,
-    'L': _ParseListRest,
-    'R': _ParseRestLittleEndianInt,  # as integer
-    "W": _ParseWord,
-    "V": _ParseValue,
-    "M": _ParseMeter,
-    "O": _ParseNonce,
-    "D": _ParseDataRest,  # as Uint8List
-    "T": _ParseSizedLittleEndianInt,
-    "X": _ParseSensor,
-    'b': _ParseOptionalByte,
-    't': _ParseOptionalTarget,
-}
-
-
-def _GetParameterDescriptors(m):
-    if len(m) < 2:
-        logging.error("malformed command %s", m)
-        return None
-    key = m[0] * 256 + m[1]
-    return z.SUBCMD_TO_PARSE_TABLE[key]
-
-
-def ParseCommand(m):
-    """ParseCommand decodes an API_APPLICATION_COMMAND request into a map of values"""
-    table = _GetParameterDescriptors(m)
-
-    if table is None:
-        raise ValueError("unknown command")
-
-    out = {}
-    index = 2
-    for t in table:
-        kind = t[0]
-        name = t[2:-1]
-        new_index, value = _PARSE_ACTIONS[kind](m, index)
-        if value is None:
-            if kind not in _OPTIONAL_COMPONENTS:
-                raise ValueError("missing value for %s" % name)
-        else:
-            out[name] = value
-
-        index = new_index
-    return out
-
-
 # ======================================================================
-
+# Assemble Helpers
+# ======================================================================
 
 def _MakeValue(conf, value):
     size = conf & 7
@@ -393,7 +331,149 @@ def _MakeMeter(args):
     return [c1, c2] + args["mantissa"] + delta + args.get("mantissa2", [])
 
 
-# raw_cmd: [class, subcommand, arg1, arg2, ....]
+def _MakeByte(b):
+    return [b]
+
+
+def _MakeOptionalByte(b):
+    if b is None:
+        return []
+    return [b]
+
+
+def _MakeWord(w):
+    return [(w >> 8) & 0xff, w & 0xff]
+
+
+def _MakeName(w):
+    assert False, "NYI"
+
+
+def _MakeList(lst):
+    return lst
+
+
+def _MakeNonce(lst):
+    if len(lst) != 8:
+        raise ValueError("bad nonce parameter of length %d" % len(lst))
+    return lst
+
+
+def _MakeValue(v):
+    size = v["size"]
+    value = v["value"]
+    out = [size]
+    for i in reversed(range(size)):
+        out.append((value >> 8 * i) & 0xff)
+    return out
+
+
+def _MakeString(v):
+    m = v["text"]
+    c = (v["encoding"] << 5) | len(m)
+    return [c] + m
+
+
+def _MakeStringWithLength(v):
+    return [len(v)] + [int(x) for x in v]
+
+
+def _MakeLittleEndianInt(v):
+    n = v["value"]
+    out = []
+    for i in range(v["size"]):
+        out.append(n & 0xff)
+        n >>= 8
+    return out
+
+def _MakeSizedLittleEndianInt(v):
+    n = v["value"]
+    out = [v["size"]]
+    for i in range(v["size"]):
+        out.append(n & 0xff)
+        n >>= 8
+    return out
+
+def _MakeOptionalTarget(v):
+    if v is None:
+        return []
+    out = [len(v)]
+    for w in v:
+        out.append((w >> 8) & 255)
+        out.append(w & 255)
+    return out
+
+
+def _MakeGroups(v):
+    out = []
+    for num, profile, event in v:
+        out.append(num)
+        out.append(0)
+        out.append((profile >> 8) & 255)
+        out.append(profile & 255)
+        out.append(0)
+        out.append((event >> 8) & 255)
+        out.append(event& 255)
+    return out
+
+
+_OPTIONAL_COMPONENTS = {'b', 't'}
+
+# Whenever you augment this make sure there is a test case in
+# TestData/commands.input.txt
+_PARSE_ACTIONS = {
+    "A": (_ParseStringWithLength, _MakeStringWithLength),
+    "B": (_ParseByte, _MakeByte),
+    "C": (_ParseDate, _MakeDate),
+    "F": (_ParseStringWithLengthAndEncoding, _MakeString),
+    "G": (_ParseGroups, _MakeGroups),
+    "L": (_ParseListRest, _MakeList),
+    "M": (_ParseMeter, _MakeMeter),
+    "N": (_ParseName, _MakeName),
+    "O": (_ParseNonce, _MakeNonce),
+    "R": (_ParseRestLittleEndianInt, _MakeLittleEndianInt),  # as integer
+    # "T": _ParseSizedLittleEndianInt,
+    "V": (_ParseValue, _MakeValue),
+    "W": (_ParseWord, _MakeWord),
+
+    "X": (_ParseSensor, _MakeSensor),
+    # Maybes
+    'b': (_ParseOptionalByte, _MakeOptionalByte),
+    't': (_ParseOptionalTarget, _MakeOptionalTarget),
+}
+
+
+def _GetParameterDescriptors(m):
+    if len(m) < 2:
+        logging.error("malformed command %s", m)
+        return None
+    key = m[0] * 256 + m[1]
+    return z.SUBCMD_TO_PARSE_TABLE[key]
+
+
+def ParseCommand(m):
+    """ParseCommand decodes an API_APPLICATION_COMMAND request into a map of values"""
+    table = _GetParameterDescriptors(m)
+
+    if table is None:
+        raise ValueError("unknown command")
+
+    out = {}
+    index = 2
+    for t in table:
+        kind = t[0]
+        name = t[2:-1]
+        new_index, value = _PARSE_ACTIONS[kind][0](m, index)
+        if value is None:
+            if kind not in _OPTIONAL_COMPONENTS:
+                raise ValueError("missing value for %s" % name)
+        else:
+            out[name] = value
+
+        index = new_index
+    return out
+
+
 def AssembleCommand(key, args):
     table = z.SUBCMD_TO_PARSE_TABLE[key[0] * 256 + key[1]]
     assert table is not None
@@ -409,60 +489,8 @@ def AssembleCommand(key, args):
         v = args.get(name)
         if v is None and kind not in _OPTIONAL_COMPONENTS:
             raise ValueError("missing args for [%s]" % name)
-        if kind == 'B':
-            data.append(v)
-        elif kind == 'W':
-            data.append((v >> 8) & 0xff)
-            data.append(v & 0xff)
-        elif kind == 'N':
-            data.append(1)
-            # for c in v:
-            # out.append(ord(c))
-        elif kind == 'K':
-            if len(v) != 16:
-                raise ValueError("bad key parameter of length %d" % len(v))
-            data += v
-        elif kind == 'D':
-            data += v
-        elif kind == 'L':
-            data += v
-        elif kind == 'C':
-            data += _MakeDate(v)
-        elif kind == 'O':
-            if len(v) != 8:
-                raise ValueError("bad nonce parameter of length %d" % len(v))
-            data += v
-        elif kind == 'V':
-            size = v["size"]
-            value = v["value"]
-            data += [size]
-            for i in reversed(range(size)):
-                data += [(value >> 8 * i) & 0xff]
-        elif kind == 'X':
-            data += _MakeSensor(v)
-        elif kind == 'M':
-            data += _MakeMeter(v)
-        elif kind == 'F':
-            m = v["text"]
-            c = (v["encoding"] << 5) | len(m)
-            data += [c] + v["text"]
-        elif kind == 'R':
-            value = v["value"]
-            for i in range(v["size"]):
-                data += [value & 0xff]
-                value >>= 8
-        elif kind == 'b':
-            if v is not None:
-                data.append(v)
-        elif kind == 't':
-            if v is not None:
-                data.append(len(v))
-                for w in v:
-                    data.append((w >> 8) & 255)
-                    data.append(w & 255)
-        else:
-            raise ValueError("unknown parameter  type: %s" % kind)
 
+        data += _PARSE_ACTIONS[kind][1](v)
     return data
 
 

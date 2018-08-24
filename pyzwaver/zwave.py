@@ -1026,7 +1026,7 @@ SUBCMD_TO_PARSE_TABLE = {
     0x5901: ['B{group}'],  # NameGet (1)
     0x5902: ['B{group}', 'A{name}'],  # NameReport (2)
     0x5903: ['B{mode}', 'B{group}'],  # InfoGet (3)
-    0x5904: ['B{mode}', 'B{group}', 'G{groups}'],  # InfoReport (4)
+    0x5904: ['B{mode}', 'G{groups}'],  # InfoReport (4)
     0x5905: ['B{mode}', 'B{group}'],  # ListGet (5)
     0x5906: ['B{group}', 'A{commands}'],  # ListReport (6)
 
@@ -1062,7 +1062,7 @@ SUBCMD_TO_PARSE_TABLE = {
     # UserCode (0x63 = 99)
     0x6301: [],  # Set (1)
     0x6302: ['B{user}'],  # Get (2)
-    0x6303: ['B{user}', 'B{status}', 'D{code}'],  # Report (3)
+    0x6303: ['B{user}', 'B{status}', 'L{code}'],  # Report (3)
     0x6304: [],  # NumberGet (4)
     0x6305: ['B{count}'],  # NumberReport (5)
 
@@ -1169,8 +1169,8 @@ SUBCMD_TO_PARSE_TABLE = {
     0x9808: [],  # SchemeInherit (8)
     0x9840: [],  # NonceGet (64)
     0x9880: ['O{nonce}'],  # NonceReport (128)
-    0x9881: ['D{data}'],  # MessageEncap (129)
-    0x98c1: ['D{data}'],  # MessageEncapNonceGet (193)
+    0x9881: ['L{data}'],  # MessageEncap (129)
+    0x98c1: ['L{data}'],  # MessageEncapNonceGet (193)
 
     # SensorAlarm (0x9c = 156)
     0x9c01: ['B{alarm}'],  # Get (1)
