@@ -48,5 +48,3 @@ setup(name='pyzwaver',
       package_data={'pyzwaver': ['pyzwaver.iml']},  # support files
       install_requires=[],  # dependencies
       zip_safe=False)
-
-# TODO: Include files (XML?  tests?)
