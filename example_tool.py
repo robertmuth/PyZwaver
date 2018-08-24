@@ -24,13 +24,16 @@ import logging
 import argparse
 import sys
 import time
-from typing import Dict, Tuple, List
+from typing import Tuple
 
 from pyzwaver.controller import Controller
 from pyzwaver.driver import Driver, MakeSerialDevice
 from pyzwaver import zmessage
-from pyzwaver import command_translator
+from pyzwaver.command_translator import CommandTranslator
 from pyzwaver import zwave as z
+from pyzwaver.node import Node, Nodeset
+from pyzwaver.command import StringifyCommand
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
 XMIT_OPTIONS_NO_ROUTE = (z.TRANSMIT_OPTION_ACK |
                          z.TRANSMIT_OPTION_EXPLORE)
@@ -43,14 +46,30 @@ XMIT_OPTIONS_SECURE = (z.TRANSMIT_OPTION_ACK |
                        z.TRANSMIT_OPTION_AUTO_ROUTE)
 
 
+class TestListener(object):
+    """
+    Demonstrates how to hook into the stream of messages
+    sent to the controller from other nodes
+    """
+
+    def __init__(self):
+        pass
+
+    def put(self, n, ts, key, values):
+        name = "@NONE@"
+        if key[0] is not None:
+            name = StringifyCommand(key)
+        logging.warning("RECEIVED [%d]: %s - %s", n, name, values)
+
+
 class NodeUpdateListener(object):
 
     def put(self, n, _ts, key, values):
         print("RECEIVED ", n, key, values)
 
 
-def ControllerEventCallback(action, event):
-    print(action, event)
+def ControllerEventCallback(action, event, node):
+    print(action, event, node)
 
 
 def InitController(args, update_routing=False) -> Tuple[Driver, Controller]:
@@ -71,11 +90,6 @@ def InitController(args, update_routing=False) -> Tuple[Driver, Controller]:
     return driver, controller
 
 
-def cmd_hard_reset(args):
-    driver, controller = InitController(args)
-    driver.Terminate()
-
-
 def cmd_pair(args):
     driver, controller = InitController(args)
     controller.StopAddNodeToNetwork(ControllerEventCallback)
@@ -84,11 +98,31 @@ def cmd_pair(args):
     driver.Terminate()
 
 
+def cmd_secure_pair(args):
+    private_key = X25519PrivateKey.generate()
+    public_key = private_key.public_key()
+    print ("PRIVATE KEY: ", private_key)
+    print ("PUBLIC KEY: ", len(public_key.public_bytes()))
+    driver, controller = InitController(args)
+    translator = CommandTranslator(driver)
+    translator.AddListener(TestListener())
+    nodeset = Nodeset(translator, controller.GetNodeId())
+    controller.StopAddNodeToNetwork(ControllerEventCallback)
+    time.sleep(1.0)
+    controller.AddNodeToNetwork(ControllerEventCallback)
+    controller.StopAddNodeToNetwork(ControllerEventCallback)
+    time.sleep(5.0)
+
+    # driver.Terminate()
+
+
 def cmd_unpair(args):
     driver, controller = InitController(args)
     controller.StopRemoveNodeFromNetwork(None)
+    time.sleep(1.0)
     controller.RemoveNodeFromNetwork(ControllerEventCallback)
     controller.StopRemoveNodeFromNetwork(None)
+    time.sleep(1.0)
     driver.Terminate()
 
 
@@ -105,28 +139,29 @@ def cmd_controller_details(args):
 
 def cmd_set_basic_multi(args):
     driver, controller = InitController(args, True)
-    translator = command_translator.CommandTranslator(driver)
+    translator = CommandTranslator(driver)
     logging.info("sending command to %s", args.node)
     translator.SendMultiCommand(args.node,
-                             z.Basic_Set,
-                             {"level": args.level},
-                             zmessage.ControllerPriority(),
-                             XMIT_OPTIONS
-                             )
+                                z.Basic_Set,
+                                {"level": args.level},
+                                zmessage.ControllerPriority(),
+                                XMIT_OPTIONS
+                                )
 
     driver.Terminate()
 
 
 def cmd_get_basic(args):
     driver, controller = InitController(args, True)
-    translator = command_translator.CommandTranslator(driver)
+    translator = CommandTranslator(driver)
     translator.AddListener(NodeUpdateListener())
     for n in args.node:
-        translator.SendCommand(n,
-                            z.Basic_Get,
-                            {},
-                            zmessage.ControllerPriority(),
-                            XMIT_OPTIONS)
+        translator.SendCommand(
+            n,
+            z.Basic_Get,
+            {},
+            zmessage.ControllerPriority(),
+            XMIT_OPTIONS)
     time.sleep(2)
     driver.Terminate()
 
@@ -147,6 +182,9 @@ def main():
 
     s = subparsers.add_parser("pair", help="Pair a Z-wave node")
     s.set_defaults(func=cmd_pair)
+
+    s = subparsers.add_parser("secure_pair", help="Securely pair a Z-wave node")
+    s.set_defaults(func=cmd_secure_pair)
 
     s = subparsers.add_parser("unpair", help="Unpair a Z-wave node")
     s.set_defaults(func=cmd_unpair)

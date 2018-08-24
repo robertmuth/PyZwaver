@@ -28,18 +28,27 @@ from pyzwaver import command_translator
 from pyzwaver import command
 from pyzwaver import value
 
+SECURE_MODE = False
+
+if SECURE_MODE:
+    from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 
 def Hexify(t):
     return ["%02x" % i for i in t]
 
 
 NODE_STATE_NONE = "0_None"
-NODE_STATE_INCLUDED = "1_Included"
+NODE_STATE_INCLUDED = "10_Included"
 # discovered means we have the command classes
-NODE_STATE_DISCOVERED = "2_Discovered"
+NODE_STATE_DISCOVERED = "20_Discovered"
 # interviewed means we have received product info (including most static
 # info an versions)
-NODE_STATE_INTERVIEWED = "3_Interviewed"
+NODE_STATE_INTERVIEWED = "30_Interviewed"
+
+NODE_STATE_KEX_GET = "21_KexGet"
+NODE_STATE_KEX_REPORT = "22_KexReport"
+NODE_STATE_KEX_SET = "23_KexSet"
+NODE_STATE_PUBLIC_KEY_REPORT1 = "24_PublicKeyReport1"
 
 _NO_VERSION = {"version": -1}
 _BAD_VERSION = {"version": 0}
@@ -66,6 +75,10 @@ _COMMANDS_WITH_MAP_VALUES = {
 _COMMANDS_WITH_SPECIAL_ACTIONS = {
     z.ManufacturerSpecific_Report: lambda _ts, node, _values:
         node.MaybeChangeState(NODE_STATE_INTERVIEWED),
+    z.Security2_KexReport: lambda _ts, node, _values:
+        node.MaybeChangeState(NODE_STATE_KEX_REPORT),
+     z.Security2_PublicKeyReport: lambda _ts, node, _values:
+        node.MaybeChangeState(NODE_STATE_PUBLIC_KEY_REPORT1),
     z.SceneActuatorConf_Report: lambda ts, node, values:
         node.values.Set(ts, command.CUSTOM_COMMAND_ACTIVE_SCENE, values)
 }
@@ -432,6 +445,7 @@ class Node:
         self.values = NodeValues()
         self.is_controller = is_controller
         self.last_contact = 0
+        self.secure_pair = SECURE_MODE
 
     def IsSelf(self):
         return self.is_controller
@@ -498,11 +512,6 @@ class Node:
     #
     #   return self._secure_commands.HasCommandClass(key0)
 
-    def _InitializeSecurity(self):
-        logging.error("[%d] initializing security", self.n)
-        # self.RefreshStaticValues()
-        self.BatchCommandSubmitFilteredSlow(
-            [(z.Security_SchemeGet, 0)], XMIT_OPTIONS)
 
     def _InitializeCommands(self, typ, cmd, controls):
         k = typ[1] * 256 + typ[2]
@@ -628,10 +637,25 @@ class Node:
         self.state = new_state
 
         if new_state == NODE_STATE_DISCOVERED:
-            if old_state < new_state and self.values.HasCommandClass(z.Security):
-                pass
-            # self._InitializeSecurity()
-            self.RefreshStaticValues()
+            if old_state < NODE_STATE_DISCOVERED:
+                if self.secure_pair and (self.values.HasCommandClass(z.Security) or
+                                         self.values.HasCommandClass(z.Security2)):
+                    self.state = NODE_STATE_KEX_GET
+                    logging.error("[%d] Sending KEX_GET", self.n)
+                    self.BatchCommandSubmitFilteredFast([(z.Security2_KexGet, {})], XMIT_OPTIONS)
+                else:
+                    self.RefreshStaticValues()
+        elif new_state == NODE_STATE_KEX_REPORT:
+            v = self.values.Get(z.Security2_KexReport)
+            self.state = NODE_STATE_KEX_SET
+            logging.error("[%d] Sending KEX_SET", self.n)
+            args = {'mode': 0, 'schemes': 2, 'profiles': 1, 'keys': 2}
+            self.BatchCommandSubmitFilteredFast([(z.Security2_KexSet, args)], XMIT_OPTIONS)
+
+        elif new_state == NODE_STATE_PUBLIC_KEY_REPORT1:
+            v = self.values.Get(z.Security2_PublicKeyReport)
+            _other = X25519PublicKey.from_publc_bytes(bytes(v["key"]))
+            assert False
         elif new_state == NODE_STATE_INTERVIEWED:
             self.RefreshDynamicValues()
             self.RefreshSemiStaticValues()
@@ -653,15 +677,15 @@ class Node:
         if key == z.MultiChannel_CapabilityReport:
             logging.warning("FOUND MULTICHANNEL ENDPOINT: %s", values)
 
+        key_extractor = _COMMANDS_WITH_MAP_VALUES.get(key)
+        if key_extractor:
+            self.values.SetMapEntry(ts, key, key_extractor(values), values)
+        else:
+            self.values.Set(ts, key, values)
+
         special = _COMMANDS_WITH_SPECIAL_ACTIONS.get(key)
         if special:
             special(ts, self, values)
-
-        key_ex = _COMMANDS_WITH_MAP_VALUES.get(key)
-        if key_ex:
-            self.values.SetMapEntry(ts, key, key_ex(values), values)
-        else:
-            self.values.Set(ts, key, values)
 
         # elif a == command.ACTION_STORE_SCENE:
         #    if value[0] == 0:
@@ -678,7 +702,6 @@ class Node:
         #    else:
         #        # already paired
         #        self.SecurityRequestClasses()
-        return
 
 
 class Nodeset(object):
