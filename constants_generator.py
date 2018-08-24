@@ -258,6 +258,7 @@ REQUEST_NEIGHBOR_UPDATE_STARTED = b"\x21"
 REQUEST_NEIGHBOR_UPDATE_DONE = b"\x22"
 REQUEST_NEIGHBOR_UPDATE_FAILED = b"\x23"
 
+
 RECEIVE_STATUS_TO_STRING = ENUM(
     "FAILED_NODE",
     OK=0,
@@ -348,12 +349,11 @@ SUBCMD_TO_STRING = {}
 CMD_TO_STRING = {}
 SUBCMD_TO_PARSE_TABLE = {}
 
-ALLOWED_PARAMETER_FORMATS = {
+_ALLOWED_PARAMETER_FORMATS = {
     "3{XXX}",  # 24bit
     "A{code}",
     "A{name}",
     "A{commands}",
-    "B{active}",
     "B{alarm}",
     "B{class}",
     "B{control}",
@@ -375,11 +375,9 @@ ALLOWED_PARAMETER_FORMATS = {
     "B{mode}",
     "B{node}",
     "B{parameter}",
-    "B{percent}",
     "B{profiles}",
     "B{protection}",
     "B{role}",
-    "B{scales}",
     "B{scale}",
     "B{scene}",
     "B{schemes}",
@@ -406,7 +404,6 @@ ALLOWED_PARAMETER_FORMATS = {
     "L{key}",
     "L{nodes}",
     "L{nonce}",
-    "L{sensor}",
     "L{classes}",
     "L{extra}",
     "M{value}",
@@ -440,10 +437,11 @@ def CheckParseFormat(f):
         return
     tokens = f.split(",")
     for param in tokens:
-        assert param in ALLOWED_PARAMETER_FORMATS, param
+        assert param in _ALLOWED_PARAMETER_FORMATS, param
 
 
 def C(base, cmd, **subs):
+    """Register a Command Class"""
     global SUBCMD_TO_STRING
     global CMD_TO_STRING
     global SUBCMD_TO_PARSE_TABLE
@@ -1143,6 +1141,13 @@ def DumpDartConstants(fmt: FORMAT, string_maps=True):
         s = "    0x%04x: %s," % (key, v)
         print("%s  %s%s (%d)" % (s, fmt.comment, subcmd, k[1]))
     print("}" + fmt.terminator)
+
+    seen = set()
+    for v in SUBCMD_TO_PARSE_TABLE.values():
+        for x in v:
+            seen.add(x)
+    if seen != _ALLOWED_PARAMETER_FORMATS:
+        assert False, seen.symmetric_difference(_ALLOWED_PARAMETER_FORMATS)
 
 
 def DumpPythonConstants():
