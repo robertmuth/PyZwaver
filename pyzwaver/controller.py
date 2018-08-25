@@ -427,7 +427,7 @@ class Controller:
 
         return Handler
 
-    def AddNodeToNetwork(self, event_cb, secure=False):
+    def AddNodeToNetwork(self, event_cb):
         logging.warning("AddNodeToNetwork")
         mode = [z.ADD_NODE_ANY]
         cb = self.MakeFancyReceiver(ACTIVITY_ADD_NODE, HANDLER_TYPE_ADD_NODE, event_cb)

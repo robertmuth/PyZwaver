@@ -79,7 +79,7 @@ class CommandTranslator(object):
 
     def SendMultiCommand(self, nodes: List[int], key, values, priority: tuple, xmit: int):
         try:
-            raw_cmd = command.AssembleCommand(key[0], key[1], values)
+            raw_cmd = command.AssembleCommand(key, values)
         except Exception as e:
             logging.error("cannot assemble command for %s %s %s",
                           command.StringifyCommand(key),
@@ -188,12 +188,12 @@ class CommandTranslator(object):
 
     def _UpdateIsFailedNode(self, n, cb):
 
-        def handler(m):
-            if m is None:
+        def handler(mesg):
+            if mesg is None:
                 return
             logging.info("[%d] is failed check: %d, %s", n,
-                         m[4], zmessage.PrettifyRawMessage(m))
-            failed = m[4] != 0
+                         mesg[4], zmessage.PrettifyRawMessage(mesg))
+            failed = mesg[4] != 0
             self._PushToListeners(n, time.time(), command.CUSTOM_COMMAND_FAILED_NODE, {"failed": failed})
             if cb:
                 cb(failed)
