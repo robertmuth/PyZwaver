@@ -127,3 +127,9 @@ SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:09 len:03 Version_Com
 #01 14 00 04 00 09 0e 72 02 21 64 00 0d 37 d4 00 0a 40 0d 37 d3 90
 SOF len:0e REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:18 len:08 AssociationGroupInformation_ListReport:59 X:06 01 04 5a 01 5b 03 chk:bc
 SOF len:10 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:1f len:0a AssociationGroupInformation_InfoReport:59 X:04 01 02 00 00 00 00 00 00 chk:a0
+SOF len:09 REQU API_ZW_SEND_DATA:13 node:12 02 Security2_KexGet:9f X:04 xmit:25 cb:46 chk:0d
+SOF len:0d REQU API_ZW_SEND_DATA:13 node:12 06 Security2_KexSet:9f X:06 00 02 01 01 xmit:25 cb:47 chk:0c
+SOF len:29 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:23 Security2_PublicKeyReport:9f X:08 00 62 d3 c0 0e 8b 71 0d 00 93 35 09 1a 88 33 22 32 f2 53 bf f7 fb fe 69 1d 7d 55 4a 45 fb 89 23 36 chk:d4
+SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:03 Security2_NonceGet:9f X:01 3d chk:40
+SOF len:1b REQU API_ZW_SEND_DATA:13 node:12 14 Security2_NonceReport:9f X:02 3d 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 xmit:25 cb:49 chk:3c
+SOF len:2a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:24 Security2_MessageEncapsulation:9f X:03 3e 01 12 41 2f 69 1f 12 30 b9 2a 20 9d 33 0a 7a 87 2f 95 11 2f b7 96 e9 b0 17 31 b9 92 ad 0a 9c 2d 03 chk:62
