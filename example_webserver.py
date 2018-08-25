@@ -59,7 +59,6 @@ from pyzwaver.node import Node, Nodeset, NODE_STATE_INTERVIEWED, NODE_STATE_DISC
 from pyzwaver import zwave as z
 from pyzwaver import command_helper as ch
 
-
 HTML = """
 <html>
 <head>
@@ -1347,15 +1346,15 @@ class DisplayHandler(BaseHandler):
 
 
 HANDLERS = [
+    # Serves the main page
     ("/", MainHandler, {}),
-
-    # handles controller actions which will typically result in
-    # updates being send to the websocket(s)
+    # Handles controller actions which will typically result in
+    # an action and updates being sent to the websocket(s)
     (r"/controller/(.+)", ControllerActionHandler, {}),
-    # handles node actions which will typically result in
-    # updates being send to the websocket(s)
+    # Handles node actions which will typically result in
+    # an action and updates being sent to the websocket(s)
     (r"/node/(.+)", NodeActionHandler, {}),
-    # Request updates being send to the websocket(s)
+    # Request updates being sent to the websocket(s) without an action
     (r"/display/(.+)", DisplayHandler, {}),
     # for debugging
     ("/json/(.+)", JsonHandler, {}),
@@ -1385,18 +1384,13 @@ class MyFormatter(logging.Formatter):
 
 def main():
     global DRIVER, CONTROLLER, TRANSLATOR, NODESET, DB
-    # note: this makes sure we have at least one handler
-    # logging.basicConfig(level=logging.WARNING)
-    # logging.basicConfig(level=logging.ERROR)
-
     tornado.options.parse_command_line()
+    # use --logging command line option to control verbosity
     logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-    logger.setLevel(logging.WARNING)
-    #logger.setLevel(logging.ERROR)
     for h in logger.handlers:
         h.setFormatter(MyFormatter())
 
+    # used to persist certain settings like node names
     logging.info("opening shelf: %s", OPTIONS.db)
     DB = Db(OPTIONS.db)
 

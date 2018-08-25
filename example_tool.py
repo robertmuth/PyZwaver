@@ -28,12 +28,11 @@ from typing import Tuple
 
 from pyzwaver.controller import Controller
 from pyzwaver.driver import Driver, MakeSerialDevice
-from pyzwaver import zmessage
+from pyzwaver.zmessage import ControllerPriority
 from pyzwaver.command_translator import CommandTranslator
 from pyzwaver import zwave as z
-from pyzwaver.node import Node, Nodeset
+from pyzwaver.node import Nodeset
 from pyzwaver.command import StringifyCommand
-from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
 XMIT_OPTIONS_NO_ROUTE = (z.TRANSMIT_OPTION_ACK |
                          z.TRANSMIT_OPTION_EXPLORE)
@@ -99,10 +98,7 @@ def cmd_pair(args):
 
 
 def cmd_secure_pair(args):
-    private_key = X25519PrivateKey.generate()
-    public_key = private_key.public_key()
-    print ("PRIVATE KEY: ", private_key)
-    print ("PUBLIC KEY: ", len(public_key.public_bytes()))
+    # experimental - make sure you enable security in node.py
     driver, controller = InitController(args)
     translator = CommandTranslator(driver)
     translator.AddListener(TestListener())
@@ -144,7 +140,7 @@ def cmd_set_basic_multi(args):
     translator.SendMultiCommand(args.node,
                                 z.Basic_Set,
                                 {"level": args.level},
-                                zmessage.ControllerPriority(),
+                                ControllerPriority(),
                                 XMIT_OPTIONS
                                 )
 
@@ -156,12 +152,11 @@ def cmd_get_basic(args):
     translator = CommandTranslator(driver)
     translator.AddListener(NodeUpdateListener())
     for n in args.node:
-        translator.SendCommand(
-            n,
-            z.Basic_Get,
-            {},
-            zmessage.ControllerPriority(),
-            XMIT_OPTIONS)
+        translator.SendCommand(n,
+                               z.Basic_Get,
+                               {},
+                               ControllerPriority(),
+                               XMIT_OPTIONS)
     time.sleep(2)
     driver.Terminate()
 

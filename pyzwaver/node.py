@@ -50,10 +50,11 @@ NODE_STATE_INTERVIEWED = "30_Interviewed"
 NODE_STATE_KEX_GET = "21_KexGet"
 NODE_STATE_KEX_REPORT = "22_KexReport"
 NODE_STATE_KEX_SET = "23_KexSet"
-NODE_STATE_PUBLIC_KEY_REPORT1 = "24_PublicKeyReport1"
+NODE_STATE_PUBLIC_KEY_REPORT_OTHER = "24_PublicKeyReportOther"
+NODE_STATE_PUBLIC_KEY_REPORT_SELF = "25_PublicKeyReportSelf"
 
-_NO_VERSION =  -1
-_BAD_VERSION =  0
+_NO_VERSION = -1
+_BAD_VERSION = 0
 
 
 def _AssociationSubkey(v):
@@ -85,23 +86,30 @@ _COMMANDS_WITH_MAP_VALUES = {
     z.Configuration_Report: lambda v: [(v["parameter"], v["value"])],
     z.SensorMultilevel_Report: _ExtractSensor,
     z.Association_Report: lambda v: [(v["group"], v)],
-    z.AssociationGroupInformation_NameReport:  lambda v:  [(v["group"], v["name"])],
+    z.AssociationGroupInformation_NameReport: lambda v: [(v["group"], v["name"])],
     z.AssociationGroupInformation_InfoReport: _ExtractAssociationInfo,
-    z.AssociationGroupInformation_ListReport: lambda v:  [(v["group"], v["commands"])],
+    z.AssociationGroupInformation_ListReport: lambda v: [(v["group"], v["commands"])],
     z.SceneActuatorConf_Report: lambda v: [(v["scene"], v)],
     z.UserCode_Report: lambda v: [(v["user"], v)],
     z.MultiChannel_CapabilityReport: lambda v: [(v["endpoint"], v)],
 }
 
 _COMMANDS_WITH_SPECIAL_ACTIONS = {
+    #
     z.ManufacturerSpecific_Report: lambda _ts, node, _values:
     node.MaybeChangeState(NODE_STATE_INTERVIEWED),
+    #
+    z.SceneActuatorConf_Report: lambda ts, node, values:
+    node.values.Set(ts, command.CUSTOM_COMMAND_ACTIVE_SCENE, values),
+    #
     z.Security2_KexReport: lambda _ts, node, _values:
     node.MaybeChangeState(NODE_STATE_KEX_REPORT),
+    #
     z.Security2_PublicKeyReport: lambda _ts, node, _values:
-    node.MaybeChangeState(NODE_STATE_PUBLIC_KEY_REPORT1),
-    z.SceneActuatorConf_Report: lambda ts, node, values:
-    node.values.Set(ts, command.CUSTOM_COMMAND_ACTIVE_SCENE, values)
+    node.MaybeChangeState(NODE_STATE_PUBLIC_KEY_REPORT_OTHER),
+    #
+    z.Security2_NonceGet: lambda _ts, node, values:
+    node.SendNonce(values["seq"]),
 }
 
 XMIT_OPTIONS_NO_ROUTE = (z.TRANSMIT_OPTION_ACK |
@@ -364,6 +372,8 @@ class Node:
         self.is_controller = is_controller
         self.last_contact = 0
         self.secure_pair = SECURE_MODE
+        self._private_key = None
+        self._tmp_shared_key = None
 
     def IsSelf(self):
         return self.is_controller
@@ -439,8 +449,7 @@ class Node:
         self.InitializeUnversioned(cmd, controls, v[1], v[2])
 
     def ProbeNode(self):
-        self.BatchCommandSubmitFilteredFast([(z.NoOperation_Set, {})],
-            XMIT_OPTIONS)
+        self.BatchCommandSubmitFilteredFast([(z.NoOperation_Set, {})])
 
     #        cmd = zwave_cmd.MakeWakeUpIntervalCapabilitiesGet(
     #            self.n, xmit, driver.GetCallbackId())
@@ -484,6 +493,12 @@ class Node:
              ch.MultiChannelEndpointQueries(self.values.MultiChannelEndPointIds()))
         self.BatchCommandSubmitFilteredSlow(c)
 
+    def SendNonce(self, seq):
+        # TODO: using a fixed nonce is a total hack - fix this
+        args = {"seq": seq, "mode": 1, "nonce": [0] * 16}
+        logging.warning("Sending Nonce: %s", str(args))
+        self.BatchCommandSubmitFilteredFast([(z.Security2_NonceReport, args)])
+
     def MaybeChangeState(self, new_state):
         old_state = self.state
         if old_state >= new_state:
@@ -497,20 +512,26 @@ class Node:
                                          self.values.HasCommandClass(z.Security2)):
                     self.state = NODE_STATE_KEX_GET
                     logging.error("[%d] Sending KEX_GET", self.n)
-                    self.BatchCommandSubmitFilteredFast([(z.Security2_KexGet, {})], XMIT_OPTIONS)
+                    self.BatchCommandSubmitFilteredFast([(z.Security2_KexGet, {})])
                 else:
                     self.RefreshStaticValues()
         elif new_state == NODE_STATE_KEX_REPORT:
             v = self.values.Get(z.Security2_KexReport)
-            self.state = NODE_STATE_KEX_SET
+            # we currently only support S2 Unauthenticated Class
+            assert v["keys"] & 1 == 1
             logging.error("[%d] Sending KEX_SET", self.n)
-            args = {'mode': 0, 'schemes': 2, 'profiles': 1, 'keys': 2}
-            self.BatchCommandSubmitFilteredFast([(z.Security2_KexSet, args)], XMIT_OPTIONS)
-
-        elif new_state == NODE_STATE_PUBLIC_KEY_REPORT1:
+            args = {'mode': 0, 'schemes': 2, 'profiles': 1, 'keys': v["keys"] & 1}
+            self.BatchCommandSubmitFilteredFast([(z.Security2_KexSet, args)])
+            self.state = NODE_STATE_KEX_SET
+        elif new_state == NODE_STATE_PUBLIC_KEY_REPORT_OTHER:
+            self._private_key = X25519PrivateKey.generate()
             v = self.values.Get(z.Security2_PublicKeyReport)
-            _other = X25519PublicKey.from_publc_bytes(bytes(v["key"]))
-            assert False
+            other_public_key = X25519PublicKey.from_public_bytes(bytes(v["key"]))
+            self._tmp_shared_key = self._private_key.exchange(other_public_key)
+            args = {"mode": 1, "key": [int(x) for x in self._private_key.public_key().public_bytes()]}
+            self.BatchCommandSubmitFilteredFast([(z.Security2_PublicKeyReport, args)])
+            self.state = NODE_STATE_PUBLIC_KEY_REPORT_SELF
+
         elif new_state == NODE_STATE_INTERVIEWED:
             self.RefreshDynamicValues()
             self.RefreshSemiStaticValues()
