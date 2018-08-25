@@ -68,6 +68,7 @@ def NodeDescription(basic_generic_specific):
         return "unknown device_description: %s" % str(basic_generic_specific)
     return v[0]
 
+
 # ======================================================================
 # Parse Helpers
 # ======================================================================
@@ -140,7 +141,6 @@ def _ParseMeter(m, index):
     return index, out
 
 
-
 def _ParseByte(m, index):
     if len(m) <= index:
         raise ValueError("cannot parse byte")
@@ -191,7 +191,7 @@ def _ParseListRest(m, index):
 
 
 def _ParseGroups(m, index):
-    if (len(m) - index) %  7 != 0:
+    if (len(m) - index) % 7 != 0:
         raise ValueError("malformed groups section: %d" % len(m))
     groups = []
     while index < len(m):
@@ -297,18 +297,6 @@ def _ParseDate(m, index):
 # Assemble Helpers
 # ======================================================================
 
-def _MakeValue(conf, value):
-    size = conf & 7
-    assert size in (1, 2, 4)
-
-    data = [conf]
-    shift = (size - 1) * 8
-    while shift >= 0:
-        data.append(0xff & (value >> shift))
-        shift -= 8
-    return data
-
-
 def _MakeDate(date):
     if len(date) != 6:
         raise ValueError("bad date parameter of length %d" % len(date))
@@ -386,6 +374,7 @@ def _MakeLittleEndianInt(v):
         n >>= 8
     return out
 
+
 def _MakeSizedLittleEndianInt(v):
     n = v["value"]
     out = [v["size"]]
@@ -393,6 +382,7 @@ def _MakeSizedLittleEndianInt(v):
         out.append(n & 0xff)
         n >>= 8
     return out
+
 
 def _MakeOptionalTarget(v):
     if v is None:
@@ -413,7 +403,7 @@ def _MakeGroups(v):
         out.append(profile & 255)
         out.append(0)
         out.append((event >> 8) & 255)
-        out.append(event& 255)
+        out.append(event & 255)
     return out
 
 
@@ -429,7 +419,7 @@ _PARSE_ACTIONS = {
     "G": (_ParseGroups, _MakeGroups),
     "L": (_ParseListRest, _MakeList),
     "M": (_ParseMeter, _MakeMeter),
-    "N": (_ParseName, _MakeName),
+    # "N": (_ParseName, _MakeName),
     "O": (_ParseNonce, _MakeNonce),
     "R": (_ParseRestLittleEndianInt, _MakeLittleEndianInt),  # as integer
     # "T": _ParseSizedLittleEndianInt,
