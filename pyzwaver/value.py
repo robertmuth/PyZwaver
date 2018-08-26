@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
+import logging
 import sys
 import traceback
 
@@ -30,7 +31,7 @@ SENSOR_KIND_INVALID = "@invalid@"
 SENSOR_KIND_ELECTRIC = "Electric"
 SENSOR_KIND_GAS = "Gas"
 SENSOR_KIND_WATER = "Water"
-SENSOR_KIND_TEMPERTATURE = "Temperature"
+SENSOR_KIND_TEMPERATURE = "Temperature"
 SENSOR_KIND_UNKNOWN = "Unknown"
 #
 SECURITY_SET_CLASS = "SecuritySetClass"
@@ -59,7 +60,7 @@ METER_TYPES = [
 # TODO: introduce constants for units
 SENSOR_TYPES = [
     [SENSOR_KIND_INVALID, [None, None, None, None]],
-    [SENSOR_KIND_TEMPERTATURE, ["C", "F", None, None]],
+    [SENSOR_KIND_TEMPERATURE, ["C", "F", None, None]],
     ["General", ["%", None, None, None]],
     ["Luminance", ["%", "lux", None, None]],
     # 4

@@ -22,22 +22,19 @@
 import logging
 from typing import Set, Mapping
 
-from pyzwaver import zmessage
 from pyzwaver import zwave as z
-from pyzwaver import command_translator
-from pyzwaver import command
 from pyzwaver import command_helper as ch
-from pyzwaver import value
+from pyzwaver.zmessage import NodePriorityHi, NodePriorityLo
+from pyzwaver.command_translator import CommandTranslator
+from pyzwaver.command import StringifyCommand, StringifyCommandClass, IsCustom, CUSTOM_COMMAND_PROTOCOL_INFO, \
+    CUSTOM_COMMAND_APPLICATION_UPDATE, CUSTOM_COMMAND_ACTIVE_SCENE
+from pyzwaver.value import GetSensorMeta, GetMeterMeta, SENSOR_KIND_BATTERY, SENSOR_KIND_SWITCH_MULTILEVEL, \
+    SENSOR_KIND_SWITCH_BINARY
 
 SECURE_MODE = False
 
 if SECURE_MODE:
     from pyzwaver import security
-
-
-def Hexify(t):
-    return ["%02x" % i for i in t]
-
 
 NODE_STATE_NONE = "0_None"
 NODE_STATE_INCLUDED = "10_Included"
@@ -55,10 +52,6 @@ NODE_STATE_PUBLIC_KEY_REPORT_SELF = "25_PublicKeyReportSelf"
 
 _NO_VERSION = -1
 _BAD_VERSION = 0
-
-
-def _AssociationSubkey(v):
-    return v["group"]
 
 
 def _ExtractMeter(v):
@@ -100,7 +93,7 @@ _COMMANDS_WITH_SPECIAL_ACTIONS = {
     node.MaybeChangeState(NODE_STATE_INTERVIEWED),
     #
     z.SceneActuatorConf_Report: lambda ts, node, values:
-    node.values.Set(ts, command.CUSTOM_COMMAND_ACTIVE_SCENE, values),
+    node.values.Set(ts, CUSTOM_COMMAND_ACTIVE_SCENE, values),
     #
     z.Security2_KexReport: lambda _ts, node, _values:
     node.MaybeChangeState(NODE_STATE_KEX_REPORT),
@@ -221,7 +214,7 @@ class NodeValues:
         return v.get("manufacturer", 0), v.get("type", 0), v.get("product", 0)
 
     def DeviceType(self):
-        v = self.Get(command.CUSTOM_COMMAND_PROTOCOL_INFO)
+        v = self.Get(CUSTOM_COMMAND_PROTOCOL_INFO)
         if not v:
             return 0, 0, 0
         return v["device_type"]
@@ -258,7 +251,7 @@ class NodeValues:
 
     def CommandVersions(self):
         m = self.GetMap(z.Version_CommandClassReport)
-        return [(cls, command.StringifyCommandClass(cls), val)
+        return [(cls, StringifyCommandClass(cls), val)
                 for cls, (_, val) in m.items() if val != 0]
 
     def Configuration(self):
@@ -272,32 +265,32 @@ class NodeValues:
                 for no, (_, val) in m.items()]
 
     def Values(self):
-        return [(key, command.StringifyCommand(key), val)
+        return [(key, StringifyCommand(key), val)
                 for key, (_, val) in self._values.items()]
 
     def Sensors(self):
         m = self.GetMap(z.SensorMultilevel_Report)
-        return [(key, *value.GetSensorMeta(*key), val["_value"])
+        return [(key, *GetSensorMeta(*key), val["_value"])
                 for key, (_, val) in m.items()]
 
     def Meters(self):
         m = self.GetMap(z.Meter_Report)
-        return [(key, *value.GetMeterMeta(*key), val["_value"])
+        return [(key, *GetMeterMeta(*key), val["_value"])
                 for key, (_, val) in m.items()]
 
     def MiscSensors(self):
         out = []
         v = self.Get(z.SwitchMultilevel_Report)
         if v is not None:
-            out.append((z.SwitchMultilevel_Report, value.SENSOR_KIND_SWITCH_MULTILEVEL,
+            out.append((z.SwitchMultilevel_Report, SENSOR_KIND_SWITCH_MULTILEVEL,
                         "% (dimmer)", v["level"]))
         v = self.Get(z.SwitchBinary_Report)
         if v is not None:
-            out.append((z.SwitchBinary_Report, value.SENSOR_KIND_SWITCH_BINARY,
+            out.append((z.SwitchBinary_Report, SENSOR_KIND_SWITCH_BINARY,
                         "on/off", v["level"]))
         v = self.Get(z.Battery_Report)
         if v is not None:
-            out.append((z.Battery_Report, value.SENSOR_KIND_SWITCH_BINARY,
+            out.append((z.Battery_Report, SENSOR_KIND_BATTERY,
                         "% (battery)", v["level"]))
         return out
 
@@ -359,7 +352,7 @@ class Node:
     Outgoing commands are send to the CommandTranslator.
     """
 
-    def __init__(self, n, translator: command_translator.CommandTranslator, is_controller):
+    def __init__(self, n, translator: CommandTranslator, is_controller):
         assert n >= 1
         self.n = n
         self.is_controller = is_controller
@@ -429,10 +422,10 @@ class Node:
             self._translator.SendCommand(self.n, key, values, priority, xmit)
 
     def BatchCommandSubmitFilteredSlow(self, commands, xmit=XMIT_OPTIONS):
-        self.BatchCommandSubmitFiltered(commands, zmessage.NodePriorityLo(self.n), xmit)
+        self.BatchCommandSubmitFiltered(commands, NodePriorityLo(self.n), xmit)
 
     def BatchCommandSubmitFilteredFast(self, commands, xmit=XMIT_OPTIONS):
-        self.BatchCommandSubmitFiltered(commands, zmessage.NodePriorityHi(self.n), xmit)
+        self.BatchCommandSubmitFiltered(commands, NodePriorityHi(self.n), xmit)
 
     # def _IsSecureCommand(self, key0, key1):
     #    if key0 == z.Security:
@@ -529,7 +522,7 @@ class Node:
             self._tmp_key_ccm, self._tmp_personalization_string, this_public_key = security.CKFD_SharedKey(
                 other_public_key)
             print("@@@@@@", len(self._tmp_key_ccm), self._tmp_key_ccm,
-                 len(self._tmp_personalization_string), self._tmp_personalization_string)
+                  len(self._tmp_personalization_string), self._tmp_personalization_string)
             args = {"mode": 1, "key": [int(x) for x in this_public_key]}
             self.BatchCommandSubmitFilteredFast([(z.Security2_PublicKeyReport, args)])
             self.state = NODE_STATE_PUBLIC_KEY_REPORT_SELF
@@ -541,7 +534,7 @@ class Node:
     def put(self, ts, key, values):
         self.last_contact = ts
 
-        if key == command.CUSTOM_COMMAND_APPLICATION_UPDATE:
+        if key == CUSTOM_COMMAND_APPLICATION_UPDATE:
             self._InitializeCommands(values["type"], values["commands"], values["controls"])
             self.MaybeChangeState(NODE_STATE_DISCOVERED)
             if self.state >= NODE_STATE_INTERVIEWED:
@@ -549,7 +542,7 @@ class Node:
                 self.RefreshSemiStaticValues()
             return
 
-        if self.state < NODE_STATE_DISCOVERED and not command.IsCustom(key):
+        if self.state < NODE_STATE_DISCOVERED and not IsCustom(key):
             self._translator.Ping(self.n, 3, False, "undiscovered")
 
         if key == z.MultiChannel_CapabilityReport:
@@ -593,7 +586,7 @@ class Nodeset(object):
     CommandTranslator.
     """
 
-    def __init__(self, translator: command_translator.CommandTranslator, controller_n):
+    def __init__(self, translator: CommandTranslator, controller_n):
         self._controller_n = controller_n
         self._translator = translator
         self.nodes: Mapping[int: Node] = {}
