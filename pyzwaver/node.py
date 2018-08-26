@@ -32,7 +32,7 @@ from pyzwaver import value
 SECURE_MODE = False
 
 if SECURE_MODE:
-    from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
+    from pyzwaver import zsecurity
 
 
 def Hexify(t):
@@ -372,8 +372,8 @@ class Node:
         self.is_controller = is_controller
         self.last_contact = 0
         self.secure_pair = SECURE_MODE
-        self._private_key = None
-        self._tmp_shared_key = None
+        self._tmp_key_ccm = None
+        self._tmp_personalization_string = None
 
     def IsSelf(self):
         return self.is_controller
@@ -524,11 +524,13 @@ class Node:
             self.BatchCommandSubmitFilteredFast([(z.Security2_KexSet, args)])
             self.state = NODE_STATE_KEX_SET
         elif new_state == NODE_STATE_PUBLIC_KEY_REPORT_OTHER:
-            self._private_key = X25519PrivateKey.generate()
             v = self.values.Get(z.Security2_PublicKeyReport)
-            other_public_key = X25519PublicKey.from_public_bytes(bytes(v["key"]))
-            self._tmp_shared_key = self._private_key.exchange(other_public_key)
-            args = {"mode": 1, "key": [int(x) for x in self._private_key.public_key().public_bytes()]}
+            other_public_key = bytes(v["key"])
+            self._tmp_key_ccm, self._tmp_personalization_string, this_public_key = zsecurity.CKFD_SharedKey(
+                other_public_key)
+            print("@@@@@@", len(self._tmp_key_ccm), self._tmp_key_ccm,
+                 len(self._tmp_personalization_string), self._tmp_personalization_string)
+            args = {"mode": 1, "key": [int(x) for x in this_public_key]}
             self.BatchCommandSubmitFilteredFast([(z.Security2_PublicKeyReport, args)])
             self.state = NODE_STATE_PUBLIC_KEY_REPORT_SELF
 
