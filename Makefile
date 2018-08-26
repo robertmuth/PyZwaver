@@ -51,3 +51,8 @@ tests:
 	#
 	@echo "PASS"		
 
+test_security:
+	@echo "============================================================"
+	@echo "run message parsing test"
+	@echo "============================================================"
+	./Tests/security_test.py 

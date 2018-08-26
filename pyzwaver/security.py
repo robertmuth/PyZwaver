@@ -20,7 +20,6 @@
 """
 
 import logging
-# from typing import List
 
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 from cryptography.hazmat.backends import default_backend
@@ -83,21 +82,20 @@ class CTR_DRBG_ForSpan(object):
 
     def __init__(self, mei: bytes, personalization_string: bytes):
         cipher = Cipher(algorithms.AES(mei), modes.CBC(mei), backend=backend)
-        # TBD
+        # NYI
 
 class NextNonceGenerator(object):
 
     def __init__(self, receiver_ei, sender_ei, personalization_string):
         self._receiver_ei = receiver_ei
         self._sender_ei = sender_ei
-        # TBD
+        # NYI
 
 
-class Security(object):
 
-    def __init__(self):
-        pass
 
+# Old Security0 stuff
+#
 # from Crypto.Cipher import AES
 #
 # from pyzwaver import command
