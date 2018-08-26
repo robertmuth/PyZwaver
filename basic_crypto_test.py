@@ -18,7 +18,7 @@
 import logging
 import sys
 
-from pyzwaver import zsecurity
+from pyzwaver import security
 
 RANDOM1 = [0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa]
 RANDOM2 = [0x54, 0x2f, 0x3b, 0x2a, 0x9e, 0xcb, 0x67, 0x22]
@@ -46,7 +46,7 @@ def _main(argv):
     sub_cmd = 129
     src_node = 1
     dst_node = 23
-    crypter = zsecurity.Crypter([0] * 16)
+    crypter = security.Crypter([0] * 16)
     w = crypter.Wrap(data, nonce, random, sub_cmd, src_node, dst_node)
     #print ("wrapped", w)
     match(w, GOLDEN1)

@@ -32,7 +32,7 @@ from pyzwaver import value
 SECURE_MODE = False
 
 if SECURE_MODE:
-    from pyzwaver import zsecurity
+    from pyzwaver import security
 
 
 def Hexify(t):
@@ -526,7 +526,7 @@ class Node:
         elif new_state == NODE_STATE_PUBLIC_KEY_REPORT_OTHER:
             v = self.values.Get(z.Security2_PublicKeyReport)
             other_public_key = bytes(v["key"])
-            self._tmp_key_ccm, self._tmp_personalization_string, this_public_key = zsecurity.CKFD_SharedKey(
+            self._tmp_key_ccm, self._tmp_personalization_string, this_public_key = security.CKFD_SharedKey(
                 other_public_key)
             print("@@@@@@", len(self._tmp_key_ccm), self._tmp_key_ccm,
                  len(self._tmp_personalization_string), self._tmp_personalization_string)
