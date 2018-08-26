@@ -292,6 +292,20 @@ def _ParseDate(m, index):
     secs = m[index + 6]
     return index + 7, [year, month, day, hours, mins, secs]
 
+def _ParseExtensions(m, index):
+
+    mode = m[index]
+    index += 1
+    extensions = []
+    has_unencypted_extension = (mode & 1 ) != 0
+    while has_unencypted_extension:
+            size = m[index]
+            kind = m[index + 1]
+            data = m[index+2: index + size]
+            index += size
+            extensions.append((kind, data))
+            has_unencypted_extension = (kind & 128) != 0
+    return len(m), {"mode": mode, "extensions": extensions, "ciphertext": m[index:]}
 
 # ======================================================================
 # Assemble Helpers
@@ -406,6 +420,14 @@ def _MakeGroups(v):
         out.append(event & 255)
     return out
 
+def _MakeExtensions(v):
+    out = [v["mode"]]
+    for kind, data in v["extensions"]:
+        out += [len(data) + 2, kind]
+        out += data
+    out += v["ciphertext"]
+    return out
+
 
 _OPTIONAL_COMPONENTS = {'b', 't'}
 
@@ -415,6 +437,7 @@ _PARSE_ACTIONS = {
     "A": (_ParseStringWithLength, _MakeStringWithLength),
     "B": (_ParseByte, _MakeByte),
     "C": (_ParseDate, _MakeDate),
+    "E": (_ParseExtensions, _MakeExtensions),
     "F": (_ParseStringWithLengthAndEncoding, _MakeString),
     "G": (_ParseGroups, _MakeGroups),
     "L": (_ParseListRest, _MakeList),

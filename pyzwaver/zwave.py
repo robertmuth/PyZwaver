@@ -1181,7 +1181,7 @@ SUBCMD_TO_PARSE_TABLE = {
     # Security2 (0x9f = 159)
     0x9f01: ['B{seq}'],  # NonceGet (1)
     0x9f02: ['B{seq}', 'B{mode}', 'L{nonce}'],  # NonceReport (2)
-    0x9f03: ['B{seq}', 'B{mode}', 'L{extensions}'],  # MessageEncapsulation (3)
+    0x9f03: ['B{seq}', 'E{extensions}'],  # MessageEncapsulation (3)
     0x9f04: [],  # KexGet (4)
     0x9f05: ['B{mode}', 'B{schemes}', 'B{profiles}', 'B{keys}'],  # KexReport (5)
     0x9f06: ['B{mode}', 'B{schemes}', 'B{profiles}', 'B{keys}'],  # KexSet (6)
