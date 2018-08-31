@@ -44,11 +44,11 @@ def CMAC(key: bytes, data: bytes):
 def CKDF_TempExtract(shared_secret: bytes,
                      this_public_key: bytes,
                      other_public_key: bytes):
-    return  CMAC(bytes([0x33] * 16), shared_secret + this_public_key + other_public_key)
+    return CMAC(bytes([0x33] * 16), shared_secret + this_public_key + other_public_key)
 
 
 def Constant15(a, b):
-    return bytes([a] * 15  + [b])
+    return bytes([a] * 15 + [b])
 
 
 def CKDF_TempExpand(prk: bytes):
@@ -62,6 +62,11 @@ def CKFD_SharedKey(other_public_key: bytes):
     shared_secret, this_public_key = CKDF_GenerateSharedSecret(other_public_key)
     prk = CKDF_TempExtract(shared_secret, this_public_key, other_public_key)
     key_ccm, personalization_string = CKDF_TempExpand(prk)
+    print("this public", [int(x) for x in this_public_key])
+    print("other public", [int(x) for x in other_public_key])
+    print("shared secret", [int(x) for x in shared_secret])
+    print("key", [int(x) for x in key_ccm])
+    print("personalization string", [int(x) for x in personalization_string])
     return key_ccm, personalization_string, this_public_key
 
 
@@ -76,23 +81,83 @@ def CKDF_MeiExpand(nonce_prk: bytes):
     return t1 + t2
 
 
+def str_xor(a, b):
+    aa = int.from_bytes(a, 'little')
+    bb = int.from_bytes(b, 'little')
+    return (aa ^ bb).to_bytes(len(a), 'little')
+
+
+def str_pad(b, length, pad_byte=b"\x00"):
+    delta = length - len(b)
+    if delta < 0:
+        return b
+    return pad_byte * delta + b
+
+
+def str_inc(b):
+    lst = [int(x) for x in b]
+    for i in reversed(range(0, len(b))):
+        lst[i] = (lst[i] + 1) % 256
+        if lst[i] != 0:
+            break
+    return bytes(lst)
+
+
+def str_zero(length):
+    return b"\x00" * length
+
+
+def _CTR_DRBG_AES128_update(data, key, v):
+    assert len(data) == 32
+    assert len(key) == 16
+    assert len(v) == 16
+    cipher = Cipher(algorithms.AES(key), modes.CBC(str_zero(16)),
+                    backend=default_backend())
+
+    v = str_inc(v)
+    encryptor = cipher.encryptor()
+    new_key = encryptor.update(v) + encryptor.finalize()
+
+    v = str_inc(v)
+    encryptor = cipher.encryptor()
+    new_v = encryptor.update(v) + encryptor.finalize()
+    return str_xor(new_key, data[:16]), str_xor(new_v, data[16:])
+
+
+
 # Counter mode Deterministic Random Byte Generator
 # Specialized for SPAN based on NIST 800-90A
-class CTR_DRBG_ForSpan(object):
+class CTR_DRBG_AES128(object):
 
-    def __init__(self, mei: bytes, personalization_string: bytes):
-        cipher = Cipher(algorithms.AES(mei), modes.CBC(mei), backend=backend)
-        # NYI
+    def __init__(self, entropy: bytes, personalization_string: bytes = str_zero(32)):
+        assert len(entropy) == 32
+        self._key, self._v = _CTR_DRBG_AES128_update(
+            str_xor(entropy, personalization_string), str_zero(16), str_zero(16))
+
+    def generate(self, count, data=None):
+        out = b""
+        v = self._v
+        key = self._key
+        if data is not None:
+            key, v = _CTR_DRBG_AES128_update(data, key, v)
+        cipher = Cipher(algorithms.AES(key), modes.CBC(str_zero(16)),
+                        backend=default_backend())
+
+        while len(out) < count:
+            encryptor = cipher.encryptor()
+            v = str_inc(v)
+            out += encryptor.update(v) + encryptor.finalize()
+        if data is None:
+            data = str_zero(32)
+        self._key, self._v = _CTR_DRBG_AES128_update(data, key, v)
+        return out[:count]
+
 
 class NextNonceGenerator(object):
 
     def __init__(self, receiver_ei, sender_ei, personalization_string):
         self._receiver_ei = receiver_ei
         self._sender_ei = sender_ei
-        # NYI
-
-
-
 
 # Old Security0 stuff
 #
