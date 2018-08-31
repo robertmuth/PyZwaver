@@ -117,40 +117,72 @@ class TestCrtDrbg(unittest.TestCase):
         out = ctr_drbg.generate(64, AdditionalInput2)
         self.assertEqual(out, ReturnedBits)
 
-KEX_THIS_PUBLIC = [241, 161, 252, 183, 216, 208, 168, 168,
-                   85, 136, 232, 131, 233, 248, 27, 175,
-                   175, 58, 218, 106, 56, 8, 80, 187,
-                   69, 113, 72, 126, 172, 197, 242, 110]
 
-KEX_OTHER_PUBLIC = [98, 211, 192, 14, 139, 113, 13, 0,
-                    147, 53, 9, 161, 136, 51, 34, 50,
-                    242, 83, 191, 247, 251, 254, 105, 29,
-                    125, 85, 74, 69, 251, 137, 35, 99]
+# KEX_THIS_PUBLIC = [241, 161, 252, 183, 216, 208, 168, 168,
+#                    85, 136, 232, 131, 233, 248, 27, 175,
+#                    175, 58, 218, 106, 56, 8, 80, 187,
+#                    69, 113, 72, 126, 172, 197, 242, 110]
 #
-KEX_SHARED_SECRET = [159, 255, 158, 20, 229, 248, 233, 131,
-                     226, 28, 186, 214, 225, 163, 71, 95,
-                     238, 253, 59, 204, 179, 198, 243, 211,
-                     194, 254, 26, 71, 232, 45, 194, 94]
+# KEX_OTHER_PUBLIC = [98, 211, 192, 14, 139, 113, 13, 0,
+#                     147, 53, 9, 161, 136, 51, 34, 50,
+#                     242, 83, 191, 247, 251, 254, 105, 29,
+#                     125, 85, 74, 69, 251, 137, 35, 99]
+# #
+# KEX_SHARED_SECRET = [159, 255, 158, 20, 229, 248, 233, 131,
+#                      226, 28, 186, 214, 225, 163, 71, 95,
+#                      238, 253, 59, 204, 179, 198, 243, 211,
+#                      194, 254, 26, 71, 232, 45, 194, 94]
 
-KEX_TMP_KEY = [5, 165, 112, 153, 111, 146, 202, 133,
-               180, 194, 191, 19, 255, 176, 22, 44]
-
-KEX_TMP_PERSONALIZATION_STRING = [238, 62, 55, 93, 159, 26, 150, 196,
-                                  19, 229, 115, 77, 56, 66, 107, 5,
-                                  188, 251, 56, 61, 232, 1, 213, 58,
-                                  65, 149, 39, 154, 47, 66, 79, 155]
+KEX_TMP_KEY = [114, 143, 34, 56, 122, 30, 54, 159, 163, 233, 0, 77, 25, 231, 62, 157]
+KEX_TMP_PERSONALIZATION_STRING = [136, 226, 91, 237, 14, 154, 26, 30, 212, 130, 154, 174, 76, 240, 153, 71, 190, 15, 54, 105, 87, 163, 207, 71, 185, 71, 253, 252, 125, 232, 211, 95]
 
 KEX_THIS_NONCE = [0, 0, 0, 0, 0, 0, 0, 0,
                   0, 0, 0, 0, 0, 0, 0, 0]
 
-KEX_OTHER_NONCE = [178, 48, 39, 11, 100, 24, 150, 39,
-                   105, 254, 29, 225, 152, 192, 144, 179]
+KEX_OTHER_NODE = 25
+KEX_THIS_NODE = 1
 
-KEX_CIPHER = [209, 122, 176, 104, 86, 152, 253, 17, 24, 169, 105, 68, 231, 132]
+HOME_ID = [0x01, 0x84, 0xdf, 0xda]
+
+# Security2_MessageEncapsulation
+MESSAGE = [
+    0x9f, 0x03, 0x06, 0x01, 0x12, 0x41, 0xfd, 0x58,
+    0xe9, 0x6b, 0x58, 0xc8, 0xb3, 0x42, 0x8d, 0x57,
+    0xb7, 0x06, 0x8d, 0x82, 0x77, 0x67, 0x48, 0xd3,
+    0x7c, 0x06, 0x47, 0xe2, 0x35, 0xb3, 0x49, 0x8e,
+    0x06, 0x4f, 0x17, 0x3c]
+
+assert len(MESSAGE) == 36
+MESSAGE_SEQ = MESSAGE[2]
+assert MESSAGE_SEQ == 6
+
+MESSAGE_PLAINTEXT = MESSAGE[3:4 + 18]
+assert MESSAGE_PLAINTEXT == [1, 18, 65, 253, 88, 233, 107, 88, 200, 179, 66, 141, 87, 183, 6, 141, 130, 119, 103]
+
+MESSAGE_CIPHER = MESSAGE[22:36]
+assert MESSAGE_CIPHER == [72, 211, 124, 6, 71, 226, 53, 179, 73, 142, 6, 79, 23, 60]
+
+MESSAGE_OTHER_NONCE = MESSAGE[6:6 + 16]
+assert MESSAGE_OTHER_NONCE == [253, 88, 233, 107, 88, 200, 179, 66, 141, 87, 183, 6, 141, 130, 119, 103]
+
+
+# TODO: fix this test
+class TestKex(unittest.TestCase):
+
+    def test_basic(self):
+        span = security.SPAN(MESSAGE_SEQ - 1, 666, KEX_OTHER_NODE,
+                             bytes(KEX_THIS_NONCE), KEX_TMP_PERSONALIZATION_STRING)
+        span.AddSenderEntropy(bytes(MESSAGE_OTHER_NONCE))
+
+        nonce = span.GetNonce()
+        aad = [KEX_OTHER_NODE] + HOME_ID + [0, 36, MESSAGE_SEQ] + MESSAGE_PLAINTEXT
+        print (security.Decrypt(KEX_TMP_KEY, nonce, MESSAGE_CIPHER, aad))
+
 
 # @@@@@@ 16 b'\x05\xa5p\x99o\x92\xca\x85\xb4\xc2\xbf\x13\xff\xb0\x16,' 32 b"\xee>7]\x9f\x1a\x96\xc4\x13\xe5sM8Bk\x05\xbc\xfb8=\xe8\x01\xd5:A\x95'\x9a/BO\x9b"
 # WARNING:root:RECEIVED [21]: Security2_NonceGet - {'seq': 205}
 # WARNING:root:Sending Nonce: {'seq': 205, 'mode': 1, 'nonce': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}
+
 # WARNING:root:RECEIVED [21]: Security2_MessageEncapsulation - {'seq': 206, 'extensions': {'mode': 1, 'extensions': [(65, [178, 48, 39, 11, 100, 24, 150, 39, 105, 254, 29, 225, 152, 192, 144, 179])], 'ciphertext': [209, 122, 176, 104, 86, 152, 253, 17, 24, 169, 105, 68, 231, 132]}}
 # WARNING:root:RECEIVED [21]: Security2_MessageEncapsulation - {'seq': 207, 'extensions': {'mode': 0, 'extensions': [], 'ciphertext': [233, 14, 12, 131, 233, 112, 126, 108, 166, 55, 67, 189, 229, 214]}}
 # WARNING:root:RECEIVED [21]: Security2_MessageEncapsulation - {'seq': 208, 'extensions': {'mode': 0, 'extensions': [], 'ciphertext': [6, 122, 39, 174, 153, 137, 212, 201, 237, 140, 61, 71, 236, 233]}}
@@ -204,7 +236,6 @@ KEX_CIPHER = [209, 122, 176, 104, 86, 152, 253, 17, 24, 169, 105, 68, 231, 132]
 #     #print ("unwrapped", u)
 #     match(INPUT2, u)
 #     print ("PASS")
-
 
 
 if __name__ == '__main__':

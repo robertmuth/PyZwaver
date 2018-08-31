@@ -21,11 +21,11 @@
 
 import logging
 
-from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import cmac
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-
+from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 
 def CKDF_GenerateSharedSecret(other_public_key: bytes):
     """ return shared_secret, this_public_key_bytes"""
@@ -124,7 +124,6 @@ def _CTR_DRBG_AES128_update(data, key, v):
     return str_xor(new_key, data[:16]), str_xor(new_v, data[16:])
 
 
-
 # Counter mode Deterministic Random Byte Generator
 # Specialized for SPAN based on NIST 800-90A
 class CTR_DRBG_AES128(object):
@@ -153,11 +152,34 @@ class CTR_DRBG_AES128(object):
         return out[:count]
 
 
-class NextNonceGenerator(object):
+class SPAN(object):
 
-    def __init__(self, receiver_ei, sender_ei, personalization_string):
-        self._receiver_ei = receiver_ei
-        self._sender_ei = sender_ei
+    def __init__(self, seq_no, key_type, peer_node, receiver_entropy,
+                 personalization_string):
+        self._seq_no = seq_no
+        self.key_type = key_type
+        self.peer_node = peer_node
+        self._receiver_entropy = receiver_entropy
+        self._personalization_string = personalization_string
+        self._ctr_drbg = None
+
+    def AddSenderEntropy(self, sender_entropy):
+        nonce_prk = CKDF_MeiExtract(sender_entropy, self._receiver_entropy)
+        mei = CKDF_MeiExpand(nonce_prk)
+        self._ctr_drbg = CTR_DRBG_AES128(mei, self._personalization_string)
+
+    def GetNonce(self):
+        return self._ctr_drbg.generate(13)
+
+
+def Encrypt(key_ccm, nonce, data, aad):
+    aesccm = AESCCM(key_ccm, 8)
+    return aesccm.encrypt(nonce, data, aad)
+
+
+def Decrypt(key_ccm, nonce, ct, aad):
+    aesccm = AESCCM(bytes(key_ccm), 8)
+    return aesccm.decrypt(bytes(nonce), bytes(ct), bytes(aad))
 
 # Old Security0 stuff
 #
