@@ -24,12 +24,9 @@ zwave_out/<home-id>/<node-number>/<command> json-payload
 topic format for incoming messages is
 zwave_in/<home-id>/<node-number>/<command> json-payload
 
-Progression:
-* open the device
-* start the controller
-* wait for controller initialization
-* wait for each node to be interviewed
-* terminate
+to send a command to the proxy use something like:
+mosquitto_pub -h <mqtt-broker> -t zwave_out/<home-id>/<node-num>/Basic_Set -m '{"level": 255}'
+
 """
 
 # python import
@@ -46,7 +43,9 @@ from pyzwaver.controller import Controller
 from pyzwaver.driver import Driver, MakeSerialDevice
 from pyzwaver.command_translator import CommandTranslator
 from pyzwaver import command
-from pyzwaver.node import Nodeset
+from pyzwaver.node import Nodeset, XMIT_OPTIONS
+from pyzwaver.zwave import STRING_TO_SUBCMD
+from pyzwaver.zmessage import NodePriorityHi
 
 
 class MyFormatter(logging.Formatter):
@@ -135,7 +134,10 @@ def main():
     time.sleep(2)
     logging.warning("controller initialized:\n" + str(controller))
 
-    def on_connect(client, userdata, rc, dummy):
+    translator = CommandTranslator(driver)
+    nodeset = Nodeset(translator, controller.GetNodeId())
+
+    def on_connect(client, _userdata, _rc, _dummy):
         logging.warning("Initialized MQTT client")
         logging.warning("Pinging %d nodes", len(controller.nodes))
         for n in controller.nodes:
@@ -143,16 +145,23 @@ def main():
             time.sleep(0.5)
             client.subscribe("zwave_out/%d/#" % controller.props.home_id)
 
-    def on_message(client, userdata, msg):
-        print(msg.topic + " " + str(msg.payload))
+    def on_message(client, _userdata, msg):
+        tokens = msg.topic.split("/")
+        key_int = STRING_TO_SUBCMD.get(tokens[3])
+        if key_int is None:
+            logging.error("unknown command: %s", tokens[3])
+        key = ((key_int >> 8) & 255, key_int & 255)
+        n = int(tokens[2])
+        values = json.loads(msg.payload)
+        logging.warning("command received: %d [%s] %s", n, tokens[3], msg.payload)
+        translator.SendCommand(n, key, values, NodePriorityHi(n), XMIT_OPTIONS)
+        # print(n, key, data)
 
     logging.info("Initializing MQTT client")
     client = mqtt.Client("zwave-client")
     client.on_connect = on_connect
     client.on_message = on_message
 
-    translator = CommandTranslator(driver)
-    nodeset = Nodeset(translator, controller.GetNodeId())
     translator.AddListener(EventListener(controller.props.home_id, client))
     client.connect(args.mqtt_broker_host, port=args.mqtt_broker_port, keepalive=60)
     client.loop_forever()
