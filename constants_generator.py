@@ -1070,6 +1070,12 @@ def DumpDartConstants(fmt: FORMAT, string_maps=True):
             DumpDictEntry4(k[0] * 256 + k[1], v)
         print("}" + fmt.terminator)
 
+        print("")
+        print(fmt.final + "STRING_TO_SUBCMD = {")
+        for k, v in sorted(SUBCMD_TO_STRING.items()):
+            print("    '%s': 0x%04x," % (v, k[0] * 256 + k[1]))
+        print("}" + fmt.terminator)
+
     print("")
     print(fmt.final + "GENERIC_SPECIFIC_DB = {")
     for k in sorted(GenericSpecificDevice.keys()):
