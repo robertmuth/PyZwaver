@@ -133,7 +133,7 @@ class CommandTranslator(object):
         mesg = zmessage.Message(m, priority, handler, n)
         self._driver.SendMessage(mesg)
 
-    def SendCommand(self, n, key, values, priority: tuple, xmit: int):
+    def SendCommand(self, n: int, key: tuple, values: dict, priority: tuple, xmit: int):
         try:
             raw_cmd = command.AssembleCommand(key, values)
         except Exception as _e:

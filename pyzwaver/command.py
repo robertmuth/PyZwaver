@@ -292,20 +292,24 @@ def _ParseDate(m, index):
     secs = m[index + 6]
     return index + 7, [year, month, day, hours, mins, secs]
 
-def _ParseExtensions(m, index):
 
+def _ParseExtensions(m, index):
     mode = m[index]
     index += 1
     extensions = []
-    has_unencypted_extension = (mode & 1 ) != 0
+    unencrypted = [mode]
+    has_unencypted_extension = (mode & 1) != 0
     while has_unencypted_extension:
-            size = m[index]
-            kind = m[index + 1]
-            data = m[index+2: index + size]
-            index += size
-            extensions.append((kind, data))
-            has_unencypted_extension = (kind & 128) != 0
-    return len(m), {"mode": mode, "extensions": extensions, "ciphertext": m[index:]}
+        size = m[index]
+        kind = m[index + 1]
+        data = m[index + 2: index + size]
+        unencrypted += m[index: index + size]
+        index += size
+        extensions.append((kind, data))
+        has_unencypted_extension = (kind & 128) != 0
+    return len(m), {"mode": mode, "extensions": extensions, "ciphertext": m[index:],
+                    "_plaintext": unencrypted, "_message_size": len(m)}
+
 
 # ======================================================================
 # Assemble Helpers
@@ -347,7 +351,7 @@ def _MakeWord(w):
     return [(w >> 8) & 0xff, w & 0xff]
 
 
-def _MakeName(w):
+def _MakeName(_w):
     assert False, "NYI"
 
 
@@ -419,6 +423,7 @@ def _MakeGroups(v):
         out.append((event >> 8) & 255)
         out.append(event & 255)
     return out
+
 
 def _MakeExtensions(v):
     out = [v["mode"]]
