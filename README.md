@@ -79,7 +79,9 @@ For alternative licensing please contact the author.
 
 The core PyZwaver library does not have any non-standard dependencies.
 
-However the example_webserver.py depends on:
+Some examples require additional libratries:
+
+example_webserver.py depends on:
 
 * tornado
   http://www.tornadoweb.org/
@@ -87,6 +89,11 @@ However the example_webserver.py depends on:
 * Static/list.min.js
   http://www.listjs.com/
 
+example_mqtt.py depends on:
+
+* paho.mqtt
+  https://pypi.org/project/paho-mqtt/
+  
 ## Author
 
 robert@muth.org
