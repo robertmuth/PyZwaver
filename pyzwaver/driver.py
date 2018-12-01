@@ -207,7 +207,11 @@ class Driver(object):
     any Z-Wave node but will just be local communication
     with the stick.
 
-    It spawns two threads:
+    Outgoing message can be sent via the SendMessage API
+    which will queue them if necessary.
+    Incoming messages can be observed by registering a listener.
+
+    The Driver spawns two threads:
     * a sending thread which in a loop picks a message from
       the outgoing queue, sends it, waits for any related
       replies and triggers actions based on the replies
@@ -243,7 +247,6 @@ class Driver(object):
                                                    name="DriverForward")
         self._forwarding_thread.start()
 
-
         self._last = None
         self._inflight = None  # out bound message waiting for responses
         self._delay = collections.defaultdict(int)
@@ -278,7 +281,8 @@ class Driver(object):
         lock: threading.Lock = threading.Lock()
         lock.acquire()
         # send dummy message to clear out pipe
-        mesg = zmessage.Message(None, zmessage.LowestPriority(), lambda _: lock.release(), None)
+        mesg = zmessage.Message(
+            None, zmessage.LowestPriority(), lambda _: lock.release(), None)
         self.SendMessage(mesg)
         # wait until semaphore is released by callback
         lock.acquire()
@@ -297,7 +301,8 @@ class Driver(object):
 
         # send listeners signal to shutdown
         self._in_queue.put((time.time(), None))
-        self.SendMessage(zmessage.Message(None, zmessage.LowestPriority(), cb, None))
+        self.SendMessage(zmessage.Message(
+            None, zmessage.LowestPriority(), cb, None))
         lock.acquire()
         logging.info("Driver terminated")
 
@@ -343,7 +348,8 @@ class Driver(object):
             if inflight.payload is None:
                 logging.warning("received empty message")
                 inflight.Start(time.time(), lock)
-                inflight.Complete(time.time(), None, zmessage.MESSAGE_STATE_COMPLETED)
+                inflight.Complete(time.time(), None,
+                                  zmessage.MESSAGE_STATE_COMPLETED)
                 continue
             self._inflight = inflight
             self._RecordInflight(inflight)
@@ -387,7 +393,8 @@ class Driver(object):
                     continue
             buf = buf[len(m):]
             ts = time.time()
-            next_action, comment = _ProcessReceivedMessage(ts, self._inflight, m)
+            next_action, comment = _ProcessReceivedMessage(
+                ts, self._inflight, m)
             self._LogReceived(ts, m, comment)
             if next_action == DO_ACK:
                 self._SendRaw(zmessage.RAW_MESSAGE_ACK)

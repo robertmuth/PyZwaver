@@ -51,9 +51,11 @@ _BAUD = [
 
 
 class CommandTranslator(object):
-    """CommandTranslator is responsible for translating between raw messages and "commands"
+    """CommandTranslator is responsible for translating between the wire representantion
+     of "commands" (raw messages) and the equivalent dictionary representation.
 
-    It is layered between the Eriver and the Nodes/Nodeset.
+    It is usually layered between the Driver and the Nodes/Nodeset, though using the latter
+    is not necessary.
 
     Raw message arrive from the Driver via the put() API and are send to the Driver via the
     SendMultiCommand() and SendCommand().
@@ -127,7 +129,8 @@ class CommandTranslator(object):
             "flags": flags,
             "device_type": (basic, generic, specific),
         }
-        self._PushToListeners(n, time.time(), command.CUSTOM_COMMAND_PROTOCOL_INFO, out)
+        self._PushToListeners(
+            n, time.time(), command.CUSTOM_COMMAND_PROTOCOL_INFO, out)
 
     def _SendMessage(self, n, m, priority: tuple, handler):
         mesg = zmessage.Message(m, priority, handler, n)
@@ -194,7 +197,8 @@ class CommandTranslator(object):
             logging.info("[%d] is failed check: %d, %s", n,
                          mesg[4], zmessage.PrettifyRawMessage(mesg))
             failed = mesg[4] != 0
-            self._PushToListeners(n, time.time(), command.CUSTOM_COMMAND_FAILED_NODE, {"failed": failed})
+            self._PushToListeners(
+                n, time.time(), command.CUSTOM_COMMAND_FAILED_NODE, {"failed": failed})
             if cb:
                 cb(failed)
 
@@ -202,7 +206,8 @@ class CommandTranslator(object):
         self._SendMessage(n, m, zmessage.ControllerPriority(), handler)
 
     def Ping(self, n, retries, force, reason):
-        logging.warning("[%d] Ping (%s) retries %d, force: %s", n, reason, retries, force)
+        logging.warning("[%d] Ping (%s) retries %d, force: %s",
+                        n, reason, retries, force)
 
         self.GetNodeProtocolInfo(n)
         if force:
@@ -227,7 +232,8 @@ class CommandTranslator(object):
                 logging.error("[%d] parsing failed for %s", n, Hexify(data))
                 return
         except Exception as _e:
-            logging.error("[%d] cannot parse: %s", n, zmessage.PrettifyRawMessage(m))
+            logging.error("[%d] cannot parse: %s", n,
+                          zmessage.PrettifyRawMessage(m))
             print("-" * 60)
             traceback.print_exc(file=sys.stdout)
             print("-" * 60)
@@ -262,7 +268,8 @@ class CommandTranslator(object):
                 "commands": commands,
                 "controls": controls,
             }
-            self._PushToListeners(n, ts, command.CUSTOM_COMMAND_APPLICATION_UPDATE, value)
+            self._PushToListeners(
+                n, ts, command.CUSTOM_COMMAND_APPLICATION_UPDATE, value)
 
         elif kind == z.UPDATE_STATE_SUC_ID:
             logging.warning("succ id updated: needs work")
@@ -276,4 +283,5 @@ class CommandTranslator(object):
         elif m[3] == z.API_ZW_APPLICATION_UPDATE:
             self._HandleMessageApplicationUpdate(ts, m)
         else:
-            logging.error("unhandled message: %s", zmessage.PrettifyRawMessage(m))
+            logging.error("unhandled message: %s",
+                          zmessage.PrettifyRawMessage(m))

@@ -14,7 +14,7 @@ It supports a wide range of Command Classes but some are still missing.
 Most notable omissions are:
 
 * MultiChannel support (in progress)
-* Security 
+* Security (stalled because crypto protocol documentation lacks concrete examples)
 
 ## Examples
 
@@ -36,6 +36,10 @@ chance to communicate with all nodes.
 
 A command line tool for doing tasks alike parining and unpairing
 
+### example_mqtt.py
+
+A mqtt client which forwards commands - both ways.
+
 ### example_webserver.py
 
 A simple webserver which can be launched like so:
@@ -54,6 +58,10 @@ Rudimentary test can be run with
 ````
 make tests
 ````
+
+## Architectural Overview
+
+see [Architectural Overview](ARCHITECTURE.md)
 
 ## Supporting New Command Classes
 
