@@ -73,20 +73,7 @@ def NodeDescription(basic_generic_specific):
 # Parse Helpers
 # ======================================================================
 def _GetSignedValue(data):
-    value = 0
-    negative = (data[0] & 0x80) != 0
-    for d in data:
-        value <<= 8
-        if negative:
-            value += ~d
-        else:
-            value += d
-
-    if negative:
-        value += 1
-        return -value
-    else:
-        return value
+    return int.from_bytes(data, 'big', signed=True)
 
 
 def _GetReading(m, index, units_extra):
