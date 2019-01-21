@@ -29,7 +29,7 @@ from pyzwaver.command_translator import CommandTranslator
 from pyzwaver.command import StringifyCommand, StringifyCommandClass, IsCustom, CUSTOM_COMMAND_PROTOCOL_INFO, \
     CUSTOM_COMMAND_APPLICATION_UPDATE, CUSTOM_COMMAND_ACTIVE_SCENE
 from pyzwaver.value import GetSensorMeta, GetMeterMeta, SENSOR_KIND_BATTERY, SENSOR_KIND_SWITCH_MULTILEVEL, \
-    SENSOR_KIND_SWITCH_BINARY
+    SENSOR_KIND_SWITCH_BINARY, TEMPERATURE_MODES
 
 SECURE_MODE = False
 
@@ -78,6 +78,7 @@ _COMMANDS_WITH_MAP_VALUES = {
     z.Meter_Report: _ExtractMeter,
     z.Configuration_Report: lambda v: [(v["parameter"], v["value"])],
     z.SensorMultilevel_Report: _ExtractSensor,
+    z.ThermostatSetpoint_Report: lambda v: [(v["thermo"], v["value"])],
     z.Association_Report: lambda v: [(v["group"], v)],
     z.AssociationGroupInformation_NameReport: lambda v: [(v["group"], v["name"])],
     z.AssociationGroupInformation_InfoReport: _ExtractAssociationInfo,
@@ -276,6 +277,17 @@ class NodeValues:
     def Meters(self):
         m = self.GetMap(z.Meter_Report)
         return [(key, *GetMeterMeta(*key), val["_value"])
+                for key, (_, val) in m.items()]
+
+    def ThermostatMode(self):
+        v = self.Get(z.ThermostatMode_Report)
+        if v is not None:
+            return (z.ThermostatMode_Report, v["thermo"], *TEMPERATURE_MODES[v["thermo"]])
+        return None
+
+    def ThermostatSetpoints(self):
+        m = self.GetMap(z.ThermostatSetpoint_Report)
+        return [(key, val['unit'], val["_value"])
                 for key, (_, val) in m.items()]
 
     def MiscSensors(self):

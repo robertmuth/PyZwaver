@@ -89,6 +89,21 @@ def _GetSignedValue(data):
         return value
 
 
+def _SetSignedValue(value):
+    mag = value if (value >= 0) else (-value-1)
+
+    if mag <= 0x7F:
+        length = 1
+    elif mag <= 0x7FFF:
+        length = 2
+    elif mag <= 0x7FFFFFFF:
+        length = 4
+    else:
+        raise ValueError("{:} won't fit in 4-byte two's complement".format(value))
+ 
+    return list(value.to_bytes(length, 'big', signed=True))
+
+
 def _GetReading(m, index, units_extra):
     c = m[index]
     size = c & 0x7
@@ -322,7 +337,11 @@ def _MakeDate(date):
 
 
 def _MakeSensor(args):
-    m = args["mantissa"]
+    if '_value' in args:
+        v = int(args['_value'] * pow(10, args['exp']))
+        m = _SetSignedValue(v)
+    else:
+        m = args["mantissa"]
     c = args["exp"] << 5 | args["unit"] << 3 | len(m)
     return [c] + m
 
