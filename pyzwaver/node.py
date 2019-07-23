@@ -25,7 +25,7 @@ from typing import Set, Mapping
 from pyzwaver import zwave as z
 from pyzwaver import command_helper as ch
 from pyzwaver.zmessage import NodePriorityHi, NodePriorityLo
-from pyzwaver.command_translator import CommandTranslator
+from pyzwaver.command_translator import CommandTranslator, Hexify
 from pyzwaver.command import StringifyCommand, StringifyCommandClass, IsCustom, CUSTOM_COMMAND_PROTOCOL_INFO, \
     CUSTOM_COMMAND_APPLICATION_UPDATE, CUSTOM_COMMAND_ACTIVE_SCENE
 from pyzwaver.value import GetSensorMeta, GetMeterMeta, SENSOR_KIND_BATTERY, SENSOR_KIND_SWITCH_MULTILEVEL, \
@@ -312,7 +312,8 @@ class NodeValues:
 
         out = []
         for n in assocs:
-            out.append((n, foo(groups, n), foo(names, n), foo(infos, n), foo(lists, n)))
+            out.append((n, foo(groups, n), foo(names, n),
+                        foo(infos, n), foo(lists, n)))
         return out
 
     def Versions(self):
@@ -384,13 +385,16 @@ class Node:
         ts = 0.0
         for k in cmd:
             if not self.values.HasCommandClass(k):
-                self.values.SetMapEntry(ts, z.Version_CommandClassReport, k, _NO_VERSION)
+                self.values.SetMapEntry(
+                    ts, z.Version_CommandClassReport, k, _NO_VERSION)
         for k in self._controls:
             if not self.values.HasCommandClass(k):
-                self.values.SetMapEntry(ts, z.Version_CommandClassReport, k, _NO_VERSION)
+                self.values.SetMapEntry(
+                    ts, z.Version_CommandClassReport, k, _NO_VERSION)
         for k in std_cmd:
             if not self.values.HasCommandClass(k):
-                self.values.SetMapEntry(ts, z.Version_CommandClassReport, k, _NO_VERSION)
+                self.values.SetMapEntry(
+                    ts, z.Version_CommandClassReport, k, _NO_VERSION)
 
     def BasicString(self):
         out = [
@@ -433,13 +437,6 @@ class Node:
     #
     #   return self._secure_commands.HasCommandClass(key0)
 
-    def _InitializeCommands(self, typ, cmd, controls):
-        k = typ[1] * 256 + typ[2]
-        v = z.GENERIC_SPECIFIC_DB.get(k)
-        if v is None:
-            logging.error("[%d] unknown generic device : ${type}", self.n)
-            return
-        self.InitializeUnversioned(cmd, controls, v[1], v[2])
 
     def ProbeNode(self):
         self.BatchCommandSubmitFilteredFast([(z.NoOperation_Set, {})])
@@ -496,16 +493,21 @@ class Node:
         old_state = self.state
         if old_state >= new_state:
             return
-        logging.warning("[%d] state transition %s -- %s", self.n, old_state, new_state)
+        logging.warning("[%d] state transition %s -- %s",
+                        self.n, old_state, new_state)
         self.state = new_state
 
         if new_state == NODE_STATE_DISCOVERED:
+            #if self.values.HasCommandClass(z.MultiChannel):
+            #    self.BatchCommandSubmitFilteredFast(
+            #            [(z.MultiChannel_Get, {})])
             if old_state < NODE_STATE_DISCOVERED:
                 if self.secure_pair and (self.values.HasCommandClass(z.Security) or
                                          self.values.HasCommandClass(z.Security2)):
                     self.state = NODE_STATE_KEX_GET
                     logging.error("[%d] Sending KEX_GET", self.n)
-                    self.BatchCommandSubmitFilteredFast([(z.Security2_KexGet, {})])
+                    self.BatchCommandSubmitFilteredFast(
+                        [(z.Security2_KexGet, {})])
                 else:
                     self.RefreshStaticValues()
         elif new_state == NODE_STATE_KEX_REPORT:
@@ -513,7 +515,8 @@ class Node:
             # we currently only support S2 Unauthenticated Class
             assert v["keys"] & 1 == 1
             logging.error("[%d] Sending KEX_SET", self.n)
-            args = {'mode': 0, 'schemes': 2, 'profiles': 1, 'keys': v["keys"] & 1}
+            args = {'mode': 0, 'schemes': 2,
+                    'profiles': 1, 'keys': v["keys"] & 1}
             self.BatchCommandSubmitFilteredFast([(z.Security2_KexSet, args)])
             self.state = NODE_STATE_KEX_SET
         elif new_state == NODE_STATE_PUBLIC_KEY_REPORT_OTHER:
@@ -521,10 +524,12 @@ class Node:
             other_public_key = bytes(v["key"])
             self._tmp_key_ccm, self._tmp_personalization_string, this_public_key = security.CKFD_SharedKey(
                 other_public_key)
+
             print("@@@@@@", len(self._tmp_key_ccm), self._tmp_key_ccm,
                   len(self._tmp_personalization_string), self._tmp_personalization_string)
             args = {"mode": 1, "key": [int(x) for x in this_public_key]}
-            self.BatchCommandSubmitFilteredFast([(z.Security2_PublicKeyReport, args)])
+            self.BatchCommandSubmitFilteredFast(
+                [(z.Security2_PublicKeyReport, args)])
             self.state = NODE_STATE_PUBLIC_KEY_REPORT_SELF
 
         elif new_state == NODE_STATE_INTERVIEWED:
@@ -535,7 +540,14 @@ class Node:
         self.last_contact = ts
 
         if key == CUSTOM_COMMAND_APPLICATION_UPDATE:
-            self._InitializeCommands(values["type"], values["commands"], values["controls"])
+            typ = values["type"]
+            k = typ[1] * 256 + typ[2]
+            v = z.GENERIC_SPECIFIC_DB.get(k)
+            if v is None:
+                logging.error("[%d] unknown generic device : ${type}", self.n)
+                return
+            self.InitializeUnversioned(
+                values["commands"], values["controls"], v[1], v[2])
             self.MaybeChangeState(NODE_STATE_DISCOVERED)
             if self.state >= NODE_STATE_INTERVIEWED:
                 self.RefreshDynamicValues()
@@ -580,7 +592,7 @@ class Nodeset(object):
     """NodeSet represents the collection of all nodes in the network.
 
     It handles incoming commands from the CommandTranslators and dispatches
-    them to the corresponding node- creating new nodes as necessary.
+    them to the corresponding node - creating new nodes as necessary.
 
     It is not involved in outgoing messages which have to be sent directly to the
     CommandTranslator.

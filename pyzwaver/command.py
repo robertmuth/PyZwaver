@@ -25,9 +25,13 @@ import logging
 
 from pyzwaver import zwave as z
 
+# The command below prefixed with CUSTOM_COMMAND_* are made up
+# a NIF is synthesized to this command
 CUSTOM_COMMAND_APPLICATION_UPDATE = (256, 1)
 CUSTOM_COMMAND_PROTOCOL_INFO = (256, 2)
 CUSTOM_COMMAND_ACTIVE_SCENE = (256, 3)
+# if a node is a failed node as  reported by API_ZW_IS_FAILED_NODE_ID
+# we synthesize this command:
 CUSTOM_COMMAND_FAILED_NODE = (256, 4)
 
 _CUSTOM_COMMAND_STRINGS = {

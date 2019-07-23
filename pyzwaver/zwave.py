@@ -570,8 +570,6 @@ CentralScene_SupportedReport = (0x5b, 0x02)
 CentralScene_Notification = (0x5b, 0x03)
 ZwavePlusInfo_Get = (0x5e, 0x01)
 ZwavePlusInfo_Report = (0x5e, 0x02)
-MultiChannel_Get = (0x60, 0x04)
-MultiChannel_Report = (0x60, 0x05)
 MultiChannel_Encap = (0x60, 0x06)
 MultiChannel_EndPointGet = (0x60, 0x07)
 MultiChannel_EndPointReport = (0x60, 0x08)
@@ -755,8 +753,6 @@ SUBCMD_TO_STRING = {
     0x5b03: 'CentralScene_Notification',
     0x5e01: 'ZwavePlusInfo_Get',
     0x5e02: 'ZwavePlusInfo_Report',
-    0x6004: 'MultiChannel_Get',
-    0x6005: 'MultiChannel_Report',
     0x6006: 'MultiChannel_Encap',
     0x6007: 'MultiChannel_EndPointGet',
     0x6008: 'MultiChannel_EndPointReport',
@@ -941,8 +937,6 @@ STRING_TO_SUBCMD = {
     'CentralScene_Notification': 0x5b03,
     'ZwavePlusInfo_Get': 0x5e01,
     'ZwavePlusInfo_Report': 0x5e02,
-    'MultiChannel_Get': 0x6004,
-    'MultiChannel_Report': 0x6005,
     'MultiChannel_Encap': 0x6006,
     'MultiChannel_EndPointGet': 0x6007,
     'MultiChannel_EndPointReport': 0x6008,
@@ -1226,11 +1220,9 @@ SUBCMD_TO_PARSE_TABLE = {
     0x5e02: ['B{version}', 'B{role}', 'B{type}', 'W{icon}', 'W{icon2}'],  # Report (2)
 
     # MultiChannel (0x60 = 96)
-    0x6004: ['B{mode}'],  # Get (4)
-    0x6005: ['B{mode}', 'B{count}'],  # Report (5)
     0x6006: ['B{mode}', 'L{command}'],  # Encap (6)
     0x6007: [],  # EndPointGet (7)
-    0x6008: ['B{mode}', 'B{count}'],  # EndPointReport (8)
+    0x6008: ['B{mode}', 'B{count}', 'b{count2}'],  # EndPointReport (8)
     0x6009: ['B{endpoint}'],  # CapabilityGet (9)
     0x600a: ['B{endpoint}', 'B{generic}', 'B{specific}', 'L{classes}'],  # CapabilityReport (10)
     0x600b: [],  # ChannelEndPointFind (11)

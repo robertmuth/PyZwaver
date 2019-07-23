@@ -424,11 +424,12 @@ _ALLOWED_PARAMETER_FORMATS = {
     "W{protocol}",
     "W{type}",
     "X{value}",
-    # optional
+    # optional, usually at the end of the command for backwards compatibility
     "t{targets}",
     "b{scale}",
     "b{sensor}",
     "b{hardware}",
+    "b{count2}",
 }
 
 
@@ -604,11 +605,9 @@ C("ZwavePlusInfo", 0x5e,
   )
 
 C("MultiChannel", 0x60,
-  Get=(0x4, "B{mode}"),
-  Report=(0x5, "B{mode},B{count}"),
   Encap=(0x6, "B{mode},L{command}"),
   EndPointGet=(0x07, ""),
-  EndPointReport=(0x08, "B{mode},B{count}"),
+  EndPointReport=(0x08, "B{mode},B{count},b{count2}"),
   CapabilityGet=(0x09, "B{endpoint}"),
   CapabilityReport=(0x0a, "B{endpoint},B{generic},B{specific},L{classes}"),
   ChannelEndPointFind=(0x0b, ""),
