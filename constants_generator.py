@@ -576,7 +576,7 @@ C("ThermostatMode", 0x40,
   )
 
 C("ThermostatSetpoint", 0x43,
-  # Set=(0x1, ""), # TODO
+  Set=(0x1, "B{thermo},X{value}"),
   Get=(0x2, "B{thermo}"),
   Report=(0x3, "B{thermo},X{value}"),
   SupportedGet=(0x4, ""),

@@ -551,6 +551,7 @@ ThermostatMode_Get = (0x40, 0x02)
 ThermostatMode_Report = (0x40, 0x03)
 ThermostatMode_SupportedGet = (0x40, 0x04)
 ThermostatMode_SupportedReport = (0x40, 0x05)
+ThermostatSetpoint_Set = (0x43, 0x01)
 ThermostatSetpoint_Get = (0x43, 0x02)
 ThermostatSetpoint_Report = (0x43, 0x03)
 ThermostatSetpoint_SupportedGet = (0x43, 0x04)
@@ -731,6 +732,7 @@ SUBCMD_TO_STRING = {
     0x4003: 'ThermostatMode_Report',
     0x4004: 'ThermostatMode_SupportedGet',
     0x4005: 'ThermostatMode_SupportedReport',
+    0x4301: 'ThermostatSetpoint_Set',
     0x4302: 'ThermostatSetpoint_Get',
     0x4303: 'ThermostatSetpoint_Report',
     0x4304: 'ThermostatSetpoint_SupportedGet',
@@ -912,6 +914,7 @@ STRING_TO_SUBCMD = {
     'ThermostatMode_Report': 0x4003,
     'ThermostatMode_SupportedGet': 0x4004,
     'ThermostatMode_SupportedReport': 0x4005,
+    'ThermostatSetpoint_Set': 0x4301,
     'ThermostatSetpoint_Get': 0x4302,
     'ThermostatSetpoint_Report': 0x4303,
     'ThermostatSetpoint_SupportedGet': 0x4304,
@@ -1182,6 +1185,7 @@ SUBCMD_TO_PARSE_TABLE = {
     0x4005: ['R{bits}'],  # SupportedReport (5)
 
     # ThermostatSetpoint (0x43 = 67)
+    0x4301: ['B{thermo}', 'X{value}'],  # Set (1)
     0x4302: ['B{thermo}'],  # Get (2)
     0x4303: ['B{thermo}', 'X{value}'],  # Report (3)
     0x4304: [],  # SupportedGet (4)
