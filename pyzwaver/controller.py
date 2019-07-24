@@ -255,8 +255,10 @@ class Controller:
     def UpdateVersion(self):
         def handler(data):
             if not data:
+                # logging.error("Cannot read controller version. Check serial device.")
                 raise ValueError("Cannot read controller version. Check serial device.")
-            self.props.SetVersion(*struct.unpack(">12sB", data[4:-1]))
+            else:
+                self.props.SetVersion(*struct.unpack(">12sB", data[4:-1]))
 
         self.SendCommand(z.API_ZW_GET_VERSION, [], handler)
 
@@ -550,11 +552,15 @@ class Controller:
         # promotes controller to "INITIALIZED"
         self.ApplNodeInformation()
 
-    def WaitUntilInitialized(self):
+    def WaitUntilInitialized(self, max_wait=2):
         logging.info("Controller::WaitUntilInitialized")
+        deadline = time.time() + max_wait
         while self._state != CONTROLLER_STATE_INITIALIZED:
             logging.warning("wait - current Controller state is: %s", self._state)
             time.sleep(0.5)
+            if time.time() > deadline:
+                return False
+        return True
 
     def TriggerNodesUpdate(self):
         logging.info("trigger nodes update")

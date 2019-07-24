@@ -22,13 +22,12 @@
 import logging
 import struct
 import sys
-import traceback
 import time
-
+import traceback
 from typing import List
 
-from pyzwaver import zmessage
 from pyzwaver import command
+from pyzwaver import zmessage
 from pyzwaver import zwave as z
 # from pyzwaver import zsecurity
 from pyzwaver.driver import Driver
@@ -50,8 +49,11 @@ _BAUD = [
 ]
 
 
+def _NodeName(n):
+    return str(n) if n <= 255 else "%d.%d" % (n >> 8, n & 0xff)
+
 class CommandTranslator(object):
-    """CommandTranslator is responsible for translating between the wire representantion
+    """CommandTranslator is responsible for translating between the wire representation
      of "commands" (raw messages) and the equivalent dictionary representation.
 
     It is usually layered between the Driver and the Nodes/Nodeset, though using the latter
@@ -60,6 +62,8 @@ class CommandTranslator(object):
     Raw message arrive from the Driver via the put() API and are send to the Driver via the
     SendMultiCommand() and SendCommand().
     Certain non-command message are translated as custom (pseudo) commands.
+
+    The CommandTranslator performs wrapping/unwrapping for MultiChannel commands.
 
     """
 
@@ -132,7 +136,7 @@ class CommandTranslator(object):
         self._PushToListeners(
             n, time.time(), command.CUSTOM_COMMAND_PROTOCOL_INFO, out)
 
-    def _SendMessage(self, n, m, priority: tuple, handler):
+    def _SendMessage(self, n: int, m, priority: tuple, handler):
         mesg = zmessage.Message(m, priority, handler, n)
         self._driver.SendMessage(mesg)
 
@@ -151,7 +155,9 @@ class CommandTranslator(object):
 
         def handler(_):
             logging.debug("@@handler invoked")
-
+        if n > 255:
+            raw_cmd = list(z.MultiChannel_CmdEncap) + [0, n & 0xff] + raw_cmd
+            n = n >> 8
         m = zmessage.MakeRawCommandWithId(n, raw_cmd, xmit)
         self._SendMessage(n, m, priority, handler)
 
@@ -162,8 +168,8 @@ class CommandTranslator(object):
             # if we timeout  m will be None
             if m is not None and m[4] != 0:
                 return  # success
-            logging.warning("[%d] RequestNodeInfo failed: %s",
-                            n, zmessage.PrettifyRawMessage(m))
+            logging.warning("[%s] RequestNodeInfo failed: %s",
+                            _NodeName(n), zmessage.PrettifyRawMessage(m))
             self._RequestNodeInfo(n, retries - 1)
 
         if retries > 0:
@@ -172,7 +178,7 @@ class CommandTranslator(object):
             self._SendMessage(n, m, zmessage.ControllerPriority(), handler)
 
         else:
-            logging.error("[%d] RequestNodeInfo failed permanently", n)
+            logging.error("[%s] RequestNodeInfo failed permanently", _NodeName(n))
 
     def GetNodeProtocolInfo(self, n):
         def handler(message):
@@ -181,11 +187,11 @@ class CommandTranslator(object):
                 return
             payload = message[4:-1]
             if len(payload) < 5:
-                logging.error("bad ProtocolInfo payload: %s", message)
+                logging.error("[%s] bad ProtocolInfo payload: %s", _NodeName(n), message)
                 return
             self._ProcessProtocolInfo(n, payload)
 
-        logging.warning("[%d] GetNodeProtocolInfo", n)
+        logging.warning("[%s] GetNodeProtocolInfo", _NodeName(n))
         m = zmessage.MakeRawMessage(z.API_ZW_GET_NODE_PROTOCOL_INFO, [n])
         self._SendMessage(n, m, zmessage.ControllerPriority(), handler)
 
@@ -194,7 +200,7 @@ class CommandTranslator(object):
         def handler(mesg):
             if mesg is None:
                 return
-            logging.info("[%d] is failed check: %d, %s", n,
+            logging.info("[%s] is failed check: %d, %s", _NodeName(n),
                          mesg[4], zmessage.PrettifyRawMessage(mesg))
             failed = mesg[4] != 0
             self._PushToListeners(
@@ -206,8 +212,8 @@ class CommandTranslator(object):
         self._SendMessage(n, m, zmessage.ControllerPriority(), handler)
 
     def Ping(self, n, retries, force, reason):
-        logging.warning("[%d] Ping (%s) retries %d, force: %s",
-                        n, reason, retries, force)
+        logging.warning("[%s] Ping (%s) retries %d, force: %s",
+                        _NodeName(n), reason, retries, force)
 
         self.GetNodeProtocolInfo(n)
         if force:
@@ -231,6 +237,22 @@ class CommandTranslator(object):
             if value is None:
                 logging.error("[%d] parsing failed for %s", n, Hexify(data))
                 return
+            # hack for multichannel devices
+            if (data[0], data[1]) == z.MultiChannel_CapabilityReport:
+                logging.warning("FOUND MULTICHANNEL ENDPOINT: %s", value)
+                # fake node number
+                n = n * 256 + value["endpoint"]
+                # fake NIF
+                value["commands"] = value["classes"]
+                value["controls"] = []
+                self._PushToListeners(
+                    n, ts, command.CUSTOM_COMMAND_APPLICATION_UPDATE,
+                    value)
+                return
+            elif (data[0], data[1]) ==  z.MultiChannel_CmdEncap:
+                n = n << 8 | data[2]
+                data = data[4:]
+                value = command.ParseCommand(data)
         except Exception as _e:
             logging.error("[%d] cannot parse: %s", n,
                           zmessage.PrettifyRawMessage(m))
@@ -264,7 +286,9 @@ class CommandTranslator(object):
                 else:
                     commands.append(i)
             value = {
-                "type": (m[0], m[1], m[2]),
+                "basic": m[0],
+                "generic": m[1],
+                "specific": m[2],
                 "commands": commands,
                 "controls": controls,
             }
@@ -278,6 +302,7 @@ class CommandTranslator(object):
             assert False
 
     def put(self, ts, m):
+        """ this is how the CommandTranslator receives its input. output is send to its listeners"""
         if m[3] == z.API_APPLICATION_COMMAND_HANDLER:
             self._HandleMessageApplicationCommand(ts, m)
         elif m[3] == z.API_ZW_APPLICATION_UPDATE:

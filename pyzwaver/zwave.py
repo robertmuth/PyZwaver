@@ -570,14 +570,11 @@ CentralScene_SupportedReport = (0x5b, 0x02)
 CentralScene_Notification = (0x5b, 0x03)
 ZwavePlusInfo_Get = (0x5e, 0x01)
 ZwavePlusInfo_Report = (0x5e, 0x02)
-MultiChannel_Encap = (0x60, 0x06)
 MultiChannel_EndPointGet = (0x60, 0x07)
 MultiChannel_EndPointReport = (0x60, 0x08)
 MultiChannel_CapabilityGet = (0x60, 0x09)
 MultiChannel_CapabilityReport = (0x60, 0x0a)
-MultiChannel_ChannelEndPointFind = (0x60, 0x0b)
-MultiChannel_ChannelEndPointFindReport = (0x60, 0x0c)
-MultiChannel_ChannelEncap = (0x60, 0x0d)
+MultiChannel_CmdEncap = (0x60, 0x0d)
 DoorLock_Set = (0x62, 0x01)
 DoorLock_Get = (0x62, 0x02)
 DoorLock_Report = (0x62, 0x03)
@@ -753,14 +750,11 @@ SUBCMD_TO_STRING = {
     0x5b03: 'CentralScene_Notification',
     0x5e01: 'ZwavePlusInfo_Get',
     0x5e02: 'ZwavePlusInfo_Report',
-    0x6006: 'MultiChannel_Encap',
     0x6007: 'MultiChannel_EndPointGet',
     0x6008: 'MultiChannel_EndPointReport',
     0x6009: 'MultiChannel_CapabilityGet',
     0x600a: 'MultiChannel_CapabilityReport',
-    0x600b: 'MultiChannel_ChannelEndPointFind',
-    0x600c: 'MultiChannel_ChannelEndPointFindReport',
-    0x600d: 'MultiChannel_ChannelEncap',
+    0x600d: 'MultiChannel_CmdEncap',
     0x6201: 'DoorLock_Set',
     0x6202: 'DoorLock_Get',
     0x6203: 'DoorLock_Report',
@@ -937,14 +931,11 @@ STRING_TO_SUBCMD = {
     'CentralScene_Notification': 0x5b03,
     'ZwavePlusInfo_Get': 0x5e01,
     'ZwavePlusInfo_Report': 0x5e02,
-    'MultiChannel_Encap': 0x6006,
     'MultiChannel_EndPointGet': 0x6007,
     'MultiChannel_EndPointReport': 0x6008,
     'MultiChannel_CapabilityGet': 0x6009,
     'MultiChannel_CapabilityReport': 0x600a,
-    'MultiChannel_ChannelEndPointFind': 0x600b,
-    'MultiChannel_ChannelEndPointFindReport': 0x600c,
-    'MultiChannel_ChannelEncap': 0x600d,
+    'MultiChannel_CmdEncap': 0x600d,
     'DoorLock_Set': 0x6201,
     'DoorLock_Get': 0x6202,
     'DoorLock_Report': 0x6203,
@@ -1220,14 +1211,11 @@ SUBCMD_TO_PARSE_TABLE = {
     0x5e02: ['B{version}', 'B{role}', 'B{type}', 'W{icon}', 'W{icon2}'],  # Report (2)
 
     # MultiChannel (0x60 = 96)
-    0x6006: ['B{mode}', 'L{command}'],  # Encap (6)
     0x6007: [],  # EndPointGet (7)
     0x6008: ['B{mode}', 'B{count}', 'b{count2}'],  # EndPointReport (8)
     0x6009: ['B{endpoint}'],  # CapabilityGet (9)
     0x600a: ['B{endpoint}', 'B{generic}', 'B{specific}', 'L{classes}'],  # CapabilityReport (10)
-    0x600b: [],  # ChannelEndPointFind (11)
-    0x600c: [],  # ChannelEndPointFindReport (12)
-    0x600d: [],  # ChannelEncap (13)
+    0x600d: ['B{src}', 'B{dst}', 'L{command}'],  # CmdEncap (13)
 
     # DoorLock (0x62 = 98)
     0x6201: ['B{status}'],  # Set (1)

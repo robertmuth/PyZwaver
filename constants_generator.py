@@ -360,6 +360,7 @@ _ALLOWED_PARAMETER_FORMATS = {
     "B{count}",
     "B{dayhour}",
     "B{delay}",
+    "B{dst}",
     "B{duration}",
     "B{endpoint}",
     "B{extra}",
@@ -384,6 +385,7 @@ _ALLOWED_PARAMETER_FORMATS = {
     "B{sec}",
     "B{seq}",
     "B{specific}",
+    "B{src}",
     "B{state}",
     "B{status}",
     "B{thermo}",
@@ -605,14 +607,11 @@ C("ZwavePlusInfo", 0x5e,
   )
 
 C("MultiChannel", 0x60,
-  Encap=(0x6, "B{mode},L{command}"),
   EndPointGet=(0x07, ""),
   EndPointReport=(0x08, "B{mode},B{count},b{count2}"),
   CapabilityGet=(0x09, "B{endpoint}"),
   CapabilityReport=(0x0a, "B{endpoint},B{generic},B{specific},L{classes}"),
-  ChannelEndPointFind=(0x0b, ""),
-  ChannelEndPointFindReport=(0x0c, ""),
-  ChannelEncap=(0x0d, ""),
+  CmdEncap=(0x0d, "B{src},B{dst},L{command}"),
   )
 
 C("DoorLock", 0x62,

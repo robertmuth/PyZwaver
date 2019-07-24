@@ -67,7 +67,6 @@ STATIC_PROPERTY_QUERIES = [
     (z.ManufacturerSpecific_DeviceSpecificGet, {"type": 1}),
 
     (z.TimeParameters_Get, {}),
-    (z.ZwavePlusInfo_Get, {}),
     (z.SwitchAll_Get, {}),
     (z.Alarm_SupportedGet, {}),
     # mostly static
@@ -82,6 +81,12 @@ STATIC_PROPERTY_QUERIES = [
     (z.Association_GroupingsGet, {}),
 ]
 
+# This must be last as we use this as an indicator for the
+# NODE_STATE_INTERVIEWED
+STATIC_PROPERTY_QUERIES_LAST = [
+    (z.ManufacturerSpecific_Get, {}),
+    (z.ZwavePlusInfo_Get, {})
+]
 
 def SensorMultiLevelQueries(sensors):
     # older version
@@ -105,7 +110,7 @@ def CommandVersionQueries(classes):
 
 
 def MultiChannelEndpointQueries(endpoints):
-    return [(z.MultiChannel_CapabilityGet, {"mode": 0, "endpoint": e}) for e in endpoints]
+    return [(z.MultiChannel_CapabilityGet, {"endpoint": e}) for e in endpoints]
 
 
 def SceneActuatorConfiguration(scenes):

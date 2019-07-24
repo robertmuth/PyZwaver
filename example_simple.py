@@ -39,6 +39,8 @@ from pyzwaver.command_translator import CommandTranslator
 from pyzwaver import command
 from pyzwaver.node import Nodeset
 
+def _NodeName(n):
+    return str(n) if n <= 255 else "%d.%d" % (n >> 8, n & 0xff)
 
 class MyFormatter(logging.Formatter):
     """
@@ -73,7 +75,7 @@ class TestListener(object):
         name = "@NONE@"
         if key[0] is not None:
             name = command.StringifyCommand(key)
-        logging.warning("RECEIVED [%d]: %s - %s", n, name, values)
+        logging.warning("RECEIVED [%s]: %s - %s", _NodeName(n), name, values)
 
 
 def Banner(m):
@@ -110,7 +112,12 @@ def main():
     driver = Driver(device)
     controller = Controller(driver, pairing_timeout_secs=60)
     controller.Initialize()
-    controller.WaitUntilInitialized()
+    success = controller.WaitUntilInitialized(2)
+    if not success:
+        logging.error("could not initialize controller")
+        driver.Terminate()
+        print (list(threading.enumerate()))
+        return 1
     controller.UpdateRoutingInfo()
     time.sleep(2)
     Banner("Initialized Controller")
@@ -127,21 +134,27 @@ def main():
         time.sleep(0.5)
 
     logging.info("Waiting for all nodes to be interviewed")
-    not_ready = controller.nodes.copy()
-    not_ready.remove(controller.GetNodeId())
-    while not_ready:
-        interviewed = set()
+    all_nodes = set(controller.nodes)
+    ready_nodes = set([controller.GetNodeId()])
+    time.sleep(2.0)
+    for n in nodeset.nodes: all_nodes.add(n)
+    print ("all nodes so far: %s" % repr(all_nodes))
+    while len(all_nodes) != len(ready_nodes):
+        for n in nodeset.nodes: all_nodes.add(n)
+        not_ready = all_nodes - ready_nodes
+        print("\nStill waiting for %s" % str(not_ready))
         for n in not_ready:
             node = nodeset.GetNode(n)
             if node.IsInterviewed():
-                interviewed.add(node)
+                ready_nodes.add(node.n)
+                Banner("Interviewed Node %s" % node.Name())
+                print (node)
+            elif node.IsFailed():
+                ready_nodes.add(node.n)
+            else:
+                node.RefreshStaticValues()
+
         time.sleep(2.0)
-        for node in interviewed:
-            Banner("Node %s has been interviewed" % node.n)
-            print(node)
-            not_ready.remove(node.n)
-            if not_ready:
-                print("\nStill waiting for %s" % str(not_ready))
     driver.Terminate()
     return 0
 

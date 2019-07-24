@@ -26,9 +26,12 @@ import logging
 from pyzwaver import zwave as z
 
 # The command below prefixed with CUSTOM_COMMAND_* are made up
-# a NIF is synthesized to this command
+
+# A NIF and MultiChannel_CapabilityReport are transformed into this
 CUSTOM_COMMAND_APPLICATION_UPDATE = (256, 1)
+#  A protocol info message is  transformed into this
 CUSTOM_COMMAND_PROTOCOL_INFO = (256, 2)
+# unused
 CUSTOM_COMMAND_ACTIVE_SCENE = (256, 3)
 # if a node is a failed node as  reported by API_ZW_IS_FAILED_NODE_ID
 # we synthesize this command:
@@ -483,7 +486,7 @@ def ParseCommand(m):
     return out
 
 
-def AssembleCommand(key, args):
+def AssembleCommand(key: tuple, args: dict):
     table = z.SUBCMD_TO_PARSE_TABLE[key[0] * 256 + key[1]]
     assert table is not None
     data = [
