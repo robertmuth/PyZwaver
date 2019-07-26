@@ -454,6 +454,17 @@ function ShowHideControls(root, controls) {
     }
 }
 
+function UpdateNodeRow(row, data) {
+    row.getElementsByClassName("node_name")[0].innerHTML = data.name;
+    row.getElementsByClassName("node_slide")[0].value = data.switch_level;
+    row.getElementsByClassName("node_readings")[0].innerHTML = data.readings;
+    row.getElementsByClassName("node_last_contact")[0].innerHTML = data.last_contact;
+    row.getElementsByClassName("node_product")[0].innerHTML = data.product;
+    row.getElementsByClassName("node_state")[0].innerHTML = data.state;
+    row.getElementsByClassName("node_no")[0].innerHTML = data.no;
+    ShowHideControls(row, data.controls);
+}
+
 // Redraws work by triggering event in the Python code that will result
 // in HTML fragments being sent to socket.
 function SocketMessageHandler(e) {
@@ -510,14 +521,7 @@ function SocketMessageHandler(e) {
                  continue;
              }
              root.hidden = false;
-             root.getElementsByClassName("node_name")[0].innerHTML = data.name;
-             root.getElementsByClassName("node_slide")[0].value = data.switch_level;
-             root.getElementsByClassName("node_readings")[0].innerHTML = data.readings;
-             root.getElementsByClassName("node_last_contact")[0].innerHTML = data.last_contact;
-             root.getElementsByClassName("node_product")[0].innerHTML = data.product;
-             root.getElementsByClassName("node_state")[0].innerHTML = data.state;
-             root.getElementsByClassName("node_no")[0].innerHTML = data.no;
-             ShowHideControls(root, data.controls);
+             UpdateNodeRow(root, data);
          }
          //document.getElementById(TAB_ALL_NODES).innerHTML = val;
     } else if (tag[0] == "o") {
@@ -562,17 +566,21 @@ function RequestURL(url) {
     xhr.send();
 }
 
+// This will may trigger refreshes via the websocket
 function RequestActionURL(param, args) {
     const base = "//" + window.location.host + param;
     RequestURL(base + args.join("/"));
 }
 
+function GetCurrNode(element) {
+    return currentNode;
+}
+
 function HandleAction(ev) {
     ev.preventDefault();
     ev.stopPropagation();
-    const param = ev.target.dataset.param.replace("<CURRENT>", currentNode);
+    const param = ev.target.dataset.param.replace("<CURRENT>",  GetCurrNode(ev.target));
     const root = ev.target.parentNode;
-    // console.log(`${root}: ${ev.target.dataset.args}`)
     let args= [];
     const elem_list = ev.target.dataset.args;
     if (elem_list) {
@@ -611,17 +619,19 @@ function HandleTab(ev) {
 function HandleTabNode(ev) {
     ev.preventDefault();
     ev.stopPropagation();
-    const param = ev.target.dataset.param;
+    const no = ev.target.dataset.param;
     console.log("HandleTabNode: " + param + ": " + ev.target);
-    currentNode = param;
+    currentNode = no;
     ShowTab(TAB_ONE_NODE);
-    window.history.pushState({}, "", "#tab-one-node/" + param);
+    window.history.pushState({}, "", "#tab-one-node/" + no);
 }
 
+// asks the server to send us refresh data over the websocket
 function UpdateSome(tab) {
     RequestURL(tabToDisplay[tab]());
 }
 
+// asks the server to send us refresh data over the websocket
 function UpdateDriver() {
     RequestURL("/display/driver");
 }
