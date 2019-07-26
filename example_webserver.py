@@ -139,7 +139,7 @@ Simple demo app using the pyzwaver library
 
 <table width=100%>
 <tbody class='node_rows'>
-<tr class='node_row'>
+<tr class='node_row'  data-no='-1'>
     <td class=node_actions valign='top'>
         <button class='node_name' onclick='HandleTabNode(event)' data-param='<CURRENT>'>name</button>    
        
@@ -455,6 +455,7 @@ function ShowHideControls(root, controls) {
 }
 
 function UpdateNodeRow(row, data) {
+    row.dataset.no = data.no;
     row.getElementsByClassName("node_name")[0].innerHTML = data.name;
     row.getElementsByClassName("node_slide")[0].value = data.switch_level;
     row.getElementsByClassName("node_readings")[0].innerHTML = data.readings;
@@ -463,6 +464,21 @@ function UpdateNodeRow(row, data) {
     row.getElementsByClassName("node_state")[0].innerHTML = data.state;
     row.getElementsByClassName("node_no")[0].innerHTML = data.no;
     ShowHideControls(row, data.controls);
+}
+
+function UpdateNodeDetails(root, values) {
+    root.getElementsByClassName("node_basics")[0].innerHTML = values.basics;
+    root.getElementsByClassName("node_classes")[0].innerHTML = values.classes;
+    root.getElementsByClassName("node_associations")[0].innerHTML = values.associations;
+    root.getElementsByClassName("node_values")[0].innerHTML = values.values;
+    root.getElementsByClassName("node_configurations")[0].innerHTML = values.configurations;
+    root.getElementsByClassName("node_readings")[0].innerHTML = values.readings;
+    root.getElementsByClassName("node_scenes")[0].innerHTML = values.scenes;
+            
+    root.getElementsByClassName("node_documentation")[0].dataset.param = values.link;
+    root.getElementsByClassName("node_name")[0].value = values.name;
+    root.getElementsByClassName("node_slide")[0].value = values.switch_level;
+    ShowHideControls(root, values.controls);
 }
 
 // Redraws work by triggering event in the Python code that will result
@@ -529,19 +545,7 @@ function SocketMessageHandler(e) {
         const values = JSON.parse(val);
         const node = tag.slice(1);
         if (node == currentNode) {
-            const root = document.getElementById(TAB_ONE_NODE);
-            root.getElementsByClassName("node_basics")[0].innerHTML = values.basics;
-            root.getElementsByClassName("node_classes")[0].innerHTML = values.classes;
-            root.getElementsByClassName("node_associations")[0].innerHTML = values.associations;
-            root.getElementsByClassName("node_values")[0].innerHTML = values.values;
-            root.getElementsByClassName("node_configurations")[0].innerHTML = values.configurations;
-            root.getElementsByClassName("node_readings")[0].innerHTML = values.readings;
-            root.getElementsByClassName("node_scenes")[0].innerHTML = values.scenes;
-            
-            root.getElementsByClassName("node_documentation")[0].dataset.param = values.link;
-            root.getElementsByClassName("node_name")[0].value = values.name;
-            root.getElementsByClassName("node_slide")[0].value = values.switch_level;
-            ShowHideControls(root, values.controls);
+            UpdateNodeDetails(document.getElementById(TAB_ONE_NODE), values);
         }
     } else if (tag == "d") {
          // DRIVER
@@ -573,6 +577,9 @@ function RequestActionURL(param, args) {
 }
 
 function GetCurrNode(element) {
+    for (; element = element.arentNode; element != document) {
+        if ( element.dataset.no !== undefined) return  element.dataset.no;
+    }
     return currentNode;
 }
 
@@ -620,7 +627,7 @@ function HandleTabNode(ev) {
     ev.preventDefault();
     ev.stopPropagation();
     const no = ev.target.dataset.param;
-    console.log("HandleTabNode: " + param + ": " + ev.target);
+    console.log("HandleTabNode: " + no + ": " + ev.target);
     currentNode = no;
     ShowTab(TAB_ONE_NODE);
     window.history.pushState({}, "", "#tab-one-node/" + no);
