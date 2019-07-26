@@ -141,7 +141,7 @@ Simple demo app using the pyzwaver library
 <tbody class='node_rows'>
 <tr class='node_row'  data-no='-1'>
     <td class=node_actions valign='top'>
-        <button class='node_name' onclick='HandleTabNode(event)' data-param='<CURRENT>'>name</button>    
+        <button class='node_name' onclick='HandleTabNode(event)'>name</button>    
        
        <p>
          <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/ping'>Ping Node</button>
@@ -553,6 +553,14 @@ function SocketMessageHandler(e) {
     }
 }
 
+
+
+function RequestRefresh(component) {
+    RequestURL(tabToDisplay[component]());
+    // always update the drive too
+    RequestURL("/display/driver");
+}
+
 // Show one tab while hiding the others.
 function ShowTab(id) {
    const tabs = document.getElementsByClassName("tab");
@@ -560,8 +568,7 @@ function ShowTab(id) {
         tabs[i].style.display = "none";
    }
    document.getElementById(id).style.display = "block";
-   UpdateSome(id);
-   UpdateDriver();
+   RequestRefresh(id);
 }
 
 function RequestURL(url) {
@@ -577,8 +584,8 @@ function RequestActionURL(param, args) {
 }
 
 function GetCurrNode(element) {
-    for (; element = element.arentNode; element != document) {
-        if ( element.dataset.no !== undefined) return  element.dataset.no;
+    for (; element != document.body; element = element.parentNode) {
+        if ( element.dataset.no !== undefined) return element.dataset.no;
     }
     return currentNode;
 }
@@ -626,21 +633,10 @@ function HandleTab(ev) {
 function HandleTabNode(ev) {
     ev.preventDefault();
     ev.stopPropagation();
-    const no = ev.target.dataset.param;
-    console.log("HandleTabNode: " + no + ": " + ev.target);
-    currentNode = no;
+    currentNode = GetCurrNode(ev.target);
+    console.log(`HandleTabNode: ${currentNode}`);
     ShowTab(TAB_ONE_NODE);
-    window.history.pushState({}, "", "#tab-one-node/" + no);
-}
-
-// asks the server to send us refresh data over the websocket
-function UpdateSome(tab) {
-    RequestURL(tabToDisplay[tab]());
-}
-
-// asks the server to send us refresh data over the websocket
-function UpdateDriver() {
-    RequestURL("/display/driver");
+    window.history.pushState({}, "", "#tab-one-node/" + currentNode);
 }
 
 function ProcessUrlHash() {
@@ -682,6 +678,9 @@ function DateToString(d) {
 // Initialization
 // ============================================================
 
+// multichannel device a shown as 1 + number_of_channels nodes
+const MAX_NODE_ROWS = 500;
+
 window.onload = function () {
   ProcessUrlHash();
   
@@ -690,8 +689,8 @@ window.onload = function () {
   const table = node_row_template.parentNode;
   const text = node_row_template.innerHTML;
   const all = [];
-  for (let i = 1 ; i < 256; ++i) {
-    all.push(text.replace(new RegExp("<CURRENT>", "g"), "" + i));
+  for (let i = 1 ; i < MAX_NODE_ROWS; ++i) {
+    all.push(text)
   }
   table.innerHTML = all.join("");
   
