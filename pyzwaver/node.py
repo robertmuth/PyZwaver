@@ -24,8 +24,7 @@ from typing import List, Set, Mapping
 
 from pyzwaver import command_helper as ch
 from pyzwaver import zwave as z
-from pyzwaver.command import StringifyCommand, StringifyCommandClass, IsCustom, CUSTOM_COMMAND_PROTOCOL_INFO, \
-    CUSTOM_COMMAND_APPLICATION_UPDATE, CUSTOM_COMMAND_ACTIVE_SCENE, CUSTOM_COMMAND_FAILED_NODE
+from pyzwaver import command
 from pyzwaver.command_translator import CommandTranslator
 from pyzwaver.value import GetSensorMeta, GetMeterMeta, SENSOR_KIND_BATTERY, SENSOR_KIND_SWITCH_MULTILEVEL, \
     SENSOR_KIND_SWITCH_BINARY, TEMPERATURE_MODES
@@ -97,7 +96,7 @@ _COMMANDS_WITH_SPECIAL_ACTIONS = {
     node.MaybeChangeState(NODE_STATE_INTERVIEWED),
     #
     z.SceneActuatorConf_Report: lambda ts, node, values:
-    node.values.Set(ts, CUSTOM_COMMAND_ACTIVE_SCENE, values),
+    node.values.Set(ts, command.CUSTOM_COMMAND_ACTIVE_SCENE, values),
     #
     z.Security2_KexReport: lambda _ts, node, _values:
     node.MaybeChangeState(NODE_STATE_KEX_REPORT),
@@ -120,7 +119,7 @@ XMIT_OPTIONS_SECURE = (z.TRANSMIT_OPTION_ACK |
                        z.TRANSMIT_OPTION_AUTO_ROUTE)
 
 
-def BitsToSetWithOffset(x, offset):
+def BitsToSetWithOffset(x: int, offset: int) -> Set[int]:
     out = set()
     pos = 0
     while x:
@@ -151,7 +150,7 @@ class NodeValues:
     def HasValue(self, key: tuple):
         return key in self._values
 
-    def Set(self, ts, key: tuple, v):
+    def Set(self, ts, key: tuple, v: Mapping):
         if v is None:
             return
         self._values[key] = ts, v
@@ -165,7 +164,7 @@ class NodeValues:
             self._maps[key] = m
         m[subkey] = ts, v
 
-    def Get(self, key: tuple) -> map:
+    def Get(self, key: tuple) -> Mapping:
         v = self._values.get(key)
         if v is not None:
             return v[1]
@@ -218,7 +217,7 @@ class NodeValues:
         return v.get("manufacturer", 0), v.get("type", 0), v.get("product", 0)
 
     def DeviceType(self):
-        v = self.Get(CUSTOM_COMMAND_PROTOCOL_INFO)
+        v = self.Get(command.CUSTOM_COMMAND_PROTOCOL_INFO)
         if not v:
             return 0, 0, 0
         return v["device_type"]
@@ -255,7 +254,7 @@ class NodeValues:
 
     def CommandVersions(self):
         m = self.GetMap(z.Version_CommandClassReport)
-        return [(cls, StringifyCommandClass(cls), val)
+        return [(cls, command.StringifyCommandClass(cls), val)
                 for cls, (_, val) in m.items() if val != 0]
 
     def Configuration(self):
@@ -269,7 +268,7 @@ class NodeValues:
                 for no, (_, val) in m.items()]
 
     def Values(self):
-        return [(key, StringifyCommand(key), val)
+        return [(key, command.StringifyCommand(key), val)
                 for key, (_, val) in self._values.items()]
 
     def Sensors(self):
@@ -377,7 +376,7 @@ class Node:
         self.state = NODE_STATE_NONE
         self._controls = set()
         #
-        self.values = NodeValues()
+        self.values: NodeValues = NodeValues()
         self.is_controller = is_controller
         self.last_contact = 0
         self.secure_pair = SECURE_MODE
@@ -394,7 +393,7 @@ class Node:
         return self.state == NODE_STATE_INTERVIEWED
 
     def IsFailed(self):
-        values = self.values.Get(CUSTOM_COMMAND_FAILED_NODE)
+        values = self.values.Get(command.CUSTOM_COMMAND_FAILED_NODE)
         return values and values["failed"]
 
     def __lt__(self, other):
@@ -431,7 +430,7 @@ class Node:
     def __str__(self):
         return self.BasicString() + "\n" + str(self.values)
 
-    def BatchCommandSubmitFiltered(self, commands: List, priority: tuple, xmit: int):
+    def BatchCommandSubmitFiltered(self, commands: List[tuple], priority: tuple, xmit: int):
         for c in commands:
             if len(c) != 2:
                 logging.error("BAD COMMAND: %s", c)
@@ -447,10 +446,10 @@ class Node:
 
             self._translator.SendCommand(self.n, key, values, priority, xmit)
 
-    def BatchCommandSubmitFilteredSlow(self, commands: List, xmit: int = XMIT_OPTIONS):
+    def BatchCommandSubmitFilteredSlow(self, commands: List[tuple], xmit: int = XMIT_OPTIONS):
         self.BatchCommandSubmitFiltered(commands, NodePriorityLo(self.n), xmit)
 
-    def BatchCommandSubmitFilteredFast(self, commands: List, xmit: int = XMIT_OPTIONS):
+    def BatchCommandSubmitFilteredFast(self, commands: List[tuple], xmit: int = XMIT_OPTIONS):
         self.BatchCommandSubmitFiltered(commands, NodePriorityHi(self.n), xmit)
 
     # def _IsSecureCommand(self, key0, key1):
@@ -507,7 +506,7 @@ class Node:
         logging.warning("Sending Nonce: %s", str(args))
         self.BatchCommandSubmitFilteredFast([(z.Security2_NonceReport, args)])
 
-    def MaybeChangeState(self, new_state: int):
+    def MaybeChangeState(self, new_state: str):
         old_state = self.state
         if old_state >= new_state:
             return
@@ -554,11 +553,14 @@ class Node:
             self.RefreshDynamicValues()
             self.RefreshSemiStaticValues()
 
-    def put(self, ts, key, values):
+    def put(self, ts: float, key: tuple, values: Mapping):
         """A Node receives new commands via this function"""
         self.last_contact = ts
 
-        if key == CUSTOM_COMMAND_APPLICATION_UPDATE:
+        if key == command.CUSTOM_COMMAND_APPLICATION_UPDATE:
+            if self.values.Get(command.CUSTOM_COMMAND_PROTOCOL_INFO) is None:
+                self.values.Set(ts, command.CUSTOM_COMMAND_PROTOCOL_INFO,
+                                {"device_type": (0, values["generic"], values["specific"])})
             k = values["generic"] * 256 + values["specific"]
             v = z.GENERIC_SPECIFIC_DB.get(k)
             if v is None:
@@ -573,7 +575,7 @@ class Node:
                 self.RefreshSemiStaticValues()
             return
 
-        if self.state < NODE_STATE_DISCOVERED and not IsCustom(key):
+        if self.state < NODE_STATE_DISCOVERED and not command.IsCustom(key):
             self._translator.Ping(self.n, 3, False, "undiscovered")
 
         items_extractor = _COMMANDS_WITH_MAP_VALUES.get(key)
@@ -630,7 +632,7 @@ class Nodeset(object):
             self.nodes[n] = node
         return node
 
-    def put(self, n: int, ts, key, values):
+    def put(self, n: int, ts: float, key: tuple, values: Mapping):
         """NodeSet receives commands via this function"""
         node = self.GetNode(n)
         node.put(ts, key, values)
