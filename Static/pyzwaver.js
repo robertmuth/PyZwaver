@@ -110,29 +110,28 @@ function InstallLogFilter(ev) {
 
 function UpdateNodeRow(row, data) {
     row.dataset.no = data.no;
-    row.getElementsByClassName("node_name")[0].innerHTML = data.name;
     row.getElementsByClassName("node_slide")[0].value = data.switch_level;
-    row.getElementsByClassName("node_readings")[0].innerHTML = data.readings;
-    row.getElementsByClassName("node_last_contact")[0].innerHTML = data.last_contact;
-    row.getElementsByClassName("node_product")[0].innerHTML = data.product;
-    row.getElementsByClassName("node_state")[0].innerHTML = data.state;
-    row.getElementsByClassName("node_no")[0].innerHTML = data.no;
+    SetInnerHtmlForClass(row, "node_name", data.name);
+    SetInnerHtmlForClass(row, "node_readings", data.readings);
+    SetInnerHtmlForClass(row, "node_last_contact", data.last_contact);
+    SetInnerHtmlForClass(row, "node_product", data.product);
+    SetInnerHtmlForClass(row, "node_state", data.state);
+    SetInnerHtmlForClass(row, "node_no", data.no);
     ShowHideControls(row, data.controls);
 }
 
-function UpdateNodeDetails(root, values) {
-    root.getElementsByClassName("node_basics")[0].innerHTML = values.basics;
-    root.getElementsByClassName("node_classes")[0].innerHTML = values.classes;
-    root.getElementsByClassName("node_associations")[0].innerHTML = values.associations;
-    root.getElementsByClassName("node_values")[0].innerHTML = values.values;
-    root.getElementsByClassName("node_configurations")[0].innerHTML = values.configurations;
-    root.getElementsByClassName("node_readings")[0].innerHTML = values.readings;
-    root.getElementsByClassName("node_scenes")[0].innerHTML = values.scenes;
-
-    root.getElementsByClassName("node_documentation")[0].dataset.param = values.link;
-    root.getElementsByClassName("node_name")[0].value = values.name;
-    root.getElementsByClassName("node_slide")[0].value = values.switch_level;
-    ShowHideControls(root, values.controls);
+function UpdateNodeDetails(row, data) {
+    SetInnerHtmlForClass(row, "node_basics", data.basics);
+    SetInnerHtmlForClass(row, "node_classes", data.classes);
+    SetInnerHtmlForClass(row, "node_associations", data.associations);
+    SetInnerHtmlForClass(row, "node_data", data.data);
+    SetInnerHtmlForClass(row, "node_configurations", data.configurations);
+    SetInnerHtmlForClass(row, "node_readings", data.readings);
+    SetInnerHtmlForClass(row, "node_scenes", data.scenes);
+    row.getElementsByClassName("node_name")[0].value = values.name;
+    row.getElementsByClassName("node_documentation")[0].set.param = data.link;
+    row.getElementsByClassName("node_slide")[0].value = data.switch_level;
+    ShowHideControls(row, data.controls);
 }
 
 
@@ -275,7 +274,7 @@ function HandleAction(ev) {
 
 
 function HandleUrl(ev) {
-    window.location = ev.target.dataset.param;
+    window.location = ev.target.dataset.url;
 }
 
 function HandleUrlInput(ev) {
@@ -291,7 +290,7 @@ function HandleUrlInput(ev) {
 function HandleTab(ev) {
     ev.preventDefault();
     ev.stopPropagation();
-    const param = ev.target.dataset.param;
+    const param = ev.target.dataset.tab;
     let state =  "#" + param;
     if (param == TAB_ONE_NODE) {
       currentNode = GetCurrNode(ev.target);
