@@ -360,6 +360,32 @@ SCRIPT = """
 // Whenever possible work his shifted to Python code.
 // ============================================================
 
+function OpenSocket() {
+    const loc = window.location;
+    const prefix = loc.protocol === 'https:' ? 'wss://' : 'ws://';
+    return new WebSocket(prefix + loc.host + "/updates");
+}
+
+function DateToString(d) {
+    console.log(d);
+    function pad(n, digits) {
+        let s = "" + n;
+        while (s.length < digits)  s = '0' + s;
+        return s;
+    }
+    const out = [
+            pad(d.getUTCFullYear(), 4), '-',
+            pad(d.getUTCMonth()+1, 2), '-',
+            pad(d.getUTCDate(), 2),
+            ' ',
+            pad(d.getUTCHours(), 2), ':',
+            pad(d.getUTCMinutes(), 2), ':',
+            pad(d.getUTCSeconds(), 2),
+            ' UTC',
+            ];
+    return out.join("");
+}
+
 // Node that is currently shown in 'tab-one-node'
 var currentNode = "0";
 
@@ -377,8 +403,8 @@ const STATUS_FIELD = "status";
 const ACTIVITY_FIELD = "activity"
 const HISTORY_FIELD = "history";
 const DRIVE_FIELD = "driver";
-// Is there a literal notation for this?
 
+// Is there a literal notation for this?
 const  tabToDisplay = {
     [TAB_CONTROLLER]: function() {return "/display/controller"; },
     [TAB_ALL_NODES]:  function() {return "/display/nodes"; },
@@ -397,6 +423,7 @@ const listLog = new List('driverlog', {valueNames: [ 't', 'c', 'd', 'm' ]});
 const listSlow = new List('driverslow', {valueNames: [ 'd', 't', 'm' ]});
 const listFailed = new List('driverfailed', {valueNames: [ 'd', 't', 'm' ]});
 
+
 function InstallLogFilter(ev) {
     if (ev) {
         ev.preventDefault();
@@ -411,12 +438,6 @@ function InstallLogFilter(ev) {
                 return item.values().m.match(new RegExp(text)); 
         });
     }
-}
-
-function OpenSocket() {
-    const loc = window.location;
-    const prefix = loc.protocol === 'https:' ? 'wss://' : 'ws://';
-    return new WebSocket(prefix + loc.host + "/updates");
 }
 
 function ShowHideControls(root, controls) {
@@ -515,6 +536,13 @@ const SocketHandlerDispatch = {
       if (node == currentNode) {
           UpdateNodeDetails(document.getElementById(TAB_ONE_NODE), values);
       }  
+      const rows = document.getElementsByClassName("node_row");
+      for (let i = 0; i < rows.length; ++i) {
+            if (rows[i].dataset.no == node) {
+                UpdateNodeRow(rows[i], values);
+                break;
+            }
+      }
   },
   DRIVER: function(tag, val) { 
       document.getElementById(DRIVE_FIELD).innerHTML = val;
@@ -612,6 +640,9 @@ function HandleTab(ev) {
     window.history.pushState({}, "", state);
 }
 
+// ============================================================
+// Initialization
+// ============================================================
 function ProcessUrlHash() {
   let hash = window.location.hash;
   if (hash == "") {
@@ -626,30 +657,6 @@ function ProcessUrlHash() {
   }
   ShowTab(tokens[0]);
 }
-
-function DateToString(d) {
-    console.log(d);
-    function pad(n, digits) {
-        let s = "" + n;
-        while (s.length < digits)  s = '0' + s;
-        return s;
-    }
-    const out = [
-            pad(d.getUTCFullYear(), 4), '-',
-            pad(d.getUTCMonth()+1, 2), '-',
-            pad(d.getUTCDate(), 2),
-            ' ',
-            pad(d.getUTCHours(), 2), ':',
-            pad(d.getUTCMinutes(), 2), ':',
-            pad(d.getUTCSeconds(), 2),
-            ' UTC',
-            ];
-    return out.join("");
-}
-
-// ============================================================
-// Initialization
-// ============================================================
 
 // multichannel device a shown as 1 + number_of_channels nodes
 const MAX_NODE_ROWS = 500;
@@ -699,7 +706,6 @@ gSocket.onclose = function (e) {
     console.log("ERROR: " + m);
     document.getElementById(STATUS_FIELD).innerHTML = m;
 }
-
 """
 
 # ======================================================================
