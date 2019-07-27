@@ -29,7 +29,6 @@ Then navigate to
 in your browser.
 """
 
-# python import
 import atexit
 import datetime
 import json
