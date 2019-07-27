@@ -364,6 +364,9 @@ node <input class=assoc_node type='number' name='level' value=0 min=0 max=255 st
     </div>
 </div>
 
+<!-- ============================================================ -->
+<!-- FOOTER -->
+<!-- ============================================================ -->
 <hr>
 <table>
 <tr>
@@ -481,6 +484,70 @@ function UpdateNodeDetails(root, values) {
     ShowHideControls(root, values.controls);
 }
 
+
+const SocketHandlerDispatch = {
+  ACTION: function(val) {
+      document.getElementById(ACTIVITY_FIELD).innerHTML = val;
+  },
+  STATUS: function(val) {
+      console.log(val);
+      document.getElementById(STATUS_FIELD).innerHTML = val;
+  },
+  EVENT: function(val) {     
+      gEventHistory.push(val);
+      gEventHistory.shift();
+      document.getElementById(HISTORY_FIELD).innerHTML = gEventHistory.join("\\n");
+  },
+  CONTROLLER: function(val) {     
+      const values = JSON.parse(val);
+      document.getElementById('controller_basics').innerHTML = 
+          values.controller_basics;
+      document.getElementById('controller_routes').innerHTML = 
+          values.controller_routes;
+      document.getElementById('controller_apis').innerHTML = 
+           values.controller_apis;
+  },
+  LOGS: function(val) {  
+      const values = JSON.parse(val);
+      listLog.clear();
+      listLog.add(values);
+      InstallLogFilter(null);
+  },
+  BAD: function(val) {  
+      const values = JSON.parse(val);
+      listSlow.clear();
+      listSlow.add(values);
+  },
+  FAILED: function(val) {  
+      const values = JSON.parse(val);
+      listFailed.clear();
+      listFailed.add(values);
+  },
+  ALL_NODES: function(val) {  
+      const values = JSON.parse(val);
+      const rows = document.getElementsByClassName("node_row");
+      console.log(`found ${rows.length} rows`);
+      for (let i = 0; i < values.length; ++i) {
+          rows[i].hidden = false;
+          UpdateNodeRow(rows[i], values[i]);
+      }
+      for (let i = values.length; i < rows.length; ++i) {
+          rows[i].hidden = true;
+      }
+  },
+  ONE_NODE: function(val) { 
+      const colon = val.indexOf(":");
+      const node = val.slice(0, colon);
+      const values = JSON.parse(val.slice(colon + 1));
+      if (node == currentNode) {
+          UpdateNodeDetails(document.getElementById(TAB_ONE_NODE), values);
+      }  
+  },
+  DRIVER: function(tag, val) { 
+      document.getElementById(DRIVE_FIELD).innerHTML = val;
+  },
+};
+  
 // Redraws work by triggering event in the Python code that will result
 // in HTML fragments being sent to socket.
 function SocketMessageHandler(e) {
@@ -488,72 +555,9 @@ function SocketMessageHandler(e) {
     const tag = e.data.slice(0, colon);
     const val = e.data.slice(colon + 1);
     if (gDebug) console.log("socket: " + tag);
-
-    if (tag == "A") {
-         // ACTION
-         document.getElementById(ACTIVITY_FIELD).innerHTML = val;
-    } else if (tag == "S") {
-         // STATUS
-         document.getElementById(STATUS_FIELD).innerHTML = val;
-    } else if (tag == "E") {
-         gEventHistory.push(val);
-         gEventHistory.shift();
-         document.getElementById(HISTORY_FIELD).innerHTML = gEventHistory.join("\\n");
-    } else if (tag == "c") {
-         // CONTROLLER
-         const values = JSON.parse(val);
-         document.getElementById('controller_basics').innerHTML = 
-             values.controller_basics;
-         document.getElementById('controller_routes').innerHTML = 
-             values.controller_routes;
-         document.getElementById('controller_apis').innerHTML = 
-             values.controller_apis;
-    } else if (tag == "l") {
-         // LOGS (list)
-         const values = JSON.parse(val);
-         listLog.clear();
-         listLog.add(values);
-         InstallLogFilter(null);
-    } else if (tag == "b") {
-         // BAD (list)
-         const values = JSON.parse(val);
-         listSlow.clear();
-         listSlow.add(values);
-    } else if (tag == "f") {
-         // FAILED (list)
-         const values = JSON.parse(val);
-         listFailed.clear();
-         listFailed.add(values);
-    } else if (tag == "a") {
-         // ALL-NODES
-         const values = JSON.parse(val);
-         const rows = document.getElementsByClassName("node_row");
-         console.log(`found ${rows.length} rows`);
-         for (let i = 0; i < rows.length; ++i) {
-             const root= rows[i];
-             const data = values[i + 1];
-             if (!data) {
-                 root.hidden = true;
-                 continue;
-             }
-             root.hidden = false;
-             UpdateNodeRow(root, data);
-         }
-         //document.getElementById(TAB_ALL_NODES).innerHTML = val;
-    } else if (tag[0] == "o") {
-        // ONE-NODE
-        const values = JSON.parse(val);
-        const node = tag.slice(1);
-        if (node == currentNode) {
-            UpdateNodeDetails(document.getElementById(TAB_ONE_NODE), values);
-        }
-    } else if (tag == "d") {
-         // DRIVER
-         document.getElementById(DRIVE_FIELD).innerHTML = val;
-    }
+    console.log("socket: " + tag);
+    SocketHandlerDispatch[tag](val);
 }
-
-
 
 function RequestRefresh(component) {
     RequestURL(tabToDisplay[component]());
@@ -850,12 +854,12 @@ class NodeUpdater(object):
         count = 0
         while True:
             if self._update_driver or DRIVER.HasInflight():
-                SendToSocket("d:" + RenderDriver(DRIVER))
+                SendToSocket("DRIVER:" + RenderDriver(DRIVER))
             if not NODESET:
                 continue
             for n in self._nodes_to_update:
                 node = NODESET.GetNode(n)
-                SendToSocket("o%d:" % n + json.dumps(RenderNode(node, DB),
+                SendToSocket("ONE_NODE:%d:" % n + json.dumps(RenderNode(node, DB),
                                                      sort_keys=True, indent=4))
             self._update_driver = False
             self._nodes_to_update.clear()
@@ -879,10 +883,10 @@ class NodeUpdater(object):
 
 
 def ControllerEventCallback(action, event, node):
-    SendToSocket("S:" + event)
-    SendToSocket("A:" + action)
+    SendToSocket("STATUS:" + event)
+    SendToSocket("ACTION:" + action)
     if event == EVENT_UPDATE_COMPLETE:
-        SendToSocket("c:" + json.dumps(RenderController(CONTROLLER),
+        SendToSocket("CONTROLLER:" + json.dumps(RenderController(CONTROLLER),
                                        sort_keys=True, indent=4))
 
 
@@ -927,13 +931,13 @@ def RenderReadings(readings):
 
 
 def RenderNodes(application_nodes, controller, db):
-    out = {}
+    out = []
     nodes = controller.nodes
     failed = controller.failed_nodes
     for node in sorted(application_nodes.nodes.values()):
-        if node.n not in nodes:
+        if node.n not in nodes and (node.n >> 8) not in nodes:
             continue
-        out[node.n] = RenderNodeBrief(node, db, node.n in failed)
+        out.append(RenderNodeBrief(node, db, node.n in failed))
     return out
 
 
@@ -1100,7 +1104,8 @@ def RenderNodeBrief(node: Node, db, _is_failed):
     description = NodeDescription(device_type)
 
     out = {
-        "name": db.GetNodeName(node.n),
+        "name": node.Name(),
+        # "name": db.GetNodeName(node.n),
         "link": _ProductLink(*node.values.ProductInfo()),
         "switch_level": node.values.GetMultilevelSwitchLevel(),
         "controls": GetControls(node),
@@ -1333,24 +1338,24 @@ class DisplayHandler(BaseHandler):
         cmd = token.pop(0)
         try:
             if cmd == "nodes":
-                SendToSocketJson("a:", RenderNodes(NODESET, CONTROLLER, DB))
+                SendToSocketJson("ALL_NODES:", RenderNodes(NODESET, CONTROLLER, DB))
             elif cmd == "driver":
-                SendToSocket("d:" + RenderDriver(DRIVER))
+                SendToSocket("DRIVER:" + RenderDriver(DRIVER))
             elif cmd == "logs":
-                SendToSocketJson("l:", DriverLogs(DRIVER))
+                SendToSocketJson("LOGS:", DriverLogs(DRIVER))
             elif cmd == "slow":
-                SendToSocketJson("b:", DriverSlow(DRIVER))
+                SendToSocketJson("BAD:", DriverSlow(DRIVER))
             elif cmd == "failed":
-                SendToSocketJson("f:", DriverBad(DRIVER))
+                SendToSocketJson("FAILED:", DriverBad(DRIVER))
             elif cmd == "controller":
-                SendToSocketJson("c:", RenderController(CONTROLLER))
+                SendToSocketJson("CONTROLLER:", RenderController(CONTROLLER))
             elif cmd == "node":
                 num = int(token.pop(0))
                 if num == 0:
                     logging.error("no current node")
                 else:
                     node = NODESET.GetNode(num)
-                    SendToSocketJson("o%d:" % num, RenderNode(node, DB))
+                    SendToSocketJson("ONE_NODE:%d:" % num, RenderNode(node, DB))
             else:
                 logging.error("unknown command %s", token)
         except Exception as e:
