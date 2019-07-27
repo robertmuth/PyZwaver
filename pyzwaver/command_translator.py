@@ -52,6 +52,7 @@ _BAUD = [
 def _NodeName(n):
     return str(n) if n <= 255 else "%d.%d" % (n >> 8, n & 0xff)
 
+
 class CommandTranslator(object):
     """CommandTranslator is responsible for translating between the wire representation
      of "commands" (raw messages) and the equivalent dictionary representation.
@@ -155,6 +156,7 @@ class CommandTranslator(object):
 
         def handler(_):
             logging.debug("@@handler invoked")
+
         if n > 255:
             raw_cmd = list(z.MultiChannel_CmdEncap) + [0, n & 0xff] + raw_cmd
             n = n >> 8
@@ -212,6 +214,16 @@ class CommandTranslator(object):
         self._SendMessage(n, m, zmessage.ControllerPriority(), handler)
 
     def Ping(self, n, retries, force, reason):
+        if n > 255:
+            XMIT_OPTIONS = (z.TRANSMIT_OPTION_ACK |
+                z.TRANSMIT_OPTION_AUTO_ROUTE |
+                z.TRANSMIT_OPTION_EXPLORE)
+            endpoint = n & 0xff
+            n = n >> 8
+            logging.info("ping %d.%d", n, endpoint)
+            self.SendCommand(n, z.MultiChannel_CapabilityGet, {"endpoint": endpoint},
+                             zmessage.ControllerPriority(), XMIT_OPTIONS)
+            return
         logging.warning("[%s] Ping (%s) retries %d, force: %s",
                         _NodeName(n), reason, retries, force)
 
@@ -249,7 +261,7 @@ class CommandTranslator(object):
                     n, ts, command.CUSTOM_COMMAND_APPLICATION_UPDATE,
                     value)
                 return
-            elif (data[0], data[1]) ==  z.MultiChannel_CmdEncap:
+            elif (data[0], data[1]) == z.MultiChannel_CmdEncap:
                 n = n << 8 | data[2]
                 data = data[4:]
                 value = command.ParseCommand(data)

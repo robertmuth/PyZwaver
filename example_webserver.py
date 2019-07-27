@@ -32,15 +32,15 @@ in your browser.
 # python import
 import atexit
 import datetime
+import json
 import logging
 import math
 import multiprocessing
 import shelve
 import sys
+import threading
 import time
 import traceback
-import json
-import threading
 
 import tornado.autoreload
 import tornado.ioloop
@@ -48,16 +48,16 @@ import tornado.options
 import tornado.web
 import tornado.websocket
 
-from pyzwaver.value import CompactifyParams, SENSOR_KIND_SWITCH_BINARY, SENSOR_KIND_BATTERY, \
-    SENSOR_KIND_RELATIVE_HUMIDITY
+from pyzwaver import command_helper as ch
 from pyzwaver import zmessage
-from pyzwaver.controller import Controller, EVENT_UPDATE_COMPLETE
-from pyzwaver.driver import Driver, MakeSerialDevice
+from pyzwaver import zwave as z
 from pyzwaver.command import NodeDescription
 from pyzwaver.command_translator import CommandTranslator
+from pyzwaver.controller import Controller, EVENT_UPDATE_COMPLETE
+from pyzwaver.driver import Driver, MakeSerialDevice
 from pyzwaver.node import Node, Nodeset, NODE_STATE_INTERVIEWED, NODE_STATE_DISCOVERED
-from pyzwaver import zwave as z
-from pyzwaver import command_helper as ch
+from pyzwaver.value import CompactifyParams, SENSOR_KIND_SWITCH_BINARY, SENSOR_KIND_BATTERY, \
+    SENSOR_KIND_RELATIVE_HUMIDITY
 
 HTML = """
 <html>
@@ -105,29 +105,17 @@ Simple demo app using the pyzwaver library
 
 <h2>Actions</h2>
 <div id=controller_buttons</div>
-<button onclick='HandleAction(event)' data-param='/controller/refresh'>
-    Refresh</button>
-&nbsp;
-<button onclick='HandleAction(event)' data-param='/controller/soft_reset'>
-    Soft Reset</button>
-&nbsp;
-<button onclick='HandleAction(event)' data-param='/controller/hard_reset'>
-    Hard Reset</button>
+<button onclick='HandleAction(event)' data-param='/controller/refresh'>Refresh</button>
+<button onclick='HandleAction(event)' data-param='/controller/soft_reset'>Soft Reset</button>
+<button onclick='HandleAction(event)' data-param='/controller/hard_reset'>Hard Reset</button>
 </div>
 
 <h2>Pairing</h2>
 
-<button onclick='HandleAction(event)' data-param='/controller/add_node'>
-    Add Node</button>
-&nbsp;
-<button onclick='HandleAction(event)' data-param='/controller/remove_node'>
-    Remove Node</button>
-&nbsp;
-<button onclick='HandleAction(event)' data-param='/controller/add_controller_primary'>
-    Add Primary Controller</button>
-&nbsp;
-<button onclick='HandleAction(event)' data-param='/controller/set_learn_mode'>
-    Enter Learn Mode</button>
+<button onclick='HandleAction(event)' data-param='/controller/add_node'>Add Node</button>
+<button onclick='HandleAction(event)' data-param='/controller/remove_node'>Remove Node</button>
+<button onclick='HandleAction(event)' data-param='/controller/add_controller_primary'>Add Primary Controller</button>
+<button onclick='HandleAction(event)' data-param='/controller/set_learn_mode'>Enter Learn Mode</button>
     
 <h2>APIs</h2>
 <div id=controller_apis></div>
@@ -141,17 +129,14 @@ Simple demo app using the pyzwaver library
 <tbody class='node_rows'>
 <tr class='node_row'  data-no='-1'>
     <td class=node_actions valign='top'>
-        <button class='node_name' onclick='HandleTabNode(event)'>name</button>    
+        <button class='node_name' onclick='HandleTab(event)' data-param='tab-one-node' >name</button>    
        
        <p>
          <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/ping'>Ping Node</button>
-         &nbsp;
          <button class='node_switch_off' onclick='HandleAction(event)' 
                  data-param='/node/<CURRENT>/binary_switch/0'>Off</button>
-         &nbsp;
          <button class='node_switch_on' onclick='HandleAction(event)' 
                  data-param='/node/<CURRENT>/binary_switch/99'>On</button>
-         &nbsp;
          <input class='node_slide' onchange='HandleAction(event)'  data-args='node_slide'
                 data-param='/node/<CURRENT>/multilevel_switch/'  type=range min=0 max=100 value=0>
         </p>
@@ -181,20 +166,19 @@ Simple demo app using the pyzwaver library
 <table width='100%'>
 <tr>
 
-<td width='45%' valign='top'><h2>Actions</h2>
+<td width='45%' valign='top'>
+<h2>Actions</h2>
 <div class=node_actions>
-
   <button class='node_switch_off' onclick='HandleAction(event)' 
          data-param='/node/<CURRENT>/binary_switch/0'>Off</button>
-  &nbsp;
   <button class='node_switch_on' onclick='HandleAction(event)'  
           data-param='/node/<CURRENT>/binary_switch/99'>On</button>
-  &nbsp;
   <input class='node_slide' onchange='HandleAction(event)' data-args='node_slide'
          data-param='/node/<CURRENT>/multilevel_switch/' type=range min=0 max=100 value=0>
- </td>
+</td>
 
-<td width='45%' valign='top'><h2>Readings</h2>
+<td width='45%' valign='top'>
+<h2>Readings</h2>
 <div class=node_readings></div>
 </td>
 
@@ -202,41 +186,30 @@ Simple demo app using the pyzwaver library
 </table>
 
 <h2>Maintenance</h2>
+
 <table width='100%' class=node_maintenance>
 <tr>
 <td width='45%' valign='top'>
-
 <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/ping'>
     Ping Node</button>
-&nbsp;
 <button class=node_documentation onclick='HandleUrl(event)' data-param=''>
     Search Documentation</button>
 <p>
 <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_dynamic'>
     Refresh Dynamic</button>
-&nbsp;
 <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_semistatic'>
     Refresh Semi Static</button>
-&nbsp;
 <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_static'>
     Refresh Static</button>
-
 <p>
-
 <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_commands'>
     Probe Command</button>
-&nbsp;
 <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_parameters'>
     Probe Configuration</button>
-&nbsp;
 <button class='node_scene_refresh' onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_scenes'>
     Probe Scenes</button>
-&nbsp;
-
 </td>
 
-
-    
 <td width='45%' valign='top'>
 <button onclick='HandleAction(event)' 
         data-param='/node/<CURRENT>/set_name/'
@@ -629,18 +602,14 @@ function HandleTab(ev) {
     ev.preventDefault();
     ev.stopPropagation();
     const param = ev.target.dataset.param;
+    let state =  "#" + param;
+    if (param == TAB_ONE_NODE) {
+      currentNode = GetCurrNode(ev.target);
+      state += `/${currentNode}`;
+    }
     console.log("HandleTab: " + param + ": " + ev.target);
     ShowTab(param);
-    window.history.pushState({}, "", "#" + param);
-}
-
-function HandleTabNode(ev) {
-    ev.preventDefault();
-    ev.stopPropagation();
-    currentNode = GetCurrNode(ev.target);
-    console.log(`HandleTabNode: ${currentNode}`);
-    ShowTab(TAB_ONE_NODE);
-    window.history.pushState({}, "", "#tab-one-node/" + currentNode);
+    window.history.pushState({}, "", state);
 }
 
 function ProcessUrlHash() {
@@ -730,9 +699,6 @@ gSocket.onclose = function (e) {
     console.log("ERROR: " + m);
     document.getElementById(STATUS_FIELD).innerHTML = m;
 }
-
-
-
 
 """
 
@@ -859,8 +825,9 @@ class NodeUpdater(object):
                 continue
             for n in self._nodes_to_update:
                 node = NODESET.GetNode(n)
+                logging.info("refresh thread update: %d", n)
                 SendToSocket("ONE_NODE:%d:" % n + json.dumps(RenderNode(node, DB),
-                                                     sort_keys=True, indent=4))
+                                                             sort_keys=True, indent=4))
             self._update_driver = False
             self._nodes_to_update.clear()
             if count % 20 == 0:
@@ -887,7 +854,7 @@ def ControllerEventCallback(action, event, node):
     SendToSocket("ACTION:" + action)
     if event == EVENT_UPDATE_COMPLETE:
         SendToSocket("CONTROLLER:" + json.dumps(RenderController(CONTROLLER),
-                                       sort_keys=True, indent=4))
+                                                sort_keys=True, indent=4))
 
 
 class EchoWebSocket(tornado.websocket.WebSocketHandler):
@@ -930,7 +897,7 @@ def RenderReadings(readings):
     return out
 
 
-def RenderNodes(application_nodes, controller, db):
+def RenderNodes(application_nodes, controller: Controller, db):
     out = []
     nodes = controller.nodes
     failed = controller.failed_nodes
@@ -941,7 +908,7 @@ def RenderNodes(application_nodes, controller, db):
     return out
 
 
-def RenderController(controller):
+def RenderController(controller: Controller):
     out = {
         "controller_basics": "<pre>%s</pre>" % controller.StringBasic(),
         "controller_routes": "<pre>%s</pre>" % controller.StringRoutes(),
@@ -954,7 +921,7 @@ def RenderDriver(driver):
     return "<pre>" + str(driver) + "</pre>"
 
 
-def DriverLogs(driver):
+def DriverLogs(driver: Driver):
     out = []
     for t, sent, m, comment in driver._raw_history:
         t = TimeFormatMs(t)
@@ -979,9 +946,9 @@ def DriverSlow(driver):
     return out
 
 
-def DriverBad(driver):
+def DriverBad(driver: Driver):
     out = []
-    for m in driver._history:
+    for m in driver.History():
         if not m.end:
             continue
         if not m.WasAborted():
@@ -1104,7 +1071,7 @@ def RenderNodeBrief(node: Node, db, _is_failed):
     description = NodeDescription(device_type)
 
     out = {
-        "name": node.Name(),
+        "name": "Node: " + node.Name(),
         # "name": db.GetNodeName(node.n),
         "link": _ProductLink(*node.values.ProductInfo()),
         "switch_level": node.values.GetMultilevelSwitchLevel(),
@@ -1355,7 +1322,8 @@ class DisplayHandler(BaseHandler):
                     logging.error("no current node")
                 else:
                     node = NODESET.GetNode(num)
-                    SendToSocketJson("ONE_NODE:%d:" % num, RenderNode(node, DB))
+                    logging.info("requested update: %d", num)
+                SendToSocketJson("ONE_NODE:%d:" % num, RenderNode(node, DB))
             else:
                 logging.error("unknown command %s", token)
         except Exception as e:

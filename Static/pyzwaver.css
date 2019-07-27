@@ -47,6 +47,7 @@ pre.stats {
 button {
     border-color: #666;
     background-color: #444;
+    margin-right: 1.0ex;
 }
 
 button.menu {
@@ -57,7 +58,7 @@ button.menu {
 button.node_name {
     border-color: #666; 
     background-color: #222;
-    color: #228;
+    color: #33c;
     width: 8em;
     font-size: 250%;
     font-weight: bold;

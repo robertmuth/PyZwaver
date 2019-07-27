@@ -263,6 +263,9 @@ class Driver(object):
     def HasInflight(self):
         return self._inflight is not None
 
+    def History(self):
+        return self._history
+
     def _LogSent(self, ts, m, comment):
         self._raw_history.append((ts, True, m, comment))
         logging.info("sent: %s", zmessage.PrettifyRawMessage(m))
