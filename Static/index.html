@@ -22,7 +22,6 @@
 <div id=display-area>
     <!-- ============================================================ -->
     <div class=tab id=tab-controller>
-
         <h2>Basics</h2>
         <div id=controller_basics></div>
 
@@ -37,7 +36,6 @@
         </div>
 
         <h2>Pairing</h2>
-
         <button onclick='HandleAction(event)' data-param='/controller/add_node'>Add Node</button>
         <button onclick='HandleAction(event)' data-param='/controller/remove_node'>Remove Node</button>
         <button onclick='HandleAction(event)' data-param='/controller/add_controller_primary'>Add Primary Controller
@@ -46,12 +44,10 @@
 
         <h2>APIs</h2>
         <div id=controller_apis></div>
-
     </div>
 
     <!-- ============================================================ -->
     <div class=tab id=tab-all-nodes>
-
         <table width=100%>
             <tbody class='node_rows'>
             <tr class='node_row' data-no='-1'>
@@ -82,7 +78,6 @@
                 </td>
             </tr>
             </tbody>
-
         </table>
     </div>
 
@@ -122,30 +117,30 @@
                     <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/ping'>
                         Ping Node
                     </button>
-                    <button class=node_documentation onclick='HandleUrl(event)' data-url=''>
+                    <button class="node_documentation" onclick='HandleUrl(event)' data-url="no-url">
                         Search Documentation
                     </button>
                     <p>
-                        <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_dynamic'>
+                    <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_dynamic'>
                             Refresh Dynamic
-                        </button>
-                        <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_semistatic'>
+                    </button>
+                    <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_semistatic'>
                             Refresh Semi Static
-                        </button>
-                        <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_static'>
+                    </button>
+                    <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_static'>
                             Refresh Static
-                        </button>
+                    </button>
                     <p>
-                        <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_commands'>
+                    <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_commands'>
                             Probe Command
-                        </button>
-                        <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_parameters'>
+                    </button>
+                    <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_parameters'>
                             Probe Configuration
-                        </button>
-                        <button class='node_scene_refresh' onclick='HandleAction(event)'
-                                data-param='/node/<CURRENT>/refresh_scenes'>
+                    </button>
+                    <button class='node_scene_refresh' onclick='HandleAction(event)'
+                            data-param='/node/<CURRENT>/refresh_scenes'>
                             Probe Scenes
-                        </button>
+                    </button>
                 </td>
 
                 <td width='45%' valign='top'>
@@ -156,30 +151,29 @@
                     </button>
                     <input type=text class=node_name>
                     <p>
-
-                        <button onclick='HandleAction(event)'
-                                data-param='/node/<CURRENT>/change_parameter/'
-                                data-args='config_num,config_size,config_value'>
+                    <button onclick='HandleAction(event)'
+                            data-param='/node/<CURRENT>/change_parameter/'
+                            data-args='config_num,config_size,config_value'>
                             Change Config Param
-                        </button>
-                        no <input class=config_num type='number' value=0 min=1 max=232 style='width: 3em'>
-                        size <select class=config_size name='size'>
+                    </button>
+                    no <input class=config_num type='number' value=0 min=1 max=232 style='width: 3em'>
+                    size <select class=config_size name='size'>
                         <option value='1'>1</option>
                         <option value='2'>2</option>
                         <option value='4'>4</option>
                     </select>
-                        value <input class=config_value type='number' value=0 style='width: 7em'>
+                    value <input class=config_value type='number' value=0 style='width: 7em'>
 
                     <p>
 
-                        <button onclick='HandleAction(event)'
-                                data-param='/node/<CURRENT>/change_scene/'
-                                data-args='scene_num,scene_level,scene_delay,scene_extra'>
+                    <button onclick='HandleAction(event)'
+                            data-param='/node/<CURRENT>/change_scene/'
+                            data-args='scene_num,scene_level,scene_delay,scene_extra'>
                             Change Scene Config
-                        </button>
-                        no <input class=scene_num type='number' value=1 min=1 max=255 style='width: 3em'>
-                        level <input class=scene_level type='number' value=0 min=0 max=255 style='width: 3em'>
-                        delay <input class=scene_delay type='number' value=0 min=0 max=255 style='width: 3em'>
+                    </button>
+                    no <input class=scene_num type='number' value=1 min=1 max=255 style='width: 3em'>
+                    level <input class=scene_level type='number' value=0 min=0 max=255 style='width: 3em'>
+                    delay <input class=scene_delay type='number' value=0 min=0 max=255 style='width: 3em'>
 
                         <select class=scene_extra name='extra'>
                             <option value='128'>on</option>
@@ -209,10 +203,10 @@
 
 
         <h2>Associations</h2>
-        <div class=node_associations></div>
+        <div class="node_associations"></div>
 
         <h2>Values</h2>
-        <div class=node_values></div>
+        <div class="node_values"></div>
 
         <table width='100%'>
             <tr>
@@ -297,18 +291,18 @@
     <table>
         <tr>
             <td>
-                <pre id=driver>
+                <pre id="driver">
             </td>
             <td>
-                <div id=activity></div>
-                <div id=status></div>
+                <div id="activity"></div>
+                <div id="status"></div>
             </td>
             <td>
-                <pre id=history></pre>
+                <pre id="history"></pre>
             </td>
         </tr>
     </table>
     <hr>
-    <p><tt id=timestamp></tt></p>
+    <p><tt id="timestamp"></tt></p>
 </body>
 </html>

@@ -115,9 +115,9 @@ class Db(object):
         key = "NodeName:%d" % num
         self._shelf[key] = name
 
-    def GetNodeName(self, num, ):
+    def GetNodeName(self, num):
         key = "NodeName:%d" % num
-        return self._shelf.get(key, "Node %d" % num)
+        return self._shelf.get(key)
 
 
 # ======================================================================
@@ -406,7 +406,7 @@ def _ProductLink(_manu_id, prod_type, prod_id):
     return "http://www.google.com/search?q=site:products.z-wavealliance.org+0x%04x+0x%04x" % (prod_type, prod_id)
 
 
-def RenderNodeBrief(node: Node, db, _is_failed):
+def RenderNodeBrief(node: Node, db: Db, _is_failed):
     readings = (RenderReadings(node.values.Sensors() +
                                node.values.Meters() +
                                node.values.MiscSensors()))
@@ -420,10 +420,9 @@ def RenderNodeBrief(node: Node, db, _is_failed):
 
     device_type = node.values.DeviceType()
     description = NodeDescription(device_type)
-
+    db_name = db.GetNodeName(node.n)
     out = {
-        "name": "Node: " + node.Name(),
-        # "name": db.GetNodeName(node.n),
+        "name": "Node %s" % node.Name() if db_name is None else "%s (%s)" % (db_name, node.Name()),
         "link": _ProductLink(*node.values.ProductInfo()),
         "switch_level": node.values.GetMultilevelSwitchLevel(),
         "controls": GetControls(node),
@@ -656,7 +655,7 @@ class DisplayHandler(BaseHandler):
                 else:
                     node = NODESET.GetNode(num)
                     logging.info("requested update: %d", num)
-                SendToSocketJson("ONE_NODE:%d:" % num, RenderNode(node, DB))
+                    SendToSocketJson("ONE_NODE:%d:" % num, RenderNode(node, DB))
             else:
                 logging.error("unknown command %s", token)
         except Exception as e:
@@ -686,6 +685,7 @@ class MyFormatter(logging.Formatter):
             record.lineno,
             record.msg % record.args)
 
+
 _HANDLERS = [
     # Handles controller actions which will typically result in
     # an action and updates being sent to the websocket(s)
@@ -700,9 +700,8 @@ _HANDLERS = [
     (r"/updates", EchoWebSocket, {}),
     # Serves the main page
     ("/(.*)", tornado.web.StaticFileHandler,
-        {"path": "Static/", "default_filename": "index.html"}),
+     {"path": "Static/", "default_filename": "index.html"}),
 ]
-
 
 _SETTINGS = {
     # "debug": True,

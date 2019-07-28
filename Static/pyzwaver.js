@@ -5,6 +5,47 @@
 // ============================================================
 
 // ============================================================
+// Constants and Globals
+// ============================================================
+// Node that is currently shown in 'tab-one-node'
+var currentNode = "0";
+
+const  gDebug = 0;
+// "enums" for tabs
+const TAB_CONTROLLER = "tab-controller";
+const TAB_ALL_NODES = "tab-all-nodes";
+const TAB_ONE_NODE = "tab-one-node";
+const TAB_LOGS = "tab-logs";
+const TAB_SLOW = "tab-slow";
+const TAB_FAILED = "tab-failed";
+
+const STATUS_FIELD = "status";
+
+// multichannel device a shown as 1 + number_of_channels nodes
+const MAX_NODE_ROWS = 500;
+
+// Is there a literal notation for this?
+const  tabToDisplay = {
+    [TAB_CONTROLLER]: function() {return "/display/controller"; },
+    [TAB_ALL_NODES]:  function() {return "/display/nodes"; },
+    [TAB_ONE_NODE]:   function() {return "/display/node/" + currentNode; },
+    [TAB_LOGS]:       function() {return "/display/logs"; },
+    [TAB_SLOW]:       function() {return "/display/slow"; },
+    [TAB_FAILED]:     function() {return "/display/failed"; },
+};
+
+let gEventHistory = ["", "", "", "", "", ""];
+
+//  List visualization using the http://listjs.com/
+// t: timestamp
+// c: completion status
+// d: direction
+// m: message
+let gListLog = null;
+let gListSlow = null;
+let gListFailed = null
+
+// ============================================================
 // Helpers
 // ============================================================
 
@@ -49,46 +90,38 @@ function SetInnerHtmlForClass(elem, cls, html) {
      elem.getElementsByClassName(cls)[0].innerHTML = html;
 }
 
-// ============================================================
-// Constants and Globals
-// ============================================================
-// Node that is currently shown in 'tab-one-node'
-var currentNode = "0";
+function SetInnerHtmlForId(elem, id, html) {
+     elem.getElementById(id).innerHTML = html;
+}
 
-let gEventHistory = ["", "", "", "", "", ""];
+function RequestURL(url) {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.send();
+}
 
-const  gDebug = 0;
-// "enums" for tabs
-const TAB_CONTROLLER = "tab-controller";
-const TAB_ALL_NODES = "tab-all-nodes";
-const TAB_ONE_NODE = "tab-one-node";
-const TAB_LOGS = "tab-logs";
-const TAB_SLOW = "tab-slow";
-const TAB_FAILED = "tab-failed";
-const STATUS_FIELD = "status";
-const ACTIVITY_FIELD = "activity"
-const HISTORY_FIELD = "history";
-const DRIVE_FIELD = "driver";
+function RequestRefresh(component) {
+    RequestURL(tabToDisplay[component]());
+    // always update the drive too
+    RequestURL("/display/driver");
+}
 
-// Is there a literal notation for this?
-const  tabToDisplay = {
-    [TAB_CONTROLLER]: function() {return "/display/controller"; },
-    [TAB_ALL_NODES]:  function() {return "/display/nodes"; },
-    [TAB_ONE_NODE]:   function() {return "/display/node/" + currentNode; },
-    [TAB_LOGS]:       function() {return "/display/logs"; },
-    [TAB_SLOW]:       function() {return "/display/slow"; },
-    [TAB_FAILED]:     function() {return "/display/failed"; },
-};
+// Show one tab while hiding the others.
+function ShowTab(id) {
+   const tabs = document.getElementsByClassName("tab");
+    for (let i = 0; i < tabs.length; i++) {
+        tabs[i].style.display = "none";
+   }
+   document.getElementById(id).style.display = "block";
+   RequestRefresh(id);
+}
 
-//  List visualization using the http://listjs.com/
-// t: timestamp
-// c: completion status
-// d: direction
-// m: message
-let gListLog = null;
-let gListSlow = null;
-let gListFailed = null
-
+function GetCurrNode(element) {
+    for (; element != document.body; element = element.parentNode) {
+        if ( element.dataset.no !== undefined) return element.dataset.no;
+    }
+    return currentNode;
+}
 
 function InstallLogFilter(ev) {
     if (ev) {
@@ -106,7 +139,9 @@ function InstallLogFilter(ev) {
     }
 }
 
-
+// ============================================================
+// Updaters
+// ============================================================
 
 function UpdateNodeRow(row, data) {
     row.dataset.no = data.no;
@@ -124,12 +159,12 @@ function UpdateNodeDetails(row, data) {
     SetInnerHtmlForClass(row, "node_basics", data.basics);
     SetInnerHtmlForClass(row, "node_classes", data.classes);
     SetInnerHtmlForClass(row, "node_associations", data.associations);
-    SetInnerHtmlForClass(row, "node_data", data.data);
+    SetInnerHtmlForClass(row, "node_values", data.values);
     SetInnerHtmlForClass(row, "node_configurations", data.configurations);
     SetInnerHtmlForClass(row, "node_readings", data.readings);
     SetInnerHtmlForClass(row, "node_scenes", data.scenes);
-    row.getElementsByClassName("node_name")[0].value = values.name;
-    row.getElementsByClassName("node_documentation")[0].set.param = data.link;
+    row.getElementsByClassName("node_name")[0].value = data.name;
+    row.getElementsByClassName("node_documentation")[0].dataset.url = data.link;
     row.getElementsByClassName("node_slide")[0].value = data.switch_level;
     ShowHideControls(row, data.controls);
 }
@@ -137,25 +172,22 @@ function UpdateNodeDetails(row, data) {
 
 const SocketHandlerDispatch = {
   ACTION: function(val) {
-      document.getElementById(ACTIVITY_FIELD).innerHTML = val;
+      SetInnerHtmlForId(document, "activity", val);
   },
   STATUS: function(val) {
       console.log(val);
-      document.getElementById(STATUS_FIELD).innerHTML = val;
+      SetInnerHtmlForId(document, STATUS_FIELD, val);
   },
   EVENT: function(val) {
       gEventHistory.push(val);
       gEventHistory.shift();
-      document.getElementById(HISTORY_FIELD).innerHTML = gEventHistory.join("\\n");
+      SetInnerHtmlForId(document, "history", gEventHistory.join("\\n"));
   },
   CONTROLLER: function(val) {
       const values = JSON.parse(val);
-      document.getElementById('controller_basics').innerHTML =
-          values.controller_basics;
-      document.getElementById('controller_routes').innerHTML =
-          values.controller_routes;
-      document.getElementById('controller_apis').innerHTML =
-           values.controller_apis;
+      SetInnerHtmlForId(document, 'controller_basics', values.controller_basics);
+      SetInnerHtmlForId(document, 'controller_routes', values.controller_routes);
+      SetInnerHtmlForId(document, 'controller_apis', values.controller_apis);
   },
   LOGS: function(val) {
       const values = JSON.parse(val);
@@ -201,7 +233,7 @@ const SocketHandlerDispatch = {
       }
   },
   DRIVER: function(tag, val) {
-      document.getElementById(DRIVE_FIELD).innerHTML = val;
+      SetInnerHtmlForId(document, "driver", val);
   },
 };
 
@@ -216,37 +248,9 @@ function SocketMessageHandler(e) {
     SocketHandlerDispatch[tag](val);
 }
 
-function RequestRefresh(component) {
-    RequestURL(tabToDisplay[component]());
-    // always update the drive too
-    RequestURL("/display/driver");
-}
-
-// Show one tab while hiding the others.
-function ShowTab(id) {
-   const tabs = document.getElementsByClassName("tab");
-    for (let i = 0; i < tabs.length; i++) {
-        tabs[i].style.display = "none";
-   }
-   document.getElementById(id).style.display = "block";
-   RequestRefresh(id);
-}
-
-function GetCurrNode(element) {
-    for (; element != document.body; element = element.parentNode) {
-        if ( element.dataset.no !== undefined) return element.dataset.no;
-    }
-    return currentNode;
-}
-
 // ============================================================
 // Button Click Etc Handlers
 // ============================================================
-function RequestURL(url) {
-    const xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.send();
-}
 
 // This will may trigger refreshes via the websocket
 function RequestActionURL(param, args) {
@@ -271,7 +275,6 @@ function HandleAction(ev) {
     console.log("HandleAction: " + param + ": " + args);
     RequestActionURL(param, args);
 }
-
 
 function HandleUrl(ev) {
     window.location = ev.target.dataset.url;
@@ -319,54 +322,53 @@ function ProcessUrlHash() {
   ShowTab(tokens[0]);
 }
 
-// multichannel device a shown as 1 + number_of_channels nodes
-const MAX_NODE_ROWS = 500;
-
 window.onload = function () {
-  ProcessUrlHash();
 
-  // Replicate node row in node overview page
-  const node_row_template = document.getElementsByClassName("node_rows")[0];
-  const table = node_row_template.parentNode;
-  const text = node_row_template.innerHTML;
-  const all = [];
-  for (let i = 1 ; i < MAX_NODE_ROWS; ++i) {
-    all.push(text)
-  }
-  table.innerHTML = all.join("");
+    // Replicate node row in node overview page
+    const node_row_template = document.getElementsByClassName("node_rows")[0];
+    const table = node_row_template.parentNode;
+    const text = node_row_template.innerHTML;
+    const all = [];
+    for (let i = 1 ; i < MAX_NODE_ROWS; ++i) {
+        all.push(text)
+    }
+    table.innerHTML = all.join("");
 
-  const created = DateToString(new Date());
-  document.getElementById("timestamp").innerHTML = "" + created;
+    const created = DateToString(new Date());
+    SetInnerHtmlForId(document, "timestamp", "" + created);
 
-  gListLog = new List('driverlog', {valueNames: [ 't', 'c', 'd', 'm' ]});
-  gListSlow = new List('driverslow', {valueNames: [ 'd', 't', 'm' ]});
-  gListFailed = new List('driverfailed', {valueNames: [ 'd', 't', 'm' ]});
-  console.log("on load finished");
+    gListLog = new List("driverlog", {valueNames: [ 't', 'c', 'd', 'm' ]});
+    gListSlow = new List("driverslow", {valueNames: [ 'd', 't', 'm' ]});
+    gListFailed = new List("driverfailed", {valueNames: [ 'd', 't', 'm' ]});
+
+   const gSocket = OpenSocket();
+   gSocket.onopen = function (e) {
+        console.log("Connected to server socket");
+   };
+
+   gSocket.onmessage = SocketMessageHandler;
+
+   gSocket.onerror = function (e) {
+        const m = "Cannot connect to Server: try reloading";
+        console.log("ERROR: " + m);
+        SetInnerHtmlForId(document, STATUS_FIELD, m);
+        tab.innerHTML = "ERROR: Cannot connect to Server: try reloading";
+   }
+
+   gSocket.onclose = function (e) {
+        const m = "Server connection lost: you must reload";
+        console.log("ERROR: " + m);
+        SetInnerHtmlForId(document, STATUS_FIELD, m);
+   }
+
+   // delay this until the socket has been setup since it will trigger updates
+   ProcessUrlHash();
+
+   console.log("on load finished");
 };
-
 
 // we use window.parent to make this work even from within an iframe
 window.parent.onpopstate = function(event) {
     ProcessUrlHash();
 };
 
-const gSocket = OpenSocket();
-
-gSocket.onopen = function (e) {
-  console.log("Connected to server socket");
-};
-
-gSocket.onmessage = SocketMessageHandler;
-
-gSocket.onerror = function (e) {
-   const m = "Cannot connect to Server: try reloading";
-   console.log("ERROR: " + m);
-   document.getElementById(STATUS_FIELD).innerHTML = m;
-   tab.innerHTML = "ERROR: Cannot connect to Server: try reloading";
-}
-
-gSocket.onclose = function (e) {
-    const m =  "Server connection lost: you must reload";
-    console.log("ERROR: " + m);
-    document.getElementById(STATUS_FIELD).innerHTML = m;
-}
