@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 <head>
     <base href="/"/>
@@ -23,13 +24,13 @@
     <!-- ============================================================ -->
     <div class=tab id=tab-controller>
         <h2>Basics</h2>
-        <div id=controller_basics></div>
+        <div id="controller_basics"></div>
 
         <h2>Connectivity</h2>
-        <div id=controller_routes></div>
+        <div id="controller_routes"></div>
 
         <h2>Actions</h2>
-        <div id=controller_buttons</div>
+        <div id="controller_buttons">
             <button onclick='HandleAction(event)' data-param='/controller/refresh'>Refresh</button>
             <button onclick='HandleAction(event)' data-param='/controller/soft_reset'>Soft Reset</button>
             <button onclick='HandleAction(event)' data-param='/controller/hard_reset'>Hard Reset</button>
@@ -100,6 +101,7 @@
                         </button>
                         <input class='node_slide' onchange='HandleAction(event)' data-args='node_slide'
                                data-param='/node/<CURRENT>/multilevel_switch/' type=range min=0 max=100 value=0>
+                    </div>
                 </td>
 
                 <td width='45%' valign='top'>
@@ -291,7 +293,7 @@
     <table>
         <tr>
             <td>
-                <pre id="driver">
+                <pre id="driver"></pre>
             </td>
             <td>
                 <div id="activity"></div>
@@ -304,5 +306,6 @@
     </table>
     <hr>
     <p><tt id="timestamp"></tt></p>
+</div>
 </body>
 </html>

@@ -558,6 +558,7 @@ class Node:
         self.last_contact = ts
 
         if key == command.CUSTOM_COMMAND_APPLICATION_UPDATE:
+            # maybe update generic+specific device
             if self.values.Get(command.CUSTOM_COMMAND_PROTOCOL_INFO) is None:
                 self.values.Set(ts, command.CUSTOM_COMMAND_PROTOCOL_INFO,
                                 {"device_type": (0, values["generic"], values["specific"])})

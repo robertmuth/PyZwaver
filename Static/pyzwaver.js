@@ -169,7 +169,6 @@ function UpdateNodeDetails(row, data) {
     ShowHideControls(row, data.controls);
 }
 
-
 const SocketHandlerDispatch = {
   ACTION: function(val) {
       SetInnerHtmlForId(document, "activity", val);

@@ -253,10 +253,12 @@ def RenderNodes(application_nodes, controller: Controller, db):
     nodes = controller.nodes
     failed = controller.failed_nodes
     for node in sorted(application_nodes.nodes.values()):
-        if node.n not in nodes and (node.n >> 8) not in nodes:
+        no_short = node.n if node.n <= 255 else (node.n >> 8)
+        no_long  = node.n if node.n > 255 else (node.n << 8)
+        if no_short not in nodes:
             continue
-        out.append(RenderNodeBrief(node, db, node.n in failed))
-    return out
+        out.append((no_long, RenderNodeBrief(node, db, node.n in failed)))
+    return [x[1] for x in sorted(out)]
 
 
 def RenderController(controller: Controller):
@@ -439,13 +441,11 @@ def RenderNodeBrief(node: Node, db: Db, _is_failed):
 
 def RenderNode(node: Node, db):
     out = RenderNodeBrief(node, db, False)
-
     out["classes"] = "\n".join(RenderNodeCommandClasses(node))
     out["associations"] = "\n".join(RenderNodeAssociations(node))
     out["values"] = "\n".join(RenderMiscValues(node))
     out["configurations"] = "\n".join(RenderNodeParameters(node))
     out["scenes"] = "\n".join(RenderNodeScenes(node))
-
     return out
 
 

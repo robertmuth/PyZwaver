@@ -10,7 +10,7 @@ check_pylint::
 	@echo "============================================================"
 	@echo "pylint checking"
 	@echo "============================================================"
-	@for i in $(PYTHON_SOURCES) ; do echo pylint: $$i ; pylint --rcfile pylint.conf -E $$i ; done
+	@for i in $(PYTHON_SOURCES) ; do echo pylint3: $$i ; pylint3 --rcfile pylint.conf -E $$i ; done
 
 check_pyflakes::
 	@echo "============================================================"
@@ -18,7 +18,13 @@ check_pyflakes::
 	@echo "============================================================"
 	@for i in $(PYTHON_SOURCES) ; do echo pyflakes: $$i ; pyflakes3 $$i ; done
 
-check:: check_pylint check_pyflakes
+check_html:
+	tidy -quiet -errors Static/index.html
+
+check_js:
+	echo
+
+check:: check_pylint check_pyflakes check_html check_js
 
 # generate zwave.py file with all zwave constants
 pyzwaver/zwave.py: constants_generator.py
