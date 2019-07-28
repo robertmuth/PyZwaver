@@ -1,289 +1,281 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-    <base href="/"/>
-    <link rel="stylesheet" type="text/css" href="static/pyzwaver.css"/>
-    <meta name="viewport" content="width=device-width"/>
-    <script language="javascript" type="text/javascript" src="static/list.min.js"></script>
-    <script language="javascript" type="text/javascript" src="static/pyzwaver.js"></script>
-    <title>Web-Zwaver</title>
+  <base href="/" />
+  <link rel="stylesheet" type="text/css" href="static/pyzwaver.css" />
+  <meta name="viewport" content="width=device-width" />
+  <script language="javascript" type="text/javascript" src="static/list.min.js"></script>
+  <script language="javascript" type="text/javascript" src="static/pyzwaver.js"></script>
+  <title>Web-Zwaver</title>
 </head>
 
 <body>
-<div id=menu>
+  <div id=menu>
     <button class=menu onclick='HandleTab(event)' data-tab='tab-controller'>Controller</button>
     <button class=menu onclick='HandleTab(event)' data-tab='tab-all-nodes'>Nodes</button>
     <button class=menu onclick='HandleTab(event)' data-tab='tab-logs'>Logs</button>
     <button class=menu onclick='HandleTab(event)' data-tab='tab-slow'>Slow</button>
     <button class=menu onclick='HandleTab(event)' data-tab='tab-failed'>Failed</button>
     Simple demo app using the pyzwaver library
-</div>
-<hr>
+  </div>
+  <hr>
 
-<div id=display-area>
+  <div id=display-area>
     <!-- ============================================================ -->
     <div class=tab id=tab-controller>
-        <h2>Basics</h2>
-        <div id="controller_basics"></div>
+      <h2>Basics</h2>
+      <div id="controller_basics"></div>
 
-        <h2>Connectivity</h2>
-        <div id="controller_routes"></div>
+      <h2>Connectivity</h2>
+      <div id="controller_routes"></div>
 
-        <h2>Actions</h2>
-        <div id="controller_buttons">
-            <button onclick='HandleAction(event)' data-param='/controller/refresh'>Refresh</button>
-            <button onclick='HandleAction(event)' data-param='/controller/soft_reset'>Soft Reset</button>
-            <button onclick='HandleAction(event)' data-param='/controller/hard_reset'>Hard Reset</button>
-        </div>
+      <h2>Actions</h2>
+      <div id="controller_buttons">
+        <button onclick='HandleAction(event)' data-param='/controller/refresh'>Refresh</button>
+        <button onclick='HandleAction(event)' data-param='/controller/soft_reset'>Soft Reset</button>
+        <button onclick='HandleAction(event)' data-param='/controller/hard_reset'>Hard Reset</button>
+      </div>
 
-        <h2>Pairing</h2>
-        <button onclick='HandleAction(event)' data-param='/controller/add_node'>Add Node</button>
-        <button onclick='HandleAction(event)' data-param='/controller/remove_node'>Remove Node</button>
-        <button onclick='HandleAction(event)' data-param='/controller/add_controller_primary'>Add Primary Controller
-        </button>
-        <button onclick='HandleAction(event)' data-param='/controller/set_learn_mode'>Enter Learn Mode</button>
+      <h2>Pairing</h2>
+      <button onclick='HandleAction(event)' data-param='/controller/add_node'>Add Node</button>
+      <button onclick='HandleAction(event)' data-param='/controller/remove_node'>Remove Node</button>
+      <button onclick='HandleAction(event)' data-param='/controller/add_controller_primary'>Add Primary Controller
+      </button>
+      <button onclick='HandleAction(event)' data-param='/controller/set_learn_mode'>Enter Learn Mode</button>
 
-        <h2>APIs</h2>
-        <div id=controller_apis></div>
+      <h2>APIs</h2>
+      <div id=controller_apis></div>
     </div>
 
     <!-- ============================================================ -->
     <div class=tab id=tab-all-nodes>
-        <table width=100%>
-            <tbody class='node_rows'>
-            <tr class='node_row' data-no='-1'>
-                <td class=node_actions valign='top'>
-                    <button class='node_name' onclick='HandleTab(event)' data-tab='tab-one-node'>name</button>
+      <table width=100%>
+        <tbody class='node_rows'>
+          <tr class='node_row' data-no='-1'>
+            <td class=node_actions valign='top'>
+              <button class='node_name' onclick='HandleTab(event)' data-tab='tab-one-node'>name</button>
 
-                    <p>
-                        <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/ping'>Ping Node</button>
-                        <button class='node_switch_off' onclick='HandleAction(event)'
-                                data-param='/node/<CURRENT>/binary_switch/0'>Off
-                        </button>
-                        <button class='node_switch_on' onclick='HandleAction(event)'
-                                data-param='/node/<CURRENT>/binary_switch/99'>On
-                        </button>
-                        <input class='node_slide' onchange='HandleAction(event)' data-args='node_slide'
-                               data-param='/node/<CURRENT>/multilevel_switch/' type=range min=0 max=100 value=0>
-                    </p>
-                </td>
+              <p>
+                <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/ping'>Ping
+                  Node</button>
+                <button class='node_switch_off' onclick='HandleAction(event)'
+                  data-param='/node/<CURRENT>/binary_switch/0'>Off
+                </button>
+                <button class='node_switch_on' onclick='HandleAction(event)'
+                  data-param='/node/<CURRENT>/binary_switch/99'>On
+                </button>
+                <input class='node_slide' onchange='HandleAction(event)' data-args='node_slide'
+                  data-param='/node/<CURRENT>/multilevel_switch/' type=range min=0 max=100 value=0>
+              </p>
+            </td>
 
-                <td class=node_info valign='top'>
-                    <div class=node_readings>READINGS</div>
-                    <p>
-                        <span class=node_no>node</span>
-                        <span class=node_last_contact>last contact</span>
-                        <span class=node_state>state</span>
-                        <span class=node_product>product</span>
-                    </p>
-                </td>
-            </tr>
-            </tbody>
-        </table>
+            <td class=node_info valign='top'>
+              <div class=node_readings>READINGS</div>
+              <p>
+                <span class=node_no>node</span>
+                <span class=node_last_contact>last contact</span>
+                <span class=node_state>state</span>
+                <span class=node_product>product</span>
+              </p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- ============================================================ -->
     <div class=tab id=tab-one-node>
 
-        <h2>Basics</h2>
-        <div class=node_basics></div>
+      <h2>Basics</h2>
+      <div class=node_basics></div>
 
-        <table width='100%'>
-            <tr>
-                <td width='45%' valign='top'>
-                    <h2>Actions</h2>
-                    <div class=node_actions>
-                        <button class='node_switch_off' onclick='HandleAction(event)'
-                                data-param='/node/<CURRENT>/binary_switch/0'>Off
-                        </button>
-                        <button class='node_switch_on' onclick='HandleAction(event)'
-                                data-param='/node/<CURRENT>/binary_switch/99'>On
-                        </button>
-                        <input class='node_slide' onchange='HandleAction(event)' data-args='node_slide'
-                               data-param='/node/<CURRENT>/multilevel_switch/' type=range min=0 max=100 value=0>
-                    </div>
-                </td>
+      <table width='100%'>
+        <tr>
+          <td width='45%' valign='top'>
+            <h2>Actions</h2>
+            <div class=node_actions>
+              <button class='node_switch_off' onclick='HandleAction(event)'
+                data-param='/node/<CURRENT>/binary_switch/0'>Off
+              </button>
+              <button class='node_switch_on' onclick='HandleAction(event)'
+                data-param='/node/<CURRENT>/binary_switch/99'>On
+              </button>
+              <input class='node_slide' onchange='HandleAction(event)' data-args='node_slide'
+                data-param='/node/<CURRENT>/multilevel_switch/' type=range min=0 max=100 value=0>
+            </div>
+          </td>
 
-                <td width='45%' valign='top'>
-                    <h2>Readings</h2>
-                    <div class=node_readings></div>
-                </td>
-            </tr>
-        </table>
+          <td width='45%' valign='top'>
+            <h2>Readings</h2>
+            <div class=node_readings></div>
+          </td>
+        </tr>
+      </table>
 
-        <h2>Maintenance</h2>
+      <h2>Maintenance</h2>
 
-        <table width='100%' class=node_maintenance>
-            <tr>
-                <td width='45%' valign='top'>
-                    <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/ping'>
-                        Ping Node
-                    </button>
-                    <button class="node_documentation" onclick='HandleUrl(event)' data-url="no-url">
-                        Search Documentation
-                    </button>
-                    <p>
-                    <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_dynamic'>
-                            Refresh Dynamic
-                    </button>
-                    <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_semistatic'>
-                            Refresh Semi Static
-                    </button>
-                    <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_static'>
-                            Refresh Static
-                    </button>
-                    <p>
-                    <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_commands'>
-                            Probe Command
-                    </button>
-                    <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_parameters'>
-                            Probe Configuration
-                    </button>
-                    <button class='node_scene_refresh' onclick='HandleAction(event)'
-                            data-param='/node/<CURRENT>/refresh_scenes'>
-                            Probe Scenes
-                    </button>
-                </td>
+      <table width='100%' class=node_maintenance>
+        <tr>
+          <td width='45%' valign='top'>
+            <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/ping'>
+              Ping Node
+            </button>
+            <button class="node_documentation" onclick='HandleUrl(event)' data-url="no-url">
+              Search Documentation
+            </button>
+            <p>
+              <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_dynamic'>
+                Refresh Dynamic
+              </button>
+              <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_semistatic'>
+                Refresh Semi Static
+              </button>
+              <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_static'>
+                Refresh Static
+              </button>
+              <p>
+                <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_commands'>
+                  Probe Command
+                </button>
+                <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/refresh_parameters'>
+                  Probe Configuration
+                </button>
+                <button class='node_scene_refresh' onclick='HandleAction(event)'
+                  data-param='/node/<CURRENT>/refresh_scenes'>
+                  Probe Scenes
+                </button>
+          </td>
 
-                <td width='45%' valign='top'>
-                    <button onclick='HandleAction(event)'
-                            data-param='/node/<CURRENT>/set_name/'
-                            data-args='node_name'>
-                        Change Node Name
-                    </button>
-                    <input type=text class=node_name>
-                    <p>
-                    <button onclick='HandleAction(event)'
-                            data-param='/node/<CURRENT>/change_parameter/'
-                            data-args='config_num,config_size,config_value'>
-                            Change Config Param
-                    </button>
-                    no <input class=config_num type='number' value=0 min=1 max=232 style='width: 3em'>
-                    size <select class=config_size name='size'>
-                        <option value='1'>1</option>
-                        <option value='2'>2</option>
-                        <option value='4'>4</option>
-                    </select>
-                    value <input class=config_value type='number' value=0 style='width: 7em'>
+          <td width='45%' valign='top'>
+            <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/set_name/' data-args='node_name'>
+              Change Node Name
+            </button>
+            <input type=text class=node_name>
+            <p>
+              <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/change_parameter/'
+                data-args='config_num,config_size,config_value'>
+                Change Config Param
+              </button>
+              no <input class=config_num type='number' value=0 min=1 max=232 style='width: 3em'>
+              size <select class=config_size name='size'>
+                <option value='1'>1</option>
+                <option value='2'>2</option>
+                <option value='4'>4</option>
+              </select>
+              value <input class=config_value type='number' value=0 style='width: 7em'>
 
-                    <p>
+              <p>
 
-                    <button onclick='HandleAction(event)'
-                            data-param='/node/<CURRENT>/change_scene/'
-                            data-args='scene_num,scene_level,scene_delay,scene_extra'>
-                            Change Scene Config
-                    </button>
-                    no <input class=scene_num type='number' value=1 min=1 max=255 style='width: 3em'>
-                    level <input class=scene_level type='number' value=0 min=0 max=255 style='width: 3em'>
-                    delay <input class=scene_delay type='number' value=0 min=0 max=255 style='width: 3em'>
+                <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/change_scene/'
+                  data-args='scene_num,scene_level,scene_delay,scene_extra'>
+                  Change Scene Config
+                </button>
+                no <input class=scene_num type='number' value=1 min=1 max=255 style='width: 3em'>
+                level <input class=scene_level type='number' value=0 min=0 max=255 style='width: 3em'>
+                delay <input class=scene_delay type='number' value=0 min=0 max=255 style='width: 3em'>
 
-                        <select class=scene_extra name='extra'>
-                            <option value='128'>on</option>
-                            <option value='0'>off</option>
-                        </select>
+                <select class=scene_extra name='extra'>
+                  <option value='128'>on</option>
+                  <option value='0'>off</option>
+                </select>
 
-                    <p>
+                <p>
 
-                        Association group <input class=assoc_group type='number' name='level' value=1 min=0 max=255
-                                                 style='width: 3em'>
-                        node <input class=assoc_node type='number' name='level' value=0 min=0 max=255
-                                    style='width: 3em'>
-                        <button onclick='HandleAction(event)'
-                                data-param='/node/<CURRENT>/association_remove/'
-                                data-args='assoc_group,assoc_node'>
-                            Remove
-                        </button>
-                        <button onclick='HandleAction(event)'
-                                data-param='/node/<CURRENT>/association_add/'
-                                data-args='assoc_group,assoc_node'>
-                            Add
-                        </button>
-                </td>
-            </tr>
+                  Association group <input class=assoc_group type='number' name='level' value=1 min=0 max=255
+                    style='width: 3em'>
+                  node <input class=assoc_node type='number' name='level' value=0 min=0 max=255 style='width: 3em'>
+                  <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/association_remove/'
+                    data-args='assoc_group,assoc_node'>
+                    Remove
+                  </button>
+                  <button onclick='HandleAction(event)' data-param='/node/<CURRENT>/association_add/'
+                    data-args='assoc_group,assoc_node'>
+                    Add
+                  </button>
+          </td>
+        </tr>
 
-        </table>
+      </table>
 
 
-        <h2>Associations</h2>
-        <div class="node_associations"></div>
+      <h2>Associations</h2>
+      <div class="node_associations"></div>
 
-        <h2>Values</h2>
-        <div class="node_values"></div>
+      <h2>Values</h2>
+      <div class="node_values"></div>
 
-        <table width='100%'>
-            <tr>
-                <td width='33%' valign='top'>
-                    <h2>Command Classes</h2>
-                    <div class=node_classes></div>
-                </td>
-                <td width='33%' valign='top'>
-                    <h2>Configuration</h2>
-                    <div class=node_configurations></div>
-                </td>
-                <td width='33%' valign='top'>
-                    <h2>Scenes</h2>
-                    <div class=node_scenes></div>
-                </td>
-            </tr>
-        </table>
+      <table width='100%'>
+        <tr>
+          <td width='33%' valign='top'>
+            <h2>Command Classes</h2>
+            <div class=node_classes></div>
+          </td>
+          <td width='33%' valign='top'>
+            <h2>Configuration</h2>
+            <div class=node_configurations></div>
+          </td>
+          <td width='33%' valign='top'>
+            <h2>Scenes</h2>
+            <div class=node_scenes></div>
+          </td>
+        </tr>
+      </table>
     </div>
 
     <!-- ============================================================ -->
     <div class=tab id=tab-logs>
-        <p>
-            <input type=search
-                   oninput='InstallLogFilter(event)'
-                   id=log_filter_regexp
-                   placeholder="Regexp Filter"/>
-        </p>
-        <!-- see http://www.listjs.com/ -->
-        <div id="driverlog">
-            <table border=1>
-                <!-- IMPORTANT, class="list" have to be at tbody -->
-                <tbody class="list">
-                <tr>
-                    <td class="t"></td>
-                    <td class="c"></td>
-                    <td class="d"></td>
-                    <td class="m"></td>
-                </tr>
-                </tbody>
-            </table>
-        </div>
+      <p>
+        <input type=search oninput='InstallLogFilter(event)' id=log_filter_regexp placeholder="Regexp Filter" />
+      </p>
+      <!-- see http://www.listjs.com/ -->
+      <div id="driverlog">
+        <table border=1>
+          <!-- IMPORTANT, class="list" have to be at tbody -->
+          <tbody class="list">
+            <tr>
+              <td class="t"></td>
+              <td class="c"></td>
+              <td class="d"></td>
+              <td class="m"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <!-- ============================================================ -->
     <div class=tab id=tab-slow>
-        <!-- see http://www.listjs.com/ -->
-        <div id="driverslow">
-            <table border=1>
-                <!-- IMPORTANT, class="list" have to be at tbody -->
-                <tbody class="list">
-                <tr>
-                    <td class="t"></td>
-                    <td class="d"></td>
-                    <td class="m"></td>
-                </tr>
-                </tbody>
-            </table>
-        </div>
+      <!-- see http://www.listjs.com/ -->
+      <div id="driverslow">
+        <table border=1>
+          <!-- IMPORTANT, class="list" have to be at tbody -->
+          <tbody class="list">
+            <tr>
+              <td class="t"></td>
+              <td class="d"></td>
+              <td class="m"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <!-- ============================================================ -->
     <div class=tab id=tab-failed>
-        <!-- see http://www.listjs.com/ -->
-        <div id="driverfailed">
-            <table border=1>
-                <!-- IMPORTANT, class="list" have to be at tbody -->
-                <tbody class="list">
-                <tr>
-                    <td class="t"></td>
-                    <td class="d"></td>
-                    <td class="m"></td>
-                </tr>
-                </tbody>
-            </table>
-        </div>
+      <!-- see http://www.listjs.com/ -->
+      <div id="driverfailed">
+        <table border=1>
+          <!-- IMPORTANT, class="list" have to be at tbody -->
+          <tbody class="list">
+            <tr>
+              <td class="t"></td>
+              <td class="d"></td>
+              <td class="m"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <!-- ============================================================ -->
@@ -291,21 +283,22 @@
     <!-- ============================================================ -->
     <hr>
     <table>
-        <tr>
-            <td>
-                <pre id="driver"></pre>
-            </td>
-            <td>
-                <div id="activity"></div>
-                <div id="status"></div>
-            </td>
-            <td>
-                <pre id="history"></pre>
-            </td>
-        </tr>
+      <tr>
+        <td>
+          <pre id="driver"></pre>
+        </td>
+        <td>
+          <div id="activity"></div>
+          <div id="status"></div>
+        </td>
+        <td>
+          <pre id="history"></pre>
+        </td>
+      </tr>
     </table>
     <hr>
     <p><tt id="timestamp"></tt></p>
-</div>
+  </div>
 </body>
+
 </html>

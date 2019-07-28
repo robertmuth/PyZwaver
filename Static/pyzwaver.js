@@ -10,7 +10,7 @@
 // Node that is currently shown in 'tab-one-node'
 var currentNode = "0";
 
-const  gDebug = 0;
+const gDebug = 0;
 // "enums" for tabs
 const TAB_CONTROLLER = "tab-controller";
 const TAB_ALL_NODES = "tab-all-nodes";
@@ -25,13 +25,13 @@ const STATUS_FIELD = "status";
 const MAX_NODE_ROWS = 500;
 
 // Is there a literal notation for this?
-const  tabToDisplay = {
-    [TAB_CONTROLLER]: function() {return "/display/controller"; },
-    [TAB_ALL_NODES]:  function() {return "/display/nodes"; },
-    [TAB_ONE_NODE]:   function() {return "/display/node/" + currentNode; },
-    [TAB_LOGS]:       function() {return "/display/logs"; },
-    [TAB_SLOW]:       function() {return "/display/slow"; },
-    [TAB_FAILED]:     function() {return "/display/failed"; },
+const tabToDisplay = {
+    [TAB_CONTROLLER]: function () { return "/display/controller"; },
+    [TAB_ALL_NODES]: function () { return "/display/nodes"; },
+    [TAB_ONE_NODE]: function () { return "/display/node/" + currentNode; },
+    [TAB_LOGS]: function () { return "/display/logs"; },
+    [TAB_SLOW]: function () { return "/display/slow"; },
+    [TAB_FAILED]: function () { return "/display/failed"; },
 };
 
 let gEventHistory = ["", "", "", "", "", ""];
@@ -59,19 +59,19 @@ function DateToString(d) {
     console.log(d);
     function pad(n, digits) {
         let s = "" + n;
-        while (s.length < digits)  s = '0' + s;
+        while (s.length < digits) s = '0' + s;
         return s;
     }
     const out = [
-            pad(d.getUTCFullYear(), 4), '-',
-            pad(d.getUTCMonth()+1, 2), '-',
-            pad(d.getUTCDate(), 2),
-            ' ',
-            pad(d.getUTCHours(), 2), ':',
-            pad(d.getUTCMinutes(), 2), ':',
-            pad(d.getUTCSeconds(), 2),
-            ' UTC',
-            ];
+        pad(d.getUTCFullYear(), 4), '-',
+        pad(d.getUTCMonth() + 1, 2), '-',
+        pad(d.getUTCDate(), 2),
+        ' ',
+        pad(d.getUTCHours(), 2), ':',
+        pad(d.getUTCMinutes(), 2), ':',
+        pad(d.getUTCSeconds(), 2),
+        ' UTC',
+    ];
     return out.join("");
 }
 
@@ -81,17 +81,17 @@ function ShowHideControls(root, controls) {
         if (e.length > 0) {
             let val = controls[key];
             //console.log(`${e[0]}: ${key} -> ${val} [${e[0].dataset.param}]`);
-            e[0].hidden = ! val;
+            e[0].hidden = !val;
         }
     }
 }
 
 function SetInnerHtmlForClass(elem, cls, html) {
-     elem.getElementsByClassName(cls)[0].innerHTML = html;
+    elem.getElementsByClassName(cls)[0].innerHTML = html;
 }
 
 function SetInnerHtmlForId(elem, id, html) {
-     elem.getElementById(id).innerHTML = html;
+    elem.getElementById(id).innerHTML = html;
 }
 
 function RequestURL(url) {
@@ -108,17 +108,17 @@ function RequestRefresh(component) {
 
 // Show one tab while hiding the others.
 function ShowTab(id) {
-   const tabs = document.getElementsByClassName("tab");
+    const tabs = document.getElementsByClassName("tab");
     for (let i = 0; i < tabs.length; i++) {
         tabs[i].style.display = "none";
-   }
-   document.getElementById(id).style.display = "block";
-   RequestRefresh(id);
+    }
+    document.getElementById(id).style.display = "block";
+    RequestRefresh(id);
 }
 
 function GetCurrNode(element) {
     for (; element != document.body; element = element.parentNode) {
-        if ( element.dataset.no !== undefined) return element.dataset.no;
+        if (element.dataset.no !== undefined) return element.dataset.no;
     }
     return currentNode;
 }
@@ -135,7 +135,7 @@ function InstallLogFilter(ev) {
         gListLog.filter(
             function (item) {
                 return item.values().m.match(new RegExp(text));
-        });
+            });
     }
 }
 
@@ -170,70 +170,70 @@ function UpdateNodeDetails(row, data) {
 }
 
 const SocketHandlerDispatch = {
-  ACTION: function(val) {
-      SetInnerHtmlForId(document, "activity", val);
-  },
-  STATUS: function(val) {
-      console.log(val);
-      SetInnerHtmlForId(document, STATUS_FIELD, val);
-  },
-  EVENT: function(val) {
-      gEventHistory.push(val);
-      gEventHistory.shift();
-      SetInnerHtmlForId(document, "history", gEventHistory.join("\\n"));
-  },
-  CONTROLLER: function(val) {
-      const values = JSON.parse(val);
-      SetInnerHtmlForId(document, 'controller_basics', values.controller_basics);
-      SetInnerHtmlForId(document, 'controller_routes', values.controller_routes);
-      SetInnerHtmlForId(document, 'controller_apis', values.controller_apis);
-  },
-  LOGS: function(val) {
-      const values = JSON.parse(val);
-      gListLog.clear();
-      gListLog.add(values);
-      InstallLogFilter(null);
-  },
-  BAD: function(val) {
-      const values = JSON.parse(val);
-      gListSlow.clear();
-      gListSlow.add(values);
-  },
-  FAILED: function(val) {
-      const values = JSON.parse(val);
-      gListFailed.clear();
-      gListFailed.add(values);
-  },
-  ALL_NODES: function(val) {
-      const values = JSON.parse(val);
-      const rows = document.getElementsByClassName("node_row");
-      console.log(`found ${rows.length} rows`);
-      for (let i = 0; i < values.length; ++i) {
-          rows[i].hidden = false;
-          UpdateNodeRow(rows[i], values[i]);
-      }
-      for (let i = values.length; i < rows.length; ++i) {
-          rows[i].hidden = true;
-      }
-  },
-  ONE_NODE: function(val) {
-      const colon = val.indexOf(":");
-      const node = val.slice(0, colon);
-      const values = JSON.parse(val.slice(colon + 1));
-      if (node == currentNode) {
-          UpdateNodeDetails(document.getElementById(TAB_ONE_NODE), values);
-      }
-      const rows = document.getElementsByClassName("node_row");
-      for (let i = 0; i < rows.length; ++i) {
+    ACTION: function (val) {
+        SetInnerHtmlForId(document, "activity", val);
+    },
+    STATUS: function (val) {
+        console.log(val);
+        SetInnerHtmlForId(document, STATUS_FIELD, val);
+    },
+    EVENT: function (val) {
+        gEventHistory.push(val);
+        gEventHistory.shift();
+        SetInnerHtmlForId(document, "history", gEventHistory.join("\\n"));
+    },
+    CONTROLLER: function (val) {
+        const values = JSON.parse(val);
+        SetInnerHtmlForId(document, 'controller_basics', values.controller_basics);
+        SetInnerHtmlForId(document, 'controller_routes', values.controller_routes);
+        SetInnerHtmlForId(document, 'controller_apis', values.controller_apis);
+    },
+    LOGS: function (val) {
+        const values = JSON.parse(val);
+        gListLog.clear();
+        gListLog.add(values);
+        InstallLogFilter(null);
+    },
+    BAD: function (val) {
+        const values = JSON.parse(val);
+        gListSlow.clear();
+        gListSlow.add(values);
+    },
+    FAILED: function (val) {
+        const values = JSON.parse(val);
+        gListFailed.clear();
+        gListFailed.add(values);
+    },
+    ALL_NODES: function (val) {
+        const values = JSON.parse(val);
+        const rows = document.getElementsByClassName("node_row");
+        console.log(`found ${rows.length} rows`);
+        for (let i = 0; i < values.length; ++i) {
+            rows[i].hidden = false;
+            UpdateNodeRow(rows[i], values[i]);
+        }
+        for (let i = values.length; i < rows.length; ++i) {
+            rows[i].hidden = true;
+        }
+    },
+    ONE_NODE: function (val) {
+        const colon = val.indexOf(":");
+        const node = val.slice(0, colon);
+        const values = JSON.parse(val.slice(colon + 1));
+        if (node == currentNode) {
+            UpdateNodeDetails(document.getElementById(TAB_ONE_NODE), values);
+        }
+        const rows = document.getElementsByClassName("node_row");
+        for (let i = 0; i < rows.length; ++i) {
             if (rows[i].dataset.no == node) {
                 UpdateNodeRow(rows[i], values);
                 break;
             }
-      }
-  },
-  DRIVER: function(tag, val) {
-      SetInnerHtmlForId(document, "driver", val);
-  },
+        }
+    },
+    DRIVER: function (tag, val) {
+        SetInnerHtmlForId(document, "driver", val);
+    },
 };
 
 // Redraws work by triggering event in the Python code that will result
@@ -262,9 +262,9 @@ function RequestActionURL(param, args) {
 function HandleAction(ev) {
     ev.preventDefault();
     ev.stopPropagation();
-    const param = ev.target.dataset.param.replace("<CURRENT>",  GetCurrNode(ev.target));
+    const param = ev.target.dataset.param.replace("<CURRENT>", GetCurrNode(ev.target));
     const root = ev.target.parentNode;
-    let args= [];
+    let args = [];
     const elem_list = ev.target.dataset.args;
     if (elem_list) {
         for (let elem of elem_list.split(',')) {
@@ -293,10 +293,10 @@ function HandleTab(ev) {
     ev.preventDefault();
     ev.stopPropagation();
     const param = ev.target.dataset.tab;
-    let state =  "#" + param;
+    let state = "#" + param;
     if (param == TAB_ONE_NODE) {
-      currentNode = GetCurrNode(ev.target);
-      state += `/${currentNode}`;
+        currentNode = GetCurrNode(ev.target);
+        state += `/${currentNode}`;
     }
     console.log("HandleTab: " + param + ": " + ev.target);
     ShowTab(param);
@@ -307,18 +307,18 @@ function HandleTab(ev) {
 // Initialization
 // ============================================================
 function ProcessUrlHash() {
-  let hash = window.location.hash;
-  if (hash == "") {
-      hash = "tab-controller";
-  } else {
-     hash = hash.slice(1);
-  }
-  const tokens = hash.split("/");
-  console.log(`Hash: [${tokens.length}] ${tokens}`);
-  if (tokens.length > 1) {
-     currentNode = tokens[1];
-  }
-  ShowTab(tokens[0]);
+    let hash = window.location.hash;
+    if (hash == "") {
+        hash = "tab-controller";
+    } else {
+        hash = hash.slice(1);
+    }
+    const tokens = hash.split("/");
+    console.log(`Hash: [${tokens.length}] ${tokens}`);
+    if (tokens.length > 1) {
+        currentNode = tokens[1];
+    }
+    ShowTab(tokens[0]);
 }
 
 window.onload = function () {
@@ -328,7 +328,7 @@ window.onload = function () {
     const table = node_row_template.parentNode;
     const text = node_row_template.innerHTML;
     const all = [];
-    for (let i = 1 ; i < MAX_NODE_ROWS; ++i) {
+    for (let i = 1; i < MAX_NODE_ROWS; ++i) {
         all.push(text)
     }
     table.innerHTML = all.join("");
@@ -336,38 +336,38 @@ window.onload = function () {
     const created = DateToString(new Date());
     SetInnerHtmlForId(document, "timestamp", "" + created);
 
-    gListLog = new List("driverlog", {valueNames: [ 't', 'c', 'd', 'm' ]});
-    gListSlow = new List("driverslow", {valueNames: [ 'd', 't', 'm' ]});
-    gListFailed = new List("driverfailed", {valueNames: [ 'd', 't', 'm' ]});
+    gListLog = new List("driverlog", { valueNames: ['t', 'c', 'd', 'm'] });
+    gListSlow = new List("driverslow", { valueNames: ['d', 't', 'm'] });
+    gListFailed = new List("driverfailed", { valueNames: ['d', 't', 'm'] });
 
-   const gSocket = OpenSocket();
-   gSocket.onopen = function (e) {
+    const gSocket = OpenSocket();
+    gSocket.onopen = function (e) {
         console.log("Connected to server socket");
-   };
+    };
 
-   gSocket.onmessage = SocketMessageHandler;
+    gSocket.onmessage = SocketMessageHandler;
 
-   gSocket.onerror = function (e) {
+    gSocket.onerror = function (e) {
         const m = "Cannot connect to Server: try reloading";
         console.log("ERROR: " + m);
         SetInnerHtmlForId(document, STATUS_FIELD, m);
         tab.innerHTML = "ERROR: Cannot connect to Server: try reloading";
-   }
+    }
 
-   gSocket.onclose = function (e) {
+    gSocket.onclose = function (e) {
         const m = "Server connection lost: you must reload";
         console.log("ERROR: " + m);
         SetInnerHtmlForId(document, STATUS_FIELD, m);
-   }
+    }
 
-   // delay this until the socket has been setup since it will trigger updates
-   ProcessUrlHash();
+    // delay this until the socket has been setup since it will trigger updates
+    ProcessUrlHash();
 
-   console.log("on load finished");
+    console.log("on load finished");
 };
 
 // we use window.parent to make this work even from within an iframe
-window.parent.onpopstate = function(event) {
+window.parent.onpopstate = function (event) {
     ProcessUrlHash();
 };
 
