@@ -23,9 +23,9 @@ import logging
 import struct
 import time
 
-from pyzwaver.driver import Driver
-from pyzwaver import zwave as z
 from pyzwaver import zmessage
+from pyzwaver import zwave as z
+from pyzwaver.driver import Driver
 
 _APPLICATION_NODEINFO_LISTENING = 1
 _NUM_NODE_BITFIELD_BYTES = 29
@@ -316,7 +316,7 @@ class Controller:
 
         self.SendCommand(z.API_ZW_GET_RANDOM, [], handler)
 
-    def UpdateFailedNode(self, node):
+    def UpdateFailedNode(self, node: int):
         def handler(data):
             if data[4]:
                 self.failed_nodes.add(node)
@@ -325,7 +325,7 @@ class Controller:
 
         self.SendCommand(z.API_ZW_IS_FAILED_NODE_ID, [node], handler)
 
-    def ReadMemory(self, offset, length, cb):
+    def ReadMemory(self, offset: int, length: int, cb):
         def handler(data, _):
             data = data[4: -1]
             logging.info("received %x bytes", len(data))
@@ -335,7 +335,7 @@ class Controller:
                          [offset >> 8, offset & 0xff, length],
                          handler)
 
-    def GetRoutingInfo(self, node, rem_bad, rem_non_repeaters, cb):
+    def GetRoutingInfo(self, node: int, rem_bad, rem_non_repeaters, cb):
         def handler(data):
             cb(node, ExtractNodes(data[4:-1]))
 
@@ -349,7 +349,7 @@ class Controller:
 
         self.SendCommand(z.API_ZW_SET_PROMISCUOUS_MODE, [state], handler)
 
-    def RequestNodeInfo(self, node, cb=None):
+    def RequestNodeInfo(self, node: int, cb=None):
         """Force the generation of a zwave.API_ZW_APPLICATION_UPDATE event
         """
         logging.warning("requesting node info for %d", node)
@@ -360,7 +360,7 @@ class Controller:
 
         self.SendCommand(z.API_ZW_REQUEST_NODE_INFO, [node], handler)
 
-    def RemoveFailedNode(self, node, cb):
+    def RemoveFailedNode(self, node: int, cb):
         def handler(m):
             if not m:
                 cb(MESSAGE_TIMEOUT)
@@ -386,7 +386,7 @@ class Controller:
     # ============================================================
     # Pairing
     # ============================================================
-    def MakeFancyReceiver(self, activity, receiver_type, event_cb):
+    def MakeFancyReceiver(self, activity: str, receiver_type, event_cb):
         stringMap, actions = receiver_type
 
         def Handler(m):
@@ -428,6 +428,36 @@ class Controller:
                 return False
 
         return Handler
+
+    def NeighborUpdate(self, node: int, event_cb):
+        activity = "NeighborUpdate",
+
+        def Handler(m):
+            if m is None:
+                logging.error("[%s] Aborted", activity)
+                event_cb(activity, EVENT_PAIRING_ABORTED, node)
+                return True
+            if len(m) == 0:
+                event_cb(activity, EVENT_PAIRING_STARTED, node)
+                return False
+
+            status = m[5]
+            if status == z.REQUEST_NEIGHBOR_UPDATE_STARTED:
+                event_cb(activity, EVENT_PAIRING_CONTINUE, node)
+                return False
+            elif status == z.REQUEST_NEIGHBOR_UPDATE_DONE:
+                event_cb(activity, EVENT_PAIRING_SUCCESS, node)
+                return True
+            elif status == z.REQUEST_NEIGHBOR_UPDATE_FAIL:
+                event_cb(activity, EVENT_PAIRING_FAILED, node)
+                return True
+            else:
+                logging.error("[%s] unknown status %d %s", activity, status, zmessage.Hexify(m))
+                return True
+
+        logging.warning("NeighborUpdate(%d)" % node)
+        return self.SendCommandWithId(z.API_ZW_REQUEST_NODE_NEIGHBOR_UPDATE, [node], Handler,
+                                      timeout=self._pairing_timeout_sec)
 
     def AddNodeToNetwork(self, event_cb):
         logging.warning("AddNodeToNetwork")
@@ -492,7 +522,7 @@ class Controller:
                           ],
                          handler)
 
-    def SendNodeInformation(self, dst_node, xmit, cb):
+    def SendNodeInformation(self, dst_node: int, xmit: int, cb):
         def handler(message):
             cb(message[4:-1])
 

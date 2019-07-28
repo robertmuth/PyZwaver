@@ -238,6 +238,12 @@ RECEIVE_STATUS_TO_STRING = ENUM(
     TYPE_MULTI=8,
 )
 
+REQUEST_NEIGHBOR_UPDATE_TO_STRING = ENUM(
+    "REQUEST_NEIGHBOR_UPDATE",
+    STARTED=0x21,
+    DONE=0x22,
+    FAIL=0x23,
+)
 
 def PrettifyStatus(b):
     out = []
@@ -254,9 +260,9 @@ CREATE_PRIMARY_START = 2
 CREATE_PRIMARY_STOP = 5
 CREATE_PRIMARY_STOP_FAILED = 6
 
-REQUEST_NEIGHBOR_UPDATE_STARTED = b"\x21"
-REQUEST_NEIGHBOR_UPDATE_DONE = b"\x22"
-REQUEST_NEIGHBOR_UPDATE_FAILED = b"\x23"
+# REQUEST_NEIGHBOR_UPDATE_STARTED = b"\x21"
+# REQUEST_NEIGHBOR_UPDATE_DONE = b"\x22"
+# REQUEST_NEIGHBOR_UPDATE_FAILED = b"\x23"
 
 
 RECEIVE_STATUS_TO_STRING = ENUM(
@@ -905,7 +911,7 @@ GenericSpecificDevice = {
     (0x0f, -1): ("Repeater Slave", [0x20]),
     (0x0f, 0x01): ("Basic Repeater Slave", []),
     (0x10, -1): ("Binary Switch", [0x20, 0x25], 0x25),
-    (0x10, 0x01): ("Binary Power Switch", [0x27]),
+    (0x10, 0x01): ("On/Off Power Switch", [0x27]),
     (0x10, 0x03): ("Binary Scene Switch", [0x27, 0x2b, 0x2c, 0x72]),
     (0x11, -1): ("Multilevel Switch", [0x20, 0x26], 0x26),
     (0x11, 0x01): ("Multilevel Power Switch", [0x27]),
@@ -1044,6 +1050,7 @@ def DumpDartConstants(fmt: FORMAT, string_maps=True):
     DumpConstAndMap("CONTROLLER_CHANGE", CONTROLLER_CHANGE_TO_STRING)
 
     DumpConstAndMap("REMOVE_FAILED_NODE", REMOVE_FAILED_NODE_TO_STRING)
+    DumpConstAndMap("REQUEST_NEIGHBOR_UPDATE", REQUEST_NEIGHBOR_UPDATE_TO_STRING)
 
     if string_maps:
         print("")

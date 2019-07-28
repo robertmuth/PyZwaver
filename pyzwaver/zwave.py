@@ -354,6 +354,17 @@ REMOVE_FAILED_NODE_TO_STRING = {
     0x04: 'REMODE_FAILED_NODE_NO_CALLBACK_FUNCTION',
 }
 
+# REQUEST_NEIGHBOR_UPDATE
+REQUEST_NEIGHBOR_UPDATE_DONE = 0x22
+REQUEST_NEIGHBOR_UPDATE_FAIL = 0x23
+REQUEST_NEIGHBOR_UPDATE_STARTED = 0x21
+
+REQUEST_NEIGHBOR_UPDATE_TO_STRING = {
+    0x22: 'REQUEST_NEIGHBOR_UPDATE_DONE',
+    0x23: 'REQUEST_NEIGHBOR_UPDATE_FAIL',
+    0x21: 'REQUEST_NEIGHBOR_UPDATE_STARTED',
+}
+
 # Commands
 NoOperation = 0x00
 Basic = 0x20
@@ -1062,7 +1073,7 @@ GENERIC_SPECIFIC_DB = {
     0x0806 : ['General Thermostat V2', [64, 67, 114, 134, 32], [], 0x40],
     0x0901 : ['Simple Window Covering', [80, 32], [], 0x50],
     0x0f01 : ['Basic Repeater Slave', [32], [], 0x00],
-    0x1001 : ['Binary Power Switch', [39, 32, 37], [], 0x25],
+    0x1001 : ['On/Off Power Switch', [39, 32, 37], [], 0x25],
     0x1003 : ['Binary Scene Switch', [39, 43, 44, 114, 32, 37], [], 0x25],
     0x1101 : ['Multilevel Power Switch', [39, 32, 38], [], 0x26],
     0x1103 : ['Multiposition Motor', [114, 134, 32, 38], [], 0x26],

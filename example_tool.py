@@ -19,20 +19,20 @@
 Example command line tool for pairing/unpairing
 """
 
+import argparse
 # python import
 import logging
-import argparse
 import sys
 import time
 from typing import Tuple
 
+from pyzwaver import zwave as z
+from pyzwaver.command import StringifyCommand
+from pyzwaver.command_translator import CommandTranslator
 from pyzwaver.controller import Controller
 from pyzwaver.driver import Driver, MakeSerialDevice
-from pyzwaver.zmessage import ControllerPriority
-from pyzwaver.command_translator import CommandTranslator
-from pyzwaver import zwave as z
 from pyzwaver.node import Nodeset
-from pyzwaver.command import StringifyCommand
+from pyzwaver.zmessage import ControllerPriority
 
 XMIT_OPTIONS_NO_ROUTE = (z.TRANSMIT_OPTION_ACK |
                          z.TRANSMIT_OPTION_EXPLORE)
@@ -87,6 +87,16 @@ def InitController(args, update_routing=False) -> Tuple[Driver, Controller]:
         print(controller.StringRoutes())
     # print(controller.props.StringApis())
     return driver, controller
+
+
+def cmd_neighbor_update(args):
+    driver, controller = InitController(args)
+    for n in controller.nodes:
+        if n == controller.GetNodeId(): continue
+        if n in controller.failed_nodes: continue
+        controller.NeighborUpdate(n, ControllerEventCallback)
+    driver.WaitUntilAllPreviousMessagesHaveBeenHandled()
+    driver.Terminate()
 
 
 def cmd_pair(args):
@@ -198,6 +208,9 @@ def main():
     s = subparsers.add_parser("get_basic", help="Run BasicGet command")
     s.set_defaults(func=cmd_get_basic)
     s.add_argument('--node', type=int, nargs='+', help="dest node(s) - separate multiple nodes with spaces")
+
+    s = subparsers.add_parser("neighbor_update", help="Update Node Neighborhoods")
+    s.set_defaults(func=cmd_neighbor_update)
 
     args = parser.parse_args()
     logging.basicConfig(level=args.verbosity)
