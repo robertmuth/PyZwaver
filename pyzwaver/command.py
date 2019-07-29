@@ -168,19 +168,21 @@ def _ParseWord(m, index):
     return index + 2, m[index] * 256 + m[index + 1]
 
 
-_ENCODING_TO_DECODER = [
+ENCODING_TO_DECODER = [
     "ascii",
     "latin1",  # "cp437" ,
     "utf-16-be",
 ]
 
 
+def DecodeName(m):
+    encoding = m[0] & 3
+    return bytes(m[1:]).decode(ENCODING_TO_DECODER[encoding])
+
+
 def _ParseName(m, index):
     assert len(m) > index
-    encoding = m[index] & 3
-    m = m[index + 1:]
-    decoded = bytes(m).decode(_ENCODING_TO_DECODER[encoding])
-    return len(m), {"encoding": encoding, "text": m, "_decoded": decoded}
+    return len(m), m[index:]
 
 
 def _ParseStringWithLength(m, index):
@@ -364,8 +366,8 @@ def _MakeWord(w):
     return [(w >> 8) & 0xff, w & 0xff]
 
 
-def _MakeName(_w):
-    assert False, "NYI"
+def _MakeName(n):
+    return n
 
 
 def _MakeList(lst):
@@ -460,7 +462,7 @@ _PARSE_ACTIONS = {
     "G": (_ParseGroups, _MakeGroups),
     "L": (_ParseListRest, _MakeList),
     "M": (_ParseMeter, _MakeMeter),
-    # "N": (_ParseName, _MakeName),
+    "N": (_ParseName, _MakeName),
     "O": (_ParseNonce, _MakeNonce),
     "R": (_ParseRestLittleEndianInt, _MakeLittleEndianInt),  # as integer
     # "T": _ParseSizedLittleEndianInt,
