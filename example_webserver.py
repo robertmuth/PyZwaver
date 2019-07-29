@@ -254,7 +254,7 @@ def RenderNodes(application_nodes, controller: Controller, db):
     failed = controller.failed_nodes
     for node in sorted(application_nodes.nodes.values()):
         no_short = node.n if node.n <= 255 else (node.n >> 8)
-        no_long  = node.n if node.n > 255 else (node.n << 8)
+        no_long = node.n if node.n > 255 else (node.n << 8)
         if no_short not in nodes:
             continue
         out.append((no_long, RenderNodeBrief(node, db, node.n in failed)))
@@ -577,41 +577,46 @@ class ControllerActionHandler(BaseHandler):
         self.finish()
 
 
-class JsonHandler(BaseHandler):
 
+def GetUpdate(token):
+    global NODESET, CONTROLLER, DRIVER, DB
+    cmd = token[0]
+    if cmd == "ALL_NODES":
+        return RenderNodes(NODESET, CONTROLLER, DB)
+    elif cmd == "DRIVER":
+        return RenderDriver(DRIVER)
+    elif cmd == "LOGS":
+        return DriverLogs(DRIVER)
+    elif cmd == "BAD":
+        return DriverSlow(DRIVER)
+    elif cmd == "FAILED":
+        return DriverBad(DRIVER)
+    elif cmd == "CONTROLLER":
+        return RenderController(CONTROLLER)
+    elif cmd == "ONE_NODE":
+        num = int(token[1])
+        if num == 0:
+            logging.error("no current node")
+        else:
+            node = NODESET.GetNode(num)
+            return  RenderNode(node, DB)
+    else:
+        logging.error("unknown command %s", token)
+        return ""
+
+
+class JsonHandler(BaseHandler):
+    """These are made available for debugging"""
     def set_default_headers(self):
         self.set_header("Access-Control-Allow-Origin", "*")
         self.set_header("Access-Control-Allow-Headers", "x-requested-with")
         self.set_header('Access-Control-Allow-Methods', 'GET,OPTIONS')
 
-    @tornado.web.asynchronous
     def get(self, *path):
         token = path[0].split("/")
         logging.warning("JSON ACTION> %s", token)
-        cmd = token.pop(0)
-        out = None
         try:
-            if cmd == "nodes":
-                out = RenderNodes(NODESET, CONTROLLER, DB)
-            elif cmd == "driver":
-                out = RenderDriver(DRIVER)
-            elif cmd == "logs":
-                out = DriverLogs(DRIVER)
-            elif cmd == "slow":
-                out = DriverSlow(DRIVER)
-            elif cmd == "failed":
-                out = DriverBad(DRIVER)
-            elif cmd == "controller":
-                out = RenderController(CONTROLLER)
-            elif cmd == "node":
-                num = int(token.pop(0))
-                if num == 0:
-                    logging.error("no current node")
-                else:
-                    node = NODESET.GetNode(num)
-                    out = RenderNode(node, DB)
-            else:
-                logging.error("unknown command %s", token)
+            out = GetUpdate(token)
             self.write(json.dumps(out, sort_keys=True, indent=4))
         except:
             logging.error("cannot processed: %s", path[0])
@@ -620,7 +625,6 @@ class JsonHandler(BaseHandler):
             print("-" * 60)
         self.finish()
 
-    @tornado.web.asynchronous
     def options(self):
         # no body
         self.set_status(204)
@@ -630,34 +634,13 @@ class JsonHandler(BaseHandler):
 class DisplayHandler(BaseHandler):
     """Misc Display Handlers"""
 
-    @tornado.web.asynchronous
     def get(self, *path):
         token = path[0].split("/")
         logging.warning("DISPLAY ACTION> %s", token)
-        cmd = token.pop(0)
         try:
-            if cmd == "nodes":
-                SendToSocketJson("ALL_NODES:", RenderNodes(NODESET, CONTROLLER, DB))
-            elif cmd == "driver":
-                SendToSocket("DRIVER:" + RenderDriver(DRIVER))
-            elif cmd == "logs":
-                SendToSocketJson("LOGS:", DriverLogs(DRIVER))
-            elif cmd == "slow":
-                SendToSocketJson("BAD:", DriverSlow(DRIVER))
-            elif cmd == "failed":
-                SendToSocketJson("FAILED:", DriverBad(DRIVER))
-            elif cmd == "controller":
-                SendToSocketJson("CONTROLLER:", RenderController(CONTROLLER))
-            elif cmd == "node":
-                num = int(token.pop(0))
-                if num == 0:
-                    logging.error("no current node")
-                else:
-                    node = NODESET.GetNode(num)
-                    logging.info("requested update: %d", num)
-                    SendToSocketJson("ONE_NODE:%d:" % num, RenderNode(node, DB))
-            else:
-                logging.error("unknown command %s", token)
+            cmd = token[0]
+            out = GetUpdate(token)
+            SendToSocketJson(token[0] + ":", out)
         except Exception as e:
             logging.error("cannot processed: %s", path[0])
             print("-" * 60)

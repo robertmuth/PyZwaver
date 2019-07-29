@@ -13,7 +13,6 @@ It supports a wide range of Command Classes but some are still missing.
 
 Most notable omissions are:
 
-* MultiChannel support (in progress)
 * Security (stalled because crypto protocol documentation lacks concrete examples)
 
 ## Examples
@@ -31,6 +30,10 @@ chance to communicate with all nodes.
 ```
 ./example_simple.py  --serial_port=/dev/ttyUSB0 
 ```
+
+(Make sure you habe permission to access the serial port.
+On Linux this may involve becoming a member of certain groups
+like 'dialout'.)
 
 ### example_tool.py
 
@@ -85,9 +88,9 @@ For alternative licensing please contact the author.
 
 ## Dependencies
 
-The core PyZwaver library does not have any non-standard dependencies.
+The core PyZwaver library only depends on python3-serial.
 
-Some examples require additional libratries:
+Some examples require additional libraries:
 
 example_webserver.py depends on:
 

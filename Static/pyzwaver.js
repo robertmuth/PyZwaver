@@ -26,12 +26,12 @@ const MAX_NODE_ROWS = 500;
 
 // Is there a literal notation for this?
 const tabToDisplay = {
-    [TAB_CONTROLLER]: function () { return "/display/controller"; },
-    [TAB_ALL_NODES]: function () { return "/display/nodes"; },
-    [TAB_ONE_NODE]: function () { return "/display/node/" + currentNode; },
-    [TAB_LOGS]: function () { return "/display/logs"; },
-    [TAB_SLOW]: function () { return "/display/slow"; },
-    [TAB_FAILED]: function () { return "/display/failed"; },
+    [TAB_CONTROLLER]: function () { return "/display/CONTROLLER"; },
+    [TAB_ALL_NODES]: function () { return "/display/ALL_NODES"; },
+    [TAB_ONE_NODE]: function () { return "/display/ONE_NODE/" + currentNode; },
+    [TAB_LOGS]: function () { return "/display/LOGS"; },
+    [TAB_SLOW]: function () { return "/display/BAD"; },
+    [TAB_FAILED]: function () { return "/display/FAILED"; },
 };
 
 let gEventHistory = ["", "", "", "", "", ""];
@@ -103,7 +103,7 @@ function RequestURL(url) {
 function RequestRefresh(component) {
     RequestURL(tabToDisplay[component]());
     // always update the drive too
-    RequestURL("/display/driver");
+    RequestURL("/display/DRIVER");
 }
 
 // Show one tab while hiding the others.
