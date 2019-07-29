@@ -638,9 +638,11 @@ class DisplayHandler(BaseHandler):
         token = path[0].split("/")
         logging.warning("DISPLAY ACTION> %s", token)
         try:
-            cmd = token[0]
+            tag = token[0]
+            if tag == "ONE_NODE":
+                tag += ":" + token[1]
             out = GetUpdate(token)
-            SendToSocketJson(token[0] + ":", out)
+            SendToSocketJson(tag + ":", out)
         except Exception as e:
             logging.error("cannot processed: %s", path[0])
             print("-" * 60)
