@@ -102,3 +102,10 @@ SOF len:29 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:23 Security2_P
 SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:03 Security2_NonceGet:9f X:01 3d chk:40
 SOF len:2a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:12 len:24 Security2_MessageEncapsulation:9f X:03 3e 01 12 41 2f 69 1f 12 30 b9 2a 20 9d 33 0a 7a 87 2f 95 11 2f b7 96 e9 b0 17 31 b9 92 ad 0a 9c 2d 03 chk:62
 SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:23 len:03 NodeNaming_Report:77 X:03 00 chk:a6
+SOF len:0a REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:03 len:04 SwitchMultilevel_StartLevelChange:26 X:04 20 01 chk:f5
+SOF len:08 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:03 len:02 SwitchMultilevel_StopLevelChange:26 X:05 chk:d1
+SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:03 len:03 Indicator_Report:87 X:03 1c chk:6a
+SOF len:0a REQU API_ZW_SEND_DATA:13 node:03 03 Association_Get:85 X:02 01 xmit:25 cb:9a chk:df
+
+SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:03 len:03 Basic_Set:20 X:01 00 chk:d3
+SOF len:1d REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:0f len:17 ManufacturerSpecific_DeviceSpecificReport:72 X:07 01 33 0a 00 01 00 01 01 05 02 01 00 00 00 08 09 09 00 00 00 00 chk:bc

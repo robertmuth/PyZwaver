@@ -54,7 +54,6 @@ def Hexify(t):
     return ["%02x" % i for i in t]
 
 
-
 def ProcessApplicationData(data):
     print("application data: ", Hexify(data))
     data = command.MaybePatchCommand(data)
@@ -69,25 +68,61 @@ def ProcessApplicationData(data):
     assert data == data2
 
 
+def EqualValues(v1, v2):
+    keys = set(v1.keys()) | set(v2.keys())
+    for k in keys:
+        if v1[k] != v2[k]:
+            if k == "value" and v1[k]["_value"] == v2[k]["_value"]:
+                continue
+            return False
+    return True
+
+
+def ProcessApplicationDataSameValue(data):
+    print("application data: ", Hexify(data))
+    data = command.MaybePatchCommand(data)
+    k = (data[0], data[1])
+    table = z.SUBCMD_TO_PARSE_TABLE[k[0] * 256 + k[1]]
+    print ("parse table: ", table)
+
+    value = command.ParseCommand(data)
+    print (value)
+    data2 = command.AssembleCommand(k, value)
+    assert data != data2
+    print("assembled data: ", Hexify(data2))
+    value2 = command.ParseCommand(data2)
+    print(value2)
+    assert EqualValues(value, value2)
+
+
 def _main(argv):
     logging.basicConfig(level=logging.WARNING)
+    mode = argv[0] if argv else "normal"
     for line in sys.stdin:
-        if line.startswith("#"): continue
+        if line.startswith("#"):
+            continue
         token = line.split()
-        if len(token) == 0: continue
+        if len(token) == 0:
+            continue
 
         print()
         print("incoming: ", line[:-1])
         message = [ParseToken(t) for t in token]
         print("hex: ", Hexify(message))
-        if message[0] != z.SOF: continue
-        if message[2] != z.REQUEST: continue
-        if message[3] != z.API_APPLICATION_COMMAND_HANDLER: continue
+        if message[0] != z.SOF:
+            continue
+        if message[2] != z.REQUEST:
+            continue
+        if message[3] != z.API_APPLICATION_COMMAND_HANDLER:
+            continue
         # status = message[4]
         # node = message[5]
         size = message[6]
         data = message[7:7 + size]
-        ProcessApplicationData(data)
+        if mode == "same_value":
+            ProcessApplicationDataSameValue(data)
+        else:
+            ProcessApplicationData(data)
     return 0
 
 

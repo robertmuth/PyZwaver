@@ -35,6 +35,7 @@ tests:
 	@echo "run message parsing test"
 	@echo "============================================================"
 	./Tests/command_test.py < TestData/commands.input.txt
+	./Tests/command_test.py same_value < TestData/commands.input.same_value.txt
 	#
 	@echo "============================================================"
 	@echo "application node test"
