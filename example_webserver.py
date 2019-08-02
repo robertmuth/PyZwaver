@@ -162,22 +162,23 @@ class NodeUpdater(object):
     Every second updates will be emitted for those changed nodes.
     """
     def __init__(self):
-        self._nodes_to_update = set()
+        self._nodes_to_update = []
         self._update_driver = False
         self._epoch = 0
 
     def Periodic(self):
         if self._update_driver or DRIVER.HasInflight():
             SendToSocket("DRIVER:" + RenderDriver(DRIVER))
+            self._nodes_to_update.clear()
         if not NODESET:
             return
-        for n in self._nodes_to_update:
+        # only do one node at a time to not overload tornado
+        if self._nodes_to_update:
+            n = self._nodes_to_update,pop(0)
             node = NODESET.GetNode(n)
             logging.info("refresh thread update: %d", n)
             SendToSocket("ONE_NODE:%d:" % n + json.dumps(RenderNode(node, DB),
                                                          sort_keys=True, indent=4))
-        self._update_driver = False
-        self._nodes_to_update.clear()
         if self._epoch % 20 == 0:
             for n in CONTROLLER.nodes:
                 node: Node = NODESET.GetNode(n)
@@ -192,7 +193,8 @@ class NodeUpdater(object):
     def put(self, n, _ts, _key, _values):
         # print ("got event ", n, _key, _values)
         # SendToSocket("E:[%d] %s" % (n, "@NO EVENT@"))
-        self._nodes_to_update.add(n)
+        if n not in self._nodes_to_update:
+            self._nodes_to_update.append(n)
         self._update_driver = True
 
 
