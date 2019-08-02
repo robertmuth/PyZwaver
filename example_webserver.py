@@ -37,7 +37,6 @@ import math
 import multiprocessing
 import shelve
 import sys
-import threading
 import time
 import traceback
 
@@ -158,40 +157,37 @@ def SendToSocketJson(prefix: str, data: object):
 
 
 class NodeUpdater(object):
-
+    """The NodeUpdater is registered with the TRANSLATOR and keeps
+    track of those node which have changed.
+    Every second updates will be emitted for those changed nodes.
+    """
     def __init__(self):
         self._nodes_to_update = set()
         self._update_driver = False
-        timerThread = threading.Thread(target=self._refresh_thread)
-        timerThread.daemon = True
-        timerThread.start()
+        self._epoch = 0
 
-    def _refresh_thread(self):
-        logging.warning("Refresher thread started")
-        count = 0
-        while True:
-            if self._update_driver or DRIVER.HasInflight():
-                SendToSocket("DRIVER:" + RenderDriver(DRIVER))
-            if not NODESET:
-                continue
-            for n in self._nodes_to_update:
-                node = NODESET.GetNode(n)
-                logging.info("refresh thread update: %d", n)
-                SendToSocket("ONE_NODE:%d:" % n + json.dumps(RenderNode(node, DB),
-                                                             sort_keys=True, indent=4))
-            self._update_driver = False
-            self._nodes_to_update.clear()
-            if count % 20 == 0:
-                for n in CONTROLLER.nodes:
-                    node: Node = NODESET.GetNode(n)
-                    if node.state < NODE_STATE_DISCOVERED:
-                        TRANSLATOR.Ping(n, 3, False, "refresher")
-                        time.sleep(0.5)
-                    elif node.state < NODE_STATE_INTERVIEWED:
-                        logging.warning("[%d] (%s) trigger static", n, node.state)
-                        node.RefreshStaticValues()
-            count += 1
-            time.sleep(1.0)
+    def Periodic(self):
+        if self._update_driver or DRIVER.HasInflight():
+            SendToSocket("DRIVER:" + RenderDriver(DRIVER))
+        if not NODESET:
+            return
+        for n in self._nodes_to_update:
+            node = NODESET.GetNode(n)
+            logging.info("refresh thread update: %d", n)
+            SendToSocket("ONE_NODE:%d:" % n + json.dumps(RenderNode(node, DB),
+                                                         sort_keys=True, indent=4))
+        self._update_driver = False
+        self._nodes_to_update.clear()
+        if self._epoch % 20 == 0:
+            for n in CONTROLLER.nodes:
+                node: Node = NODESET.GetNode(n)
+                if node.state < NODE_STATE_DISCOVERED:
+                    TRANSLATOR.Ping(n, 3, False, "refresher")
+                    time.sleep(0.5)
+                elif node.state < NODE_STATE_INTERVIEWED:
+                    logging.warning("[%d] (%s) trigger static", n, node.state)
+                    node.RefreshStaticValues()
+        self._epoch += 1
 
     def put(self, n, _ts, _key, _values):
         # print ("got event ", n, _key, _values)
@@ -200,7 +196,7 @@ class NodeUpdater(object):
         self._update_driver = True
 
 
-def ControllerEventCallback(action, event, node):
+def ControllerEventCallback(action, event, _node):
     SendToSocket("STATUS:" + event)
     SendToSocket("ACTION:" + action)
     if event == EVENT_UPDATE_COMPLETE:
@@ -284,9 +280,9 @@ def DriverLogs(driver: Driver):
     return out
 
 
-def DriverSlow(driver):
+def DriverSlow(driver: Driver):
     out = []
-    for m in driver._history:
+    for m in driver.History():
         if not m.end:
             continue
         dur = int(1000.0 * (m.end - m.start))
@@ -325,7 +321,7 @@ def GetControls(node: Node):
     return out
 
 
-def RenderAssociationGroup(no, group, name, info, lst):
+def RenderAssociationGroup(no, group, name, _info, _lst):
     group_name = ""
     if name:
         group_name = name
@@ -599,7 +595,7 @@ def GetUpdate(token):
             logging.error("no current node")
         else:
             node = NODESET.GetNode(num)
-            return  RenderNode(node, DB)
+            return RenderNode(node, DB)
     else:
         logging.error("unknown command %s", token)
         return ""
@@ -731,9 +727,11 @@ def main():
         z.ManufacturerSpecific_Report,
         {'manufacturer': cp[0], 'type': cp[1], 'product': cp[2]})
     # The updater will do the initial pings of the nodes
-    TRANSLATOR.AddListener(NodeUpdater())
+    updater = NodeUpdater()
+    TRANSLATOR.AddListener(updater)
     logging.warning("listening on port %d", OPTIONS.port)
     application.listen(OPTIONS.port)
+    tornado.ioloop.PeriodicCallback(updater.Periodic, 1000).start()
     tornado.ioloop.IOLoop.instance().start()
     return 0
 
