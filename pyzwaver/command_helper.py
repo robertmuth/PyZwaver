@@ -84,6 +84,8 @@ STATIC_PROPERTY_QUERIES = [
 # This must be last as we use this as an indicator for the
 # NODE_STATE_INTERVIEWED
 STATIC_PROPERTY_QUERIES_LAST = [
+    (z.ManufacturerSpecific_DeviceSpecificGet, {"type": 0}),
+    # (z.ManufacturerSpecific_DeviceSpecificGet, {"type": 1}),
     (z.ManufacturerSpecific_Get, {}),
     (z.ZwavePlusInfo_Get, {})
 ]

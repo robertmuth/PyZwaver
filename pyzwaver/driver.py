@@ -81,7 +81,7 @@ def MessageStatsString(history):
     for n in sorted(by_state.keys()):
         out.append(" %-20s: %4d" % (n, by_state[n]))
 
-    out.append("by node:")
+    out.append("node  cnt nt can dur. bad")
     for n in sorted(by_node_cnt.keys()):
         out.append(" %2d: %4d (%3d) %4dms (%3d)" % (
             n, by_node_cnt[n], by_node_can[n],
