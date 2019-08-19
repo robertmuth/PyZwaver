@@ -57,7 +57,7 @@ def ExtractNodes(bits):
     assert len(bits) == _NUM_NODE_BITFIELD_BYTES
     r = set()
     for i in range(8 * _NUM_NODE_BITFIELD_BYTES):
-        if 0 == (bits[i // 8] & (1 << (i % 8))):
+        if (bits[i // 8] & (1 << (i % 8))) == 0:
             continue
         node_id = i + 1
         r.add(node_id)
@@ -302,8 +302,8 @@ class Controller:
 
     def UpdateSucNodeId(self):
         def handler(data):
-            self.succ_node = data[4]
-            logging.info("suc node id: %s", data[4])
+            succ_node = data[4]
+            logging.info("suc node id: %s", succ_node)
 
         self.SendCommand(z.API_ZW_GET_SUC_NODE_ID, [], handler)
 
@@ -394,7 +394,7 @@ class Controller:
                 logging.error("[%s] Aborted", activity)
                 event_cb(activity, EVENT_PAIRING_ABORTED, None)
                 return True
-            if len(m) == 0:
+            if not m:
                 event_cb(activity, EVENT_PAIRING_STARTED, None)
                 return True
 
@@ -404,7 +404,7 @@ class Controller:
             a = actions[status]
             logging.warning("pairing status update: %s", a)
             if a == PAIRING_ACTION_CONTINUE:
-                logging.warning("[%s] Continue - %s [%d]" % (activity, name, node))
+                logging.warning("[%s] Continue - %s [%d]", activity, name, node)
                 event_cb(activity, EVENT_PAIRING_CONTINUE, node)
                 return False
             elif a == PAIRING_ACTION_DONE:
@@ -413,14 +413,14 @@ class Controller:
                 return True
 
             elif a == PAIRING_ACTION_DONE_UPDATE:
-                logging.warning("[%s] Success - updating nodes %s [%d]" % (activity, name, node))
+                logging.warning("[%s] Success - updating nodes %s [%d]", activity, name, node)
                 event_cb(activity, EVENT_PAIRING_SUCCESS, node)
                 # This not make much sense for node removals but does not hurt either
                 self.RequestNodeInfo(node)
                 self.Update(None)
                 return True
             elif a == PAIRING_ACTION_FAILED:
-                logging.warning("[%s] Failure - %s [%d]" % (activity, name, node))
+                logging.warning("[%s] Failure - %s [%d]", activity, name, node)
                 event_cb(activity, EVENT_PAIRING_FAILED, node)
                 return True
             else:
@@ -437,7 +437,7 @@ class Controller:
                 logging.error("[%s] Aborted", activity)
                 event_cb(activity, EVENT_PAIRING_ABORTED, node)
                 return True
-            if len(m) == 0:
+            if not m:
                 event_cb(activity, EVENT_PAIRING_STARTED, node)
                 return False
 
@@ -455,7 +455,7 @@ class Controller:
                 logging.error("[%s] unknown status %d %s", activity, status, zmessage.Hexify(m))
                 return True
 
-        logging.warning("NeighborUpdate(%d)" % node)
+        logging.warning("NeighborUpdate(%d)", node)
         return self.SendCommandWithId(z.API_ZW_REQUEST_NODE_NEIGHBOR_UPDATE, [node], Handler,
                                       timeout=self._pairing_timeout_sec)
 
@@ -566,8 +566,8 @@ class Controller:
         self._mq.SendMessage(mesg)
 
     def SendBarrierCommand(self, handler):
-        logging.warning("SendBarrierCommand")
         """Dummy Command to invoke the handler when all previous commands are done"""
+        logging.warning("SendBarrierCommand")
         mesg = zmessage.Message(None, self.Priority(), handler, None)
         self._mq.SendMessage(mesg)
 

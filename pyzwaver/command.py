@@ -93,8 +93,7 @@ def _SetSignedValue(value):
     elif mag <= 0x7FFFFFFF:
         length = 4
     else:
-        raise ValueError("{:} won't fit in 4-byte two's complement".format(value))
- 
+        raise ValueError("{:} won't fit in 4-byte two's complement".format(value)) 
     return list(value.to_bytes(length, 'big', signed=True))
 
 
@@ -258,7 +257,7 @@ def _ParseOptionalTarget(m, index):
     if len(m) < index + 2 * n:
         raise ValueError("not enough bytes for target")
     out = []
-    for i in range(n):
+    for _ in range(n):
         out.append(m[index] * 256 + m[index + 1])
         index += 2
     return index, out
@@ -402,7 +401,7 @@ def _MakeStringWithLength(v):
 def _MakeLittleEndianInt(v):
     n = v["value"]
     out = []
-    for i in range(v["size"]):
+    for _ in range(v["size"]):
         out.append(n & 0xff)
         n >>= 8
     return out
@@ -411,7 +410,7 @@ def _MakeLittleEndianInt(v):
 def _MakeSizedLittleEndianInt(v):
     n = v["value"]
     out = [v["size"]]
-    for i in range(v["size"]):
+    for _ in range(v["size"]):
         out.append(n & 0xff)
         n >>= 8
     return out

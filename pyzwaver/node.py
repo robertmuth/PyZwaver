@@ -16,7 +16,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-
+Provides the Node and NodeSet abstraction
 """
 
 import logging
@@ -620,7 +620,7 @@ class Nodeset(object):
     def __init__(self, translator: CommandTranslator, controller_n):
         self._controller_n = controller_n
         self._translator = translator
-        self.nodes: Mapping[int: Node] = {}
+        self.nodes: Mapping[int, Node] = {}
         translator.AddListener(self)
 
     def DropNode(self, n: int):

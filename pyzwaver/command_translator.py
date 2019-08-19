@@ -244,6 +244,9 @@ class CommandTranslator(object):
         size = m[6]
         try:
             data = [int(x) for x in m[7:7 + size]]
+            if len(data) < 2: 
+                logging.error("impossible short message: %s", repr(data))
+                return
             data = command.MaybePatchCommand(data)
             value = command.ParseCommand(data)
             if value is None:
@@ -265,7 +268,7 @@ class CommandTranslator(object):
                 n = n << 8 | data[2]
                 data = data[4:]
                 value = command.ParseCommand(data)
-        except Exception as _e:
+        except Exception as e:
             logging.error("[%d] cannot parse: %s", n,
                           zmessage.PrettifyRawMessage(m))
             print("-" * 60)

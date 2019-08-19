@@ -234,7 +234,6 @@ RAW_MESSAGE_CAN = bytes([z.CAN])
 # Message
 # ==================================================
 
-
 MESSAGE_STATE_CREATED = "Created"
 MESSAGE_STATE_STARTED = "Started"
 MESSAGE_STATE_COMPLETED = "Completed"
@@ -263,7 +262,7 @@ ACTION_REPORT_EQ = 10
 
 # maps inflight message type to the action taken when a matching response is received
 _RESPONSE_ACTION = {
-    z.API_ZW_REMOVE_FAILED_NODE_ID: [ACTION_REPORT_NE, 0],  # removal started
+    z.API_ZW_REMOVE_FAILED_NODE_ID: [ACTION_REPORT_EQ, 0],  # removal started
     z.API_ZW_SET_DEFAULT: [ACTION_NONE],
 }
 
@@ -385,6 +384,7 @@ class Message:
     def _Timeout(self):
         if self._inflight_lock is None:
             return
+        logging.error("message timeout: %s", PrettifyRawMessage(self.payload))
         self.Complete(time.time(), None, MESSAGE_STATE_TIMEOUT)
 
     def Start(self, ts, lock):
@@ -408,7 +408,7 @@ class Message:
     def _CompleteNoMessage(self, ts, state):
         assert state in MESSAGE_STATES_FINAL
         if self._inflight_lock is None:
-            logging.warning("message already completed: ", self.state)
+            logging.warning("message already completed: %s", self.state)
             return
         self.state = state
         self.end = ts
@@ -471,13 +471,13 @@ class Message:
                     self._callback(m)
                 return "Continue"
             else:
-                logging.warning("[%d] %s unexpected resp status is %d wanted %d",
-                                self.node, PrettifyRawMessage(self.payload),
-                                m[4], self.action_resp[1])
+                logging.error("[%d] %s unexpected resp status is %d wanted %d",
+                              self.node, PrettifyRawMessage(self.payload),
+                              m[4], self.action_resp[1])
 
                 return self.Complete(ts, m, MESSAGE_STATE_NOT_READY)
-
         else:
+            logging.error(self.action_resp[0], PrettifyRawMessage(m))
             assert False
 
     def MaybeComplete(self, ts, m):
