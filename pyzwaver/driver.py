@@ -162,6 +162,9 @@ class MessageQueueOut:
     def qsize(self):
         return self._q.qsize()
 
+    def qsize_for_node(self, n):
+        return self._per_node_size[n]
+
     def put(self, priority, message):
         if self._q.empty():
             self._lo_counts = collections.defaultdict(int)
@@ -320,6 +323,9 @@ class Driver(object):
                "by node: %s" % str(self._out_queue)]
         return "\n".join(out)
 
+    def OutQueueSizeForNode(self, n):
+        return self._out_queue.qsize_for_node(n)
+
     def _SendRaw(self, payload, comment=""):
         # if len(payload) >= 5:
         #    if self._last == payload[4]:
@@ -334,6 +340,7 @@ class Driver(object):
 
     def _AdjustDelay(self, node, aborted):
         if aborted:
+            #print(">>>>>>>>>>>>>>>> DElAY [%d] %f" % (node, self._delay[node]))
             if self._delay[node] < 0.08:
                 self._delay[node] += 0.02
         else:
