@@ -92,7 +92,6 @@ def Banner(m):
     print("=" * 60)
 
 
-
 class Screen(logging.Handler):
 
     def __init__(self, stdscr, driver, controller, nodeset):
@@ -104,21 +103,22 @@ class Screen(logging.Handler):
         self.driver = driver
         self.messages = []
         self.h, self.w = self.stdscr.getmaxyx()
-    
+
     def emit(self, record):
         """Implements the looging api"""
         self.messages.append(record)
- 
-    def _printyx(self, y:int , x:int , lines, attr=curses.A_NORMAL):
+
+    def _printyx(self, y: int, x: int, lines, attr=curses.A_NORMAL):
             try:
                 for line in lines:
                     self.stdscr.insstr(y, x, line, attr)
                     y += 1
                 return len(lines)
             except Exception as e:
-                raise ValueError("%d %d (%d %d)[%s]" % (y, x, self.h, self.w, e))
+                raise ValueError("%d %d (%d %d)[%s]" % (
+                    y, x, self.h, self.w, e))
 
-    def _titleyx(self, y:int , x:int , line, w = 80):
+    def _titleyx(self, y: int, x: int, line, w=80):
         if len(line) < w:
             line += " " * (w - len(line))
         return self._printyx(y, x, [line], curses.A_REVERSE | curses.A_BOLD)
@@ -127,14 +127,14 @@ class Screen(logging.Handler):
 
         self.stdscr.clear()
         if curses.is_term_resized(self.h, self.w):
-            self.h, self.w = self.stdscr.getmaxyx() 
+            self.h, self.w = self.stdscr.getmaxyx()
             curses.resizeterm(self.h, self.w)
 
         i = 0
 
-        i += self._titleyx(i, 0, "CONTROLLER")            
+        i += self._titleyx(i, 0, "CONTROLLER")
         lines = str(self.controller).split("\n")
-        i += self._printyx(i, 0, lines)            
+        i += self._printyx(i, 0, lines)
 
         def render_node(n):
             if n == self.controller.GetNodeId():
@@ -145,18 +145,18 @@ class Screen(logging.Handler):
                 node = self.nodeset.nodes[n]
                 return "%s %s" % (node.Name(), node.state)
             else:
-                return  "Node %d  UNKNOWN" % n
+                return "Node %d  UNKNOWN" % n
 
-        i += self._titleyx(i, 0, "NODES")            
+        i += self._titleyx(i, 0, "NODES")
         nodes = set(self.controller.nodes) | self.nodeset.nodes.keys()
         lines = [render_node(n) for n in nodes]
-        i += self._printyx(i, 0, lines)   
- 
-        i += self._titleyx(i, 0, "QUEUE")            
-        lines = self.driver.OutQueueString().split("\n")
-        i += self._printyx(i, 0, lines)      
+        i += self._printyx(i, 0, lines)
 
-        i += self._titleyx(i, 0, "STATS")    
+        i += self._titleyx(i, 0, "QUEUE")
+        lines = self.driver.OutQueueString().split("\n")
+        i += self._printyx(i, 0, lines)
+
+        i += self._titleyx(i, 0, "STATS")
         lines = MessageStatsString(self.driver.History()).split("\n")
         i += self._printyx(i, 0, lines)
 
@@ -164,7 +164,7 @@ class Screen(logging.Handler):
         lines = [self.format(r) for r in self.messages[-self.h + 2:]]
         self._printyx(i, 81, lines)
         i += len(lines) + 1
- 
+
         self.stdscr.refresh()
 
 
@@ -204,14 +204,14 @@ def InitializeDevices(stdscr, driver, controller):
             if node.state not in by_state:
                 by_state[node.state] = set()
             by_state[node.state].add(node.Name())
-          
+
         if stdscr:
             screen.Redraw()
         else:
             for k, v in by_state.items():
-                print(k, v)   
-     
-        for n, node in nodeset.nodes.items():       
+                print(k, v)
+
+        for n, node in nodeset.nodes.items():
             node = nodeset.GetNode(n)
             if node.IsInterviewed():
                 ready_nodes.add(n)
@@ -223,6 +223,7 @@ def InitializeDevices(stdscr, driver, controller):
 
         time.sleep(3.0)
 
+
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('--serial_port', type=str,
@@ -233,8 +234,8 @@ def main():
     parser.add_argument('--verbosity', type=int,
                         default=logging.ERROR,
                         help='Lower numbers mean more verbosity')
-    
-    parser.add_argument('--curses', 
+
+    parser.add_argument('--curses',
                         default=False,
                         action='store_true',
                         help='Use curses for rendering. Make sure your terminal '

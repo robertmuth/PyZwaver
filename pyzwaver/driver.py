@@ -19,12 +19,12 @@
 driver.py contains the code interacting directly with serial device
 """
 
+import collections
 import logging
+import queue
 import serial
 import threading
 import time
-import collections
-import queue
 
 from typing import List, Tuple
 
