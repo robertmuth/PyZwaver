@@ -35,7 +35,7 @@ SECURE_MODE = False
 if SECURE_MODE:
     from pyzwaver import security
 
-NODE_STATE_NONE = "0_None"
+NODE_STATE_NONE = "00_None"
 NODE_STATE_INCLUDED = "10_Included"
 # discovered means we have the command classes
 NODE_STATE_DISCOVERED = "20_Discovered"
@@ -499,6 +499,15 @@ class Node:
         c = (ch.AssociationQueries(self.values.AssociationGroupIds()) +
              ch.MultiChannelEndpointQueries(self.values.MultiChannelEndPointIds()))
         self.BatchCommandSubmitFilteredSlow(c)
+
+    def SmartRefresh(self):
+        if self.state == NODE_STATE_NONE:
+            return
+        elif self.state == NODE_STATE_DISCOVERED:
+            self.RefreshStaticValues()
+        elif self.state == NODE_STATE_INTERVIEWED:
+            self.RefreshSemiStaticValues()
+            self.RefreshDynamicValues()
 
     def SendNonce(self, seq):
         # TODO: using a fixed nonce is a total hack - fix this

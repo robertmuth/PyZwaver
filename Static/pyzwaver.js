@@ -231,7 +231,7 @@ const SocketHandlerDispatch = {
             }
         }
     },
-    DRIVER: function (tag, val) {
+    DRIVER: function (val) {
         SetInnerHtmlForId(document, "driver", val);
     },
 };
@@ -243,7 +243,7 @@ function SocketMessageHandler(e) {
     const tag = e.data.slice(0, colon);
     const val = e.data.slice(colon + 1);
     if (gDebug) console.log("socket: " + tag);
-    console.log("socket: " + tag);
+    console.log(`socket: [${tag}]  ${val.substr(0, 40)}`);
     SocketHandlerDispatch[tag](val);
 }
 

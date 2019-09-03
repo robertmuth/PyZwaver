@@ -35,6 +35,7 @@ import json
 import logging
 import math
 import multiprocessing
+import random
 import shelve
 import sys
 import time
@@ -156,39 +157,53 @@ def SendToSocketJson(prefix: str, data: object):
     SendToSocket(prefix + json.dumps(data, sort_keys=True, indent=4))
 
 
+def GetRandomNodeToRefresh():
+    nn = list(CONTROLLER.nodes)
+    for i in range(10):
+        n = random.choice(nn)
+        if DRIVER.OutQueueSizeForNode(n) > 0: 
+            continue
+        if n == CONTROLLER.GetNodeId():
+            continue
+        return n
+    return None
+
 class NodeUpdater(object):
     """The NodeUpdater is registered with the TRANSLATOR and keeps
     track of those node which have changed.
     Every second updates will be emitted for those changed nodes.
     """
+
     def __init__(self):
         self._nodes_to_update = []
         self._update_driver = False
         self._epoch = 0
 
+    
     def Periodic(self):
-        if self._update_driver or DRIVER.HasInflight():
-            SendToSocket("DRIVER:" + RenderDriver(DRIVER))
-            self._nodes_to_update.clear()
-        if not NODESET:
-            return
-        # only do one node at a time to not overload tornado
-        if self._nodes_to_update:
-            n = self._nodes_to_update,pop(0)
-            node = NODESET.GetNode(n)
-            logging.info("refresh thread update: %d", n)
+        try:
+            if self._update_driver or DRIVER.HasInflight():
+                SendToSocket("DRIVER:" + RenderDriver(DRIVER))
+                # if there is stuff in flight the updates should come
+                # automagically
+                # self._nodes_to_update.clear()
+            # only do one node at a time to not overload tornado
+            n = GetRandomNodeToRefresh()
+            if n is None:
+                return
+            node: Node = NODESET.GetNode(n)
+            logging.warning("refresh thread update: %d", n)
             SendToSocket("ONE_NODE:%d:" % n + json.dumps(RenderNode(node, DB),
-                                                         sort_keys=True, indent=4))
-        if self._epoch % 20 == 0:
-            for n in CONTROLLER.nodes:
-                node: Node = NODESET.GetNode(n)
-                if node.state < NODE_STATE_DISCOVERED:
-                    TRANSLATOR.Ping(n, 3, False, "refresher")
-                    time.sleep(0.5)
-                elif node.state < NODE_STATE_INTERVIEWED:
+                                                        sort_keys=True, indent=4))
+            if node.state < NODE_STATE_DISCOVERED:
+                TRANSLATOR.Ping(n, 3, False, "refresher")
+            elif node.state < NODE_STATE_INTERVIEWED:
+                if random.random() < 0.1:
                     logging.warning("[%d] (%s) trigger static", n, node.state)
                     node.RefreshStaticValues()
-        self._epoch += 1
+            self._epoch += 1
+        except Exception as e:
+            logging.error(e)
 
     def put(self, n, _ts, _key, _values):
         # print ("got event ", n, _key, _values)
@@ -196,6 +211,7 @@ class NodeUpdater(object):
         if n not in self._nodes_to_update:
             self._nodes_to_update.append(n)
         self._update_driver = True
+  
 
 
 def ControllerEventCallback(action, event, _node):
@@ -268,8 +284,8 @@ def RenderController(controller: Controller):
     return out
 
 
-def RenderDriver(driver):
-    return "<pre>" + str(driver) + "</pre>"
+def RenderDriver(driver: Driver):
+    return str(driver)
 
 
 def DriverLogs(driver: Driver):
@@ -496,17 +512,20 @@ class NodeActionHandler(BaseHandler):
             elif cmd == "association_add":
                 group = int(token.pop(0))
                 n = int(token.pop(0))
-                node.BatchCommandSubmitFilteredFast(ch.AssociationAdd(group, n))
+                node.BatchCommandSubmitFilteredFast(
+                    ch.AssociationAdd(group, n))
             elif cmd == "change_parameter":
                 num = int(token.pop(0))
                 size = int(token.pop(0))
                 value = int(token.pop(0))
                 print(num, size, value)
-                node.BatchCommandSubmitFilteredFast(ch.ConfigurationSet(num, size, value))
+                node.BatchCommandSubmitFilteredFast(
+                    ch.ConfigurationSet(num, size, value))
             elif cmd == "association_remove":
                 group = int(token.pop(0))
                 n = int(token.pop(0))
-                node.BatchCommandSubmitFilteredFast(ch.AssociationRemove(group, n))
+                node.BatchCommandSubmitFilteredFast(
+                    ch.AssociationRemove(group, n))
             elif cmd == "change_scene":
                 scene = int(token.pop(0))
                 level = int(token.pop(0))
@@ -575,7 +594,6 @@ class ControllerActionHandler(BaseHandler):
         self.finish()
 
 
-
 def GetUpdate(token):
     global NODESET, CONTROLLER, DRIVER, DB
     cmd = token[0]
@@ -605,6 +623,7 @@ def GetUpdate(token):
 
 class JsonHandler(BaseHandler):
     """These are made available for debugging"""
+
     def set_default_headers(self):
         self.set_header("Access-Control-Allow-Origin", "*")
         self.set_header("Access-Control-Allow-Headers", "x-requested-with")
@@ -728,12 +747,13 @@ def main():
         time.time(),
         z.ManufacturerSpecific_Report,
         {'manufacturer': cp[0], 'type': cp[1], 'product': cp[2]})
-    # The updater will do the initial pings of the nodes
+    for n in CONTROLLER.nodes:
+        TRANSLATOR.Ping(n, 3, False, "refresher")
     updater = NodeUpdater()
     TRANSLATOR.AddListener(updater)
     logging.warning("listening on port %d", OPTIONS.port)
     application.listen(OPTIONS.port)
-    tornado.ioloop.PeriodicCallback(updater.Periodic, 1000).start()
+    tornado.ioloop.PeriodicCallback(updater.Periodic, 5000).start()
     tornado.ioloop.IOLoop.instance().start()
     return 0
 
