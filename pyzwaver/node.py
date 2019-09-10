@@ -420,7 +420,7 @@ class Node:
     def BasicString(self):
         out = [
             "NODE: %s" % self.Name(),
-            "state: %s" % self.state[2:] if not self.IsFailed() else "FAILED",
+            "state: %s" % self.state[3:] if not self.IsFailed() else "FAILED",
             "version: %d:%d:%d:%d" % self.values.Versions(),
             "product: %04x:%04x:%04x" % self.values.ProductInfo(),
             "groups: %d" % len(self.values.AssociationGroupIds()),

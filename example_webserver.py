@@ -161,12 +161,13 @@ def GetRandomNodeToRefresh():
     nn = list(CONTROLLER.nodes)
     for i in range(10):
         n = random.choice(nn)
-        if DRIVER.OutQueueSizeForNode(n) > 0: 
+        if DRIVER.OutQueueSizeForNode(n) > 0:
             continue
         if n == CONTROLLER.GetNodeId():
             continue
         return n
     return None
+
 
 class NodeUpdater(object):
     """The NodeUpdater is registered with the TRANSLATOR and keeps
@@ -179,22 +180,28 @@ class NodeUpdater(object):
         self._update_driver = False
         self._epoch = 0
 
-    
     def Periodic(self):
         try:
             if self._update_driver or DRIVER.HasInflight():
                 SendToSocket("DRIVER:" + RenderDriver(DRIVER))
                 # if there is stuff in flight the updates should come
                 # automagically
-                # self._nodes_to_update.clear()
-            # only do one node at a time to not overload tornado
+                #
+            # only update every 10 command or when queue is empty
+            for n in self._nodes_to_update:
+                if DRIVER.OutQueueSizeForNode(n) % 10 == 0:
+                    node: Node = NODESET.GetNode(n)
+                    data = json.dumps(RenderNode(node, DB),
+                                      sort_keys=True, indent=4)
+                    SendToSocket("ONE_NODE:%d:" % n + data)
+            self._nodes_to_update.clear()
+
             n = GetRandomNodeToRefresh()
             if n is None:
                 return
             node: Node = NODESET.GetNode(n)
-            logging.warning("refresh thread update: %d", n)
-            SendToSocket("ONE_NODE:%d:" % n + json.dumps(RenderNode(node, DB),
-                                                        sort_keys=True, indent=4))
+            #logging.warning("refresh thread update: %d", n)
+
             if node.state < NODE_STATE_DISCOVERED:
                 TRANSLATOR.Ping(n, 3, False, "refresher")
             elif node.state < NODE_STATE_INTERVIEWED:
@@ -211,7 +218,6 @@ class NodeUpdater(object):
         if n not in self._nodes_to_update:
             self._nodes_to_update.append(n)
         self._update_driver = True
-  
 
 
 def ControllerEventCallback(action, event, _node):
@@ -717,6 +723,7 @@ def main():
     global DRIVER, CONTROLLER, TRANSLATOR, NODESET, DB
     tornado.options.parse_command_line()
     # use --logging command line option to control verbosity
+    # logging.basicConfig(level=logging.WARNING)
     logger = logging.getLogger()
     for h in logger.handlers:
         h.setFormatter(MyFormatter())
@@ -753,7 +760,7 @@ def main():
     TRANSLATOR.AddListener(updater)
     logging.warning("listening on port %d", OPTIONS.port)
     application.listen(OPTIONS.port)
-    tornado.ioloop.PeriodicCallback(updater.Periodic, 5000).start()
+    tornado.ioloop.PeriodicCallback(updater.Periodic, 2000).start()
     tornado.ioloop.IOLoop.instance().start()
     return 0
 

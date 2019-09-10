@@ -180,7 +180,8 @@ class CommandTranslator(object):
             self._SendMessage(n, m, zmessage.ControllerPriority(), handler)
 
         else:
-            logging.error("[%s] RequestNodeInfo failed permanently", _NodeName(n))
+            logging.error(
+                "[%s] RequestNodeInfo failed permanently", _NodeName(n))
 
     def GetNodeProtocolInfo(self, n):
         def handler(message):
@@ -189,11 +190,12 @@ class CommandTranslator(object):
                 return
             payload = message[4:-1]
             if len(payload) < 5:
-                logging.error("[%s] bad ProtocolInfo payload: %s", _NodeName(n), message)
+                logging.error("[%s] bad ProtocolInfo payload: %s",
+                              _NodeName(n), message)
                 return
             self._ProcessProtocolInfo(n, payload)
 
-        logging.warning("[%s] GetNodeProtocolInfo", _NodeName(n))
+        logging.info("[%s] GetNodeProtocolInfo", _NodeName(n))
         m = zmessage.MakeRawMessage(z.API_ZW_GET_NODE_PROTOCOL_INFO, [n])
         self._SendMessage(n, m, zmessage.ControllerPriority(), handler)
 
@@ -216,16 +218,16 @@ class CommandTranslator(object):
     def Ping(self, n, retries, force, reason):
         if n > 255:
             XMIT_OPTIONS = (z.TRANSMIT_OPTION_ACK |
-                z.TRANSMIT_OPTION_AUTO_ROUTE |
-                z.TRANSMIT_OPTION_EXPLORE)
+                            z.TRANSMIT_OPTION_AUTO_ROUTE |
+                            z.TRANSMIT_OPTION_EXPLORE)
             endpoint = n & 0xff
             n = n >> 8
             logging.info("ping %d.%d", n, endpoint)
             self.SendCommand(n, z.MultiChannel_CapabilityGet, {"endpoint": endpoint},
                              zmessage.ControllerPriority(), XMIT_OPTIONS)
             return
-        logging.warning("[%s] Ping (%s) retries %d, force: %s",
-                        _NodeName(n), reason, retries, force)
+        logging.info("[%s] Ping (%s) retries %d, force: %s",
+                     _NodeName(n), reason, retries, force)
 
         self.GetNodeProtocolInfo(n)
         if force:
@@ -244,7 +246,7 @@ class CommandTranslator(object):
         size = m[6]
         try:
             data = [int(x) for x in m[7:7 + size]]
-            if len(data) < 2: 
+            if len(data) < 2:
                 logging.error("impossible short message: %s", repr(data))
                 return
             data = command.MaybePatchCommand(data)
