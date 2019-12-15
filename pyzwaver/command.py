@@ -130,7 +130,7 @@ def _ParseMeter(m, index):
         "exp": exp,
         "rate": rate,
     }
-    if index + size >= len(m):
+    if index + size > len(m):
         raise ValueError("cannot parse value")
     mantissa = m[index: index + size]
     index += size
