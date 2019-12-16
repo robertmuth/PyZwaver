@@ -412,6 +412,10 @@ class Driver(object):
                 # Does this help?
                 # TODO: analyze
                 time.sleep(0.01)
+                # What's the reason for the sleep() command? 
+                # I'm getting regular crashes, when _inflight has been set to None in the meantime
+                # FIXME/TODO: Insert extra check as quick fix but this is a race condition that should be fixed properly
+                if self._inflight is None: continue
                 self._inflight.IncRetry()
                 self._SendRaw(self._inflight.payload, "re-try")
             elif next_action == DO_PROPAGATE:
