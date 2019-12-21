@@ -20,6 +20,7 @@ message.py contains helpers for message encoding and the business logic
 that decides when a message has been properly processed.
 """
 
+import collections
 import logging
 import threading
 import time
@@ -364,12 +365,11 @@ class Message:
         self.priority = priority
         self.node = node
         self._callback = callback
-        self._timeout = timeout
+        self.timeout = timeout
         self.start = None
         self.end = None
         self.can = 0
         self.state = MESSAGE_STATE_CREATED
-        self._inflight_lock = None
         self.action_requ = action_requ
         self.action_resp = action_resp
         if payload is None:
@@ -381,25 +381,13 @@ class Message:
         if action_resp is None:
             self.action_resp = _RESPONSE_ACTION[func]
 
-    def _Timeout(self):
-        if self._inflight_lock is None:
-            return
-        logging.error("message timeout: %s", PrettifyRawMessage(self.payload))
-        self.Complete(time.time(), None, MESSAGE_STATE_TIMEOUT)
-
-    def Start(self, ts, lock):
+    def Start(self, ts):
         self.state = MESSAGE_STATE_STARTED
         self.start = ts
-        self._inflight_lock = lock
-        self._inflight_lock.acquire()
-        threading.Timer(self._timeout, self._Timeout).start()
         if self.action_requ and self.action_requ[0] == ACTION_MATCH_CBID_MULTI:
             logging.warning("Multi request command started")
             # empty list means start, None means abort
             self._callback([])
-
-    def IncRetry(self):
-        self.can += 1
 
     def WasAborted(self):
         return (self.state in MESSAGE_STATES_FINAL and
@@ -407,14 +395,12 @@ class Message:
 
     def _CompleteNoMessage(self, ts, state):
         assert state in MESSAGE_STATES_FINAL
-        if self._inflight_lock is None:
-            logging.warning("message already completed: %s", self.state)
-            return
         self.state = state
         self.end = ts
-        logging.info("%s: %s", state, PrettifyRawMessage(self.payload))
-        self._inflight_lock.release()
-        self._inflight_lock = None
+        if state == MESSAGE_STATE_TIMEOUT:
+            logging.error("%s: %s", state, PrettifyRawMessage(self.payload))
+        else:
+            logging.info("%s: %s", state, PrettifyRawMessage(self.payload))
         return state
 
     def Complete(self, ts, m, state):
@@ -422,14 +408,21 @@ class Message:
             self._callback(m)
         return self._CompleteNoMessage(ts, state)
 
-    def _MaybeCompleteAck(self, ts, m):
+    def MaybeCompleteAck(self, ts, m):
         if (self.action_requ[0] == ACTION_NONE and
                 self.action_resp[0] == ACTION_NONE):
             self.Complete(ts, m, MESSAGE_STATE_COMPLETED)
         else:
             return ""
 
-    def _MaybeCompleteRequest(self, ts, m):
+    def MaybeCompleteRequest(self, ts, m):
+        func = self.payload[3]
+        if m[3] != func:
+            logging.error("[%d %s unexpected request/response: %s",
+                          self.node, PrettifyRawMessage(self.payload),
+                          PrettifyRawMessage(m))
+            return "unexpected"
+
         cbid = self.payload[-2]
         if self.action_requ[0] == ACTION_MATCH_CBID_MULTI:
             if m[4] != cbid:
@@ -454,7 +447,14 @@ class Message:
                           self.action_requ[0], PrettifyRawMessage(self.payload))
             assert False
 
-    def _MaybeCompleteResponse(self, ts, m):
+    def MaybeCompleteResponse(self, ts, m):
+        func = self.payload[3]
+        if m[3] != func:
+            logging.error("[%d %s unexpected request/response: %s",
+                          self.node, PrettifyRawMessage(self.payload),
+                          PrettifyRawMessage(m))
+            return "unexpected"
+
         if self.action_resp[0] == ACTION_REPORT:
             return self.Complete(ts, m, MESSAGE_STATE_COMPLETED)
         elif self.action_resp[0] == ACTION_REPORT_EQ:
@@ -480,27 +480,6 @@ class Message:
             logging.error(self.action_resp[0], PrettifyRawMessage(m))
             assert False
 
-    def MaybeComplete(self, ts, m):
-        if m[0] == z.ACK:
-            return self._MaybeCompleteAck(ts, m)
-
-        if m[0] != z.SOF:
-            assert False
-
-        func = self.payload[3]
-        if m[3] != func:
-            logging.error("[%d %s unexpected request/response: %s",
-                          self.node, PrettifyRawMessage(self.payload),
-                          PrettifyRawMessage(m))
-            return "unexpected"
-
-        if m[2] == z.RESPONSE:
-            return self._MaybeCompleteResponse(ts, m)
-        elif m[2] == z.REQUEST:
-            return self._MaybeCompleteRequest(ts, m)
-        else:
-            assert False
-
     def __str__(self):
         out = [PrettifyRawMessage(self.payload), ]
         if self.start and not self.end:
@@ -510,3 +489,124 @@ class Message:
 
     def __lt__(self, other):
         return self.priority < other.priority
+
+
+# Next actions
+DO_NOTHING = "DO_NOTHING"
+DO_ACK = "DO_ACK"
+DO_RETRY = "DO_RETRY"
+DO_PROPAGATE = "DO_PROPAGATE"
+
+
+class InflightMessage:
+    """
+    Manages the single message that may be in-flight
+    """
+
+    def __init__(self):
+        self._message: Message = None
+        self._timeout_thread: threading.Timer = None
+        self._delay = collections.defaultdict(int)
+        # this lock controls all accesses to the instance
+        self._lock = threading.Lock()
+        # this lock control whether there is an active instance
+        self._message_lock = threading.Lock()
+
+    def GetMessage(self) -> Message:
+        with self._lock:
+            return self._message
+
+    def _Timeout(self):
+        with self._lock:
+            if self._message is None:
+                return
+            logging.error("message timeout: %s", PrettifyRawMessage(self._message.payload))
+            self._message.Complete(time.time(), None, MESSAGE_STATE_TIMEOUT)
+            self._message_lock.release()
+
+    def StartMessage(self, message: Message, ts: float):
+        self._message_lock.acquire()
+        with self._lock:
+            assert self._message is None
+            message.Start(ts)
+            if message.payload is None:
+                logging.warning("received empty message")
+                message.Complete(ts, None, MESSAGE_STATE_COMPLETED)
+                self._message_lock.release()
+                return False
+            self._message = message
+            self._timeout_thread = threading.Timer(message.timeout, self._Timeout)
+            self._timeout_thread.start()
+            time.sleep(self._delay[message.node])
+            return True
+
+    def WaitForMessageCompletion(self):
+        self._message_lock.acquire()
+        self._timeout_thread.cancel()
+        with self._lock:
+            assert self._message is not None
+            node = self._message.node
+            if self._message.WasAborted():
+                if self._delay[node] < 0.08:
+                    self._delay[node] += 0.02
+            else:
+                if self._delay[node] >= 0.01:
+                    self._delay[node] -= 0.01
+        self._message = None
+        self._message_lock.release()
+
+    def NextActionForReceivedMessage(self, ts: float, received):
+        with self._lock:
+            message: Message = self._message
+            if received[0] == z.NAK:
+                return DO_NOTHING, ""
+            elif received[0] == z.CAN:
+                if message is None:
+                    logging.error("nothing to re-send after CAN")
+                    return DO_NOTHING, "stray"
+                logging.error("re-sending message after CAN ==== %s",
+                              PrettifyRawMessage(message.payload))
+                message.can += 1
+                # does this help?
+                time.sleep(0.01)
+                return DO_RETRY, ""
+            elif received[0] == z.ACK:
+                if message is None:
+                    logging.error("nothing to re-send after ACK")
+                    return DO_NOTHING, "stray"
+                text = message.MaybeCompleteAck(ts, received)
+                if message.state in MESSAGE_STATES_FINAL:
+                    self._message_lock.release()
+                return DO_NOTHING, text
+            elif received[0] != z.SOF:
+                logging.error("received unknown start byte: %s", received[0])
+                return DO_NOTHING, "bad-unknown-start-byte"
+
+            if Checksum(received) != z.SOF:
+                # maybe send a CAN?
+                logging.error("bad checksum")
+                return DO_NOTHING, "bad-checksum"
+
+            if received[2] == z.RESPONSE:
+                if message is None:
+                    logging.error("nothing to re-send after RESPONSE")
+                    return DO_ACK, "stray"
+                text = message.MaybeCompleteResponse(ts, received)
+                if message.state in MESSAGE_STATES_FINAL:
+                    self._message_lock.release()
+                return DO_ACK, text
+            elif received[2] == z.REQUEST:
+                if (received[3] == z.API_ZW_APPLICATION_UPDATE or
+                        received[3] == z.API_APPLICATION_COMMAND_HANDLER):
+                    return DO_PROPAGATE, ""
+                else:
+                    if message is None:
+                        logging.error("nothing to re-send after REQUEST")
+                        return DO_ACK, "stray"
+                    text = message.MaybeCompleteRequest(ts, received)
+                    if message.state in MESSAGE_STATES_FINAL:
+                        self._message_lock.release()
+                    return DO_ACK, text
+            else:
+                logging.error("message is neither request nor response")
+                return DO_NOTHING, "bad"

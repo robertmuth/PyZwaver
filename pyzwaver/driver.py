@@ -89,61 +89,6 @@ def MessageStatsString(history):
     return "\n".join(out)
 
 
-DO_NOTHING = "DO_NOTHING"
-DO_ACK = "DO_ACK"
-DO_RETRY = "DO_RETRY"
-DO_PROPAGATE = "DO_PROPAGATE"
-
-
-def _ProcessReceivedMessage(ts, inflight: zmessage.Message, m):
-    """
-    Process an message arriving at the driver and determines
-    the course of action taking the current inflight message
-    into acoount.
-    """
-    # logging.debug("rx buffer: %s", buf)
-    if m[0] == z.NAK:
-        return DO_NOTHING, ""
-    elif m[0] == z.CAN:
-        if inflight is None:
-            logging.error("nothing to re-send after CAN")
-            return DO_NOTHING, "stray"
-        logging.error("re-sending message after CAN ==== %s",
-                      zmessage.PrettifyRawMessage(inflight.payload))
-        return DO_RETRY, ""
-
-    elif m[0] == z.ACK:
-        if inflight is None:
-            logging.error("nothing to re-send after ACK")
-            return DO_NOTHING, "stray"
-        return False, inflight.MaybeComplete(ts, m)
-    elif m[0] == z.SOF:
-        if zmessage.Checksum(m) != z.SOF:
-            # maybe send a CAN?
-            logging.error("bad checksum")
-            return DO_NOTHING, "bad-checksum"
-        if m[2] == z.RESPONSE:
-            if inflight is None:
-                logging.error("nothing to re-send after RESPONSE")
-                return DO_ACK, "stray"
-            return DO_ACK, inflight.MaybeComplete(ts, m)
-        elif m[2] == z.REQUEST:
-            if (m[3] == z.API_ZW_APPLICATION_UPDATE or
-                    m[3] == z.API_APPLICATION_COMMAND_HANDLER):
-                return DO_PROPAGATE, ""
-            else:
-                if inflight is None:
-                    logging.error("nothing to re-send after REQUEST")
-                    return DO_ACK, "stray"
-                return DO_ACK, inflight.MaybeComplete(ts, m)
-        else:
-            logging.error("message is neither request nor response")
-            return DO_NOTHING, "bad"
-    else:
-        logging.error("received unknown start byte: %s", m[0])
-        return DO_NOTHING, "bad-unknown-start-byte"
-
-
 class MessageQueueOut:
     """
     MessageQueue for outbound messages. Tries to support
@@ -251,12 +196,11 @@ class Driver(object):
         self._forwarding_thread.start()
 
         self._last = None
-        self._inflight = None  # out bound message waiting for responses
-        self._delay = collections.defaultdict(int)
+        self._inflight = zmessage.InflightMessage()
 
     def __str__(self):
         out = [str(self._out_queue),
-               "inflight: " + str(self._inflight),
+               "inflight: " + str(self._inflight.GetMessage()),
                MessageStatsString(self._history)]
         return "\n".join(out)
 
@@ -264,7 +208,7 @@ class Driver(object):
         self._listeners.append(l)
 
     def HasInflight(self):
-        return self._inflight is not None
+        return self._inflight.GetMessage() is not None
 
     def History(self):
         return self._history
@@ -316,7 +260,7 @@ class Driver(object):
         """"
         Returns the current outbound message being processed or None.
         """
-        return self._inflight
+        return self._inflight.GetMessage()
 
     def OutQueueString(self):
         out = ["queue length: %d" % self._out_queue.qsize(),
@@ -338,44 +282,18 @@ class Driver(object):
         self._device.write(payload)
         self._device.flush()
 
-    def _AdjustDelay(self, node, aborted):
-        if aborted:
-            #print(">>>>>>>>>>>>>>>> DElAY [%d] %f" % (node, self._delay[node]))
-            if self._delay[node] < 0.08:
-                self._delay[node] += 0.02
-        else:
-            if self._delay[node] >= 0.01:
-                self._delay[node] -= 0.01
-
     def _DriverSendingThread(self):
         """
-        Forwards message from _mq to device
+        Forwards message from _mq to device.
+
         """
         logging.warning("_DriverSendingThread started")
-        lock = threading.Lock()
         while not self._terminate:
             inflight = self._out_queue.get()  # type: zmessage.Message
-            if inflight.payload is None:
-                logging.warning("received empty message")
-                inflight.Start(time.time(), lock)
-                inflight.Complete(time.time(), None,
-                                  zmessage.MESSAGE_STATE_COMPLETED)
-                continue
-            self._inflight = inflight
-            self._RecordInflight(inflight)
-
-            inflight.Start(time.time(), lock)
-            time.sleep(self._delay[inflight.node])
-
-            self._SendRaw(inflight.payload, "")
-            # Now wait for this message to complete by
-            # waiting for lock to get released again
-            lock.acquire()
-            # dynamically adjust delay per node
-            self._AdjustDelay(inflight.node, inflight.WasAborted())
-            self._inflight = None
-            lock.release()
-
+            if self._inflight.StartMessage(inflight, time.time()):
+                self._RecordInflight(inflight)
+                self._SendRaw(inflight.payload, "")
+                self._inflight.WaitForMessageCompletion()
         logging.warning("_DriverSendingThread terminated")
 
     def _ClearDevice(self):
@@ -403,18 +321,14 @@ class Driver(object):
                     continue
             buf = buf[len(m):]
             ts = time.time()
-            next_action, comment = _ProcessReceivedMessage(
-                ts, self._inflight, m)
+            next_action, comment = self._inflight.NextActionForReceivedMessage(ts, m)
             self._LogReceived(ts, m, comment)
-            if next_action == DO_ACK:
+            if next_action == zmessage.DO_ACK:
                 self._SendRaw(zmessage.RAW_MESSAGE_ACK)
-            elif next_action == DO_RETRY:
-                # Does this help?
-                # TODO: analyze
-                time.sleep(0.01)
-                self._inflight.IncRetry()
-                self._SendRaw(self._inflight.payload, "re-try")
-            elif next_action == DO_PROPAGATE:
+            elif next_action == zmessage.DO_RETRY:
+                # small race here (the message may no longer be around) - should be benign
+                self._SendRaw(self._inflight.GetMessage().payload, "re-try")
+            elif next_action == zmessage.DO_PROPAGATE:
                 self._SendRaw(zmessage.RAW_MESSAGE_ACK)
                 self._in_queue.put((ts, m))
 
