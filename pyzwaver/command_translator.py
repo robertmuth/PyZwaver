@@ -49,23 +49,34 @@ _BAUD = [
 ]
 
 
+def IsMultichannelNode(n):
+    return n > 255
+
+
+def SplitMultiChannelNode(n):
+    return n >> 8, n & 0xff
+
+
+def MakeSplitMultiChannelNode(n, c):
+    return (n << 8) + c
+
+
 def _NodeName(n):
-    return str(n) if n <= 255 else "%d.%d" % (n >> 8, n & 0xff)
+    return "%d.%d" % SplitMultiChannelNode(n) if IsMultichannelNode(n) else str(n)
 
 
 class CommandTranslator(object):
-    """CommandTranslator is responsible for translating between the wire representation
-     of "commands" (raw messages) and the equivalent dictionary representation.
-
-    It is usually layered between the Driver and the Nodes/Nodeset, though using the latter
-    is not necessary.
-
-    Raw message arrive from the Driver via the put() API and are send to the Driver via the
-    SendMultiCommand() and SendCommand().
-    Certain non-command message are translated as custom (pseudo) commands.
-
+    """
+    The CommandTranslator class registers itself as a listener to the driver.
+    It will convert these raw commands received from the driver to the dictionary
+    representation and send them to all the listeners that have been registered
+    via AddListener().
+    Certain non-command message are forwarded to the listeners as custom
+    (pseudo) commands.
     The CommandTranslator performs wrapping/unwrapping for MultiChannel commands.
-
+    The CommandTranslator is bi-directional. Commands in dictionary can be sent
+    via  SendCommand()/SendMultiCommand() which will convert them to the wire
+    representation before forarding them to the driver.
     """
 
     def __init__(self, driver: Driver):
@@ -157,9 +168,9 @@ class CommandTranslator(object):
         def handler(_):
             logging.debug("@@handler invoked")
 
-        if n > 255:
-            raw_cmd = list(z.MultiChannel_CmdEncap) + [0, n & 0xff] + raw_cmd
-            n = n >> 8
+        if IsMultichannelNode(n):
+            n, c = SplitMultiChannelNode(n)
+            raw_cmd = list(z.MultiChannel_CmdEncap) + [0, c] + raw_cmd
         m = zmessage.MakeRawCommandWithId(n, raw_cmd, xmit)
         self._SendMessage(n, m, priority, handler)
 
@@ -216,12 +227,11 @@ class CommandTranslator(object):
         self._SendMessage(n, m, zmessage.ControllerPriority(), handler)
 
     def Ping(self, n, retries, force, reason):
-        if n > 255:
+        if IsMultichannelNode(n):
             XMIT_OPTIONS = (z.TRANSMIT_OPTION_ACK |
                             z.TRANSMIT_OPTION_AUTO_ROUTE |
                             z.TRANSMIT_OPTION_EXPLORE)
-            endpoint = n & 0xff
-            n = n >> 8
+            n, endpoint = SplitMultiChannelNode(n)
             logging.info("ping %d.%d", n, endpoint)
             self.SendCommand(n, z.MultiChannel_CapabilityGet, {"endpoint": endpoint},
                              zmessage.ControllerPriority(), XMIT_OPTIONS)
@@ -258,7 +268,7 @@ class CommandTranslator(object):
             if (data[0], data[1]) == z.MultiChannel_CapabilityReport:
                 logging.warning("FOUND MULTICHANNEL ENDPOINT: %s", value)
                 # fake node number
-                n = n * 256 + value["endpoint"]
+                n = MakeSplitMultiChannelNode(n, value["endpoint"])
                 # fake NIF
                 value["commands"] = value["classes"]
                 value["controls"] = []
@@ -267,7 +277,7 @@ class CommandTranslator(object):
                     value)
                 return
             elif (data[0], data[1]) == z.MultiChannel_CmdEncap:
-                n = n << 8 | data[2]
+                n = MakeSplitMultiChannelNode(n, data[2])
                 data = data[4:]
                 value = command.ParseCommand(data)
         except Exception as e:
