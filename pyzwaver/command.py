@@ -16,9 +16,11 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-command.py contain code for parsing and assembling API_APPLICATION_COMMAND_requests.
+command.py contain code for parsing and assembling API_APPLICATION_COMMAND
+requests.
 
-It also contains some logic pertaining to the node state machine.
+It also defines a bunch if `custom` commands that are used for administrative
+purposes and have no wire representation.
 """
 
 import logging
@@ -507,6 +509,9 @@ def ParseCommand(m):
 
 
 def AssembleCommand(key: tuple, args: dict):
+    """
+    Convert command from dictionary representation to wire representation
+    """
     table = z.SUBCMD_TO_PARSE_TABLE[key[0] * 256 + key[1]]
     assert table is not None
     data = [

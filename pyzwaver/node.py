@@ -16,7 +16,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-Provides the Node and NodeSet abstraction
+node.py provides the Node and NodeSet abstraction
 """
 
 import logging

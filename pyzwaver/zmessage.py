@@ -16,7 +16,7 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-message.py contains helpers for message encoding and the business logic
+zmessage.py contains helpers for message encoding and the business logic
 that decides when a message has been properly processed.
 """
 

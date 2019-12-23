@@ -16,12 +16,14 @@
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 """
-command.py contain code for parsing and assembling API_APPLICATION_COMMAND_requests.
-
-It also contains some logic pertaining to the node state machine.
+command_helper.py contains helpers for creating commands in dictionary
+form. It also contains list of commands the are sent to the devices
+as part of the device interviewing process.
 """
 from pyzwaver import zwave as z
 
+# Query device information that changes frequently
+# Note: unsupported commands are discarded
 DYNAMIC_PROPERTY_QUERIES = [
     # Basic should be first
     (z.Basic_Get, {}),
@@ -46,6 +48,8 @@ DYNAMIC_PROPERTY_QUERIES = [
     (z.ThermostatMode_Get, {})
 ]
 
+# Query device information that never changes (first part)
+# Note: unsupported commands are discarded
 STATIC_PROPERTY_QUERIES = [
     (z.SensorMultilevel_SupportedGet, {}),
 
@@ -81,8 +85,10 @@ STATIC_PROPERTY_QUERIES = [
     (z.Association_GroupingsGet, {}),
 ]
 
+# Query device information that never changes (last part)
 # This must be last as we use this as an indicator for the
 # NODE_STATE_INTERVIEWED
+# Note: unsupported commands are discarded
 STATIC_PROPERTY_QUERIES_LAST = [
     (z.ManufacturerSpecific_DeviceSpecificGet, {"type": 0}),
     # (z.ManufacturerSpecific_DeviceSpecificGet, {"type": 1}),
