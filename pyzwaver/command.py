@@ -73,7 +73,8 @@ def NodeDescription(basic_generic_specific):
     k = basic_generic_specific[1] * 256 + basic_generic_specific[2]
     v = z.GENERIC_SPECIFIC_DB.get(k)
     if v is None:
-        logging.error("unknown generic device : %s", str(basic_generic_specific))
+        logging.error("unknown generic device : %s",
+                      str(basic_generic_specific))
         return "unknown device_description: %s" % str(basic_generic_specific)
     return v[0]
 
@@ -95,7 +96,8 @@ def _SetSignedValue(value):
     elif mag <= 0x7FFFFFFF:
         length = 4
     else:
-        raise ValueError("{:} won't fit in 4-byte two's complement".format(value)) 
+        raise ValueError(
+            "{:} won't fit in 4-byte two's complement".format(value))
     return list(value.to_bytes(length, 'big', signed=True))
 
 
@@ -132,7 +134,7 @@ def _ParseMeter(m, index):
         "exp": exp,
         "rate": rate,
     }
-    if index + size >= len(m):
+    if index + size > len(m):
         raise ValueError("cannot parse value")
     mantissa = m[index: index + size]
     index += size
