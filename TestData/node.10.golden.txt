@@ -15,7 +15,8 @@ SOF len:0a REQU API_ZW_SEND_DATA:13 node:10 03 Version_CommandClassGet:86 X:13 8
 SOF len:0a REQU API_ZW_SEND_DATA:13 node:10 03 Version_CommandClassGet:86 X:13 72 xmit:25 cb:4e chk:79
 SOF len:0a REQU API_ZW_SEND_DATA:13 node:10 03 Version_CommandClassGet:86 X:13 86 xmit:25 cb:4f chk:8c
 SOF len:0a REQU API_ZW_SEND_DATA:13 node:10 03 Version_CommandClassGet:86 X:13 20 xmit:25 cb:50 chk:35
-SOF len:09 REQU API_ZW_SEND_DATA:13 node:10 02 ManufacturerSpecific_Get:72 X:04 xmit:25 cb:51 chk:f5
+SOF len:0a REQU API_ZW_SEND_DATA:13 node:10 03 ManufacturerSpecific_DeviceSpecificGet:72 X:06 00 xmit:25 cb:51 chk:f5
+SOF len:09 REQU API_ZW_SEND_DATA:13 node:10 02 ManufacturerSpecific_Get:72 X:04 xmit:25 cb:52 chk:f6
 
 incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:10 len:03 SensorMultilevel_SupportedReport:31 X:02 15 chk:c7
 hex:  ['01', '09', '00', '04', '00', '10', '03', '31', '02', '15', 'c7']
@@ -52,15 +53,15 @@ hex:  ['01', '0a', '00', '04', '00', '10', '04', '86', '14', '80', '01', 'f6']
 
 incoming:  SOF len:0e REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:10 len:08 ManufacturerSpecific_Report:72 X:05 00 86 00 02 00 05 chk:1b
 hex:  ['01', '0e', '00', '04', '00', '10', '08', '72', '05', '00', '86', '00', '02', '00', '05', '1b']
-SOF len:09 REQU API_ZW_SEND_DATA:13 node:10 02 Basic_Get:20 X:02 xmit:25 cb:52 chk:a2
-SOF len:09 REQU API_ZW_SEND_DATA:13 node:10 02 SensorBinary_Get:30 X:02 xmit:25 cb:53 chk:b3
-SOF len:09 REQU API_ZW_SEND_DATA:13 node:10 02 Battery_Get:80 X:02 xmit:25 cb:54 chk:04
-SOF len:09 REQU API_ZW_SEND_DATA:13 node:10 02 SensorMultilevel_Get:31 X:04 xmit:25 cb:55 chk:b2
-SOF len:0a REQU API_ZW_SEND_DATA:13 node:10 03 SensorMultilevel_Get:31 X:04 01 xmit:25 cb:56 chk:b2
-SOF len:0a REQU API_ZW_SEND_DATA:13 node:10 03 SensorMultilevel_Get:31 X:04 03 xmit:25 cb:57 chk:b1
-SOF len:0a REQU API_ZW_SEND_DATA:13 node:10 03 SensorMultilevel_Get:31 X:04 05 xmit:25 cb:58 chk:b8
-SOF len:0a REQU API_ZW_SEND_DATA:13 node:10 03 Association_Get:85 X:02 01 xmit:25 cb:59 chk:0f
-SOF len:0a REQU API_ZW_SEND_DATA:13 node:10 03 Association_Get:85 X:02 ff xmit:25 cb:5a chk:f2
+SOF len:09 REQU API_ZW_SEND_DATA:13 node:10 02 Basic_Get:20 X:02 xmit:25 cb:53 chk:a3
+SOF len:09 REQU API_ZW_SEND_DATA:13 node:10 02 SensorBinary_Get:30 X:02 xmit:25 cb:54 chk:b4
+SOF len:09 REQU API_ZW_SEND_DATA:13 node:10 02 Battery_Get:80 X:02 xmit:25 cb:55 chk:05
+SOF len:09 REQU API_ZW_SEND_DATA:13 node:10 02 SensorMultilevel_Get:31 X:04 xmit:25 cb:56 chk:b1
+SOF len:0a REQU API_ZW_SEND_DATA:13 node:10 03 SensorMultilevel_Get:31 X:04 01 xmit:25 cb:57 chk:b3
+SOF len:0a REQU API_ZW_SEND_DATA:13 node:10 03 SensorMultilevel_Get:31 X:04 03 xmit:25 cb:58 chk:be
+SOF len:0a REQU API_ZW_SEND_DATA:13 node:10 03 SensorMultilevel_Get:31 X:04 05 xmit:25 cb:59 chk:b9
+SOF len:0a REQU API_ZW_SEND_DATA:13 node:10 03 Association_Get:85 X:02 01 xmit:25 cb:5a chk:0c
+SOF len:0a REQU API_ZW_SEND_DATA:13 node:10 03 Association_Get:85 X:02 ff xmit:25 cb:5b chk:f3
 
 incoming:  SOF len:09 REQU API_APPLICATION_COMMAND_HANDLER:04 00 node:10 len:03 SensorBinary_Report:30 X:03 00 chk:d2
 hex:  ['01', '09', '00', '04', '00', '10', '03', '30', '03', '00', 'd2']
@@ -101,6 +102,7 @@ Node 16
 ((128, 3), 'Battery_Report', {'level': 100})
 ((133, 6), 'Association_GroupingsReport', {'count': 1})
 ((134, 18), 'Version_Report', {'library': 6, 'protocol': 796, 'firmware': 274})
+((256, 2), '_ProtocolInfo', {'device_type': (0, 32, 1)})
 ########### VERSIONS
 (32, 'Basic', -1)
 (48, 'SensorBinary', 1)
