@@ -15,7 +15,7 @@ here = path.abspath(path.dirname(__file__))
 try:
     with open(path.join(here, 'README.md'), encoding='utf-8') as f:
         long_description = f.read()
-except:
+except BaseException:
     long_description = ''
 
 setup(name='pyzwaver',
@@ -46,5 +46,5 @@ setup(name='pyzwaver',
       keywords='zwave z-wave s2 s0 smarthome home home automation scene aeotec z-stick',
       packages=find_packages(),
       package_data={'pyzwaver': ['pyzwaver.iml']},  # support files
-      install_requires=[],  # dependencies
+      install_requires=['serial'],  # dependencies
       zip_safe=False)
