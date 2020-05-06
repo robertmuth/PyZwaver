@@ -159,13 +159,17 @@ class Driver(object):
     which will queue them if necessary.
     Incoming messages can be observed by registering a listener.
 
-    The Driver spawns two threads:
-    * a sending thread which in a loop picks a message from
+    The Driver spawns several threads:
+    * tx_thread: a sending thread which in a loop picks a message from
       the outgoing queue, sends it, waits for any related
       replies and triggers actions based on the replies
-    * a receiving thread which waits from new messages to
-      arrive and then associates them with either the most
-       recently sent message or
+    * rx_thread: a receiving thread which waits from new messages to
+      arrive. If the messages are related to a current in_flight
+      message it will be handled accordingly otherwise it will
+      be put into the _in_queue
+    * forwarding_thread: forwards messages in the _in_queue
+      to the listeners. We do not do this in the rx_thread because
+      we do not want the latter to be blocked.
     """
 
     def __init__(self, serialDevice):
@@ -197,6 +201,8 @@ class Driver(object):
 
         self._last = None
         self._inflight = zmessage.InflightMessage()
+
+        self._send_lock = threading.Lock()
 
     def __str__(self):
         out = [str(self._out_queue),
@@ -279,9 +285,12 @@ class Driver(object):
         # logging.info("sending: %s", zmessage.PrettifyRawMessage(payload))
         # TODO: maybe add some delay for non-control payload: len(payload) ==
         # 0)
-        self._LogSent(time.time(), payload, comment)
-        self._device.write(payload)
-        self._device.flush()
+        # play it safe an use a lock to make sure only one thread
+        # is writing at a time.
+        with self._send_lock:
+            self._LogSent(time.time(), payload, comment)
+            self._device.write(payload)
+            self._device.flush()
 
     def _DriverSendingThread(self):
         """
@@ -298,6 +307,8 @@ class Driver(object):
         logging.warning("_DriverSendingThread terminated")
 
     def _ClearDevice(self):
+        # Note, this is only run at startup so it does
+        # not have to go through  _SendRaw()
         self._device.write(zmessage.RAW_MESSAGE_NAK)
         self._device.write(zmessage.RAW_MESSAGE_NAK)
         self._device.write(zmessage.RAW_MESSAGE_NAK)
