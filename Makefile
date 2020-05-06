@@ -30,7 +30,7 @@ check:: check_pylint check_pyflakes check_html check_js
 # generate zwave.py file with all zwave constants
 pyzwaver/zwave.py: constants_generator.py
 	./constants_generator.py python > $@
-
+	autopep8 -a -a -a -i *.py $@
 
 format:
 	autopep8 -a -a -a -i *.py pyzwaver/*py

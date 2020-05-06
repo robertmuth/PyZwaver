@@ -1138,7 +1138,7 @@ def DumpDartConstants(fmt: FORMAT, string_maps=True):
             if mapped not in ALLOWED_MAPPED:
                 print("%x %s" % (mapped, CMD_TO_STRING.get(mapped)))
                 assert False
-        print("    0x%04x : ['%s', %s, %s, 0x%02x]," %
+        print("    0x%04x: ['%s', %s, %s, 0x%02x]," %
               (k[0] * 256 + k[1], v[0], cmd, cntrl, mapped))
     print("}" + fmt.terminator)
 
