@@ -109,14 +109,14 @@ class Screen(logging.Handler):
         self.messages.append(record)
 
     def _printyx(self, y: int, x: int, lines, attr=curses.A_NORMAL):
-            try:
-                for line in lines:
-                    self.stdscr.insstr(y, x, line, attr)
-                    y += 1
-                return len(lines)
-            except Exception as e:
-                raise ValueError("%d %d (%d %d)[%s]" % (
-                    y, x, self.h, self.w, e))
+        try:
+            for line in lines:
+                self.stdscr.insstr(y, x, line, attr)
+                y += 1
+            return len(lines)
+        except Exception as e:
+            raise ValueError("%d %d (%d %d)[%s]" % (
+                y, x, self.h, self.w, e))
 
     def _titleyx(self, y: int, x: int, line, w=80):
         if len(line) < w:
@@ -218,7 +218,8 @@ def InitializeDevices(stdscr, driver, controller):
             elif node.state == NODE_STATE_NONE:
                 translator.Ping(n, 3, False, "undiscovered")
             elif node.state == NODE_STATE_DISCOVERED:
-                if driver.OutQueueSizeForNode(n) < 10 and random.randint(0, 5) == 0:
+                if driver.OutQueueSizeForNode(
+                        n) < 10 and random.randint(0, 5) == 0:
                     node.RefreshStaticValues()
 
         time.sleep(3.0)
@@ -226,20 +227,23 @@ def InitializeDevices(stdscr, driver, controller):
 
 def main():
     parser = argparse.ArgumentParser(description='Process some integers.')
-    parser.add_argument('--serial_port', type=str,
-                        default="/dev/ttyUSB0",
-                        help='The USB serial device representing the Z-Wave controller stick. ' +
-                             'Common settings are: dev/ttyUSB0, dev/ttyACM0')
+    parser.add_argument(
+        '--serial_port',
+        type=str,
+        default="/dev/ttyUSB0",
+        help='The USB serial device representing the Z-Wave controller stick. ' +
+        'Common settings are: dev/ttyUSB0, dev/ttyACM0')
 
     parser.add_argument('--verbosity', type=int,
                         default=logging.ERROR,
                         help='Lower numbers mean more verbosity')
 
-    parser.add_argument('--curses',
-                        default=False,
-                        action='store_true',
-                        help='Use curses for rendering. Make sure your terminal '
-                             'is at least 200 chars wide.')
+    parser.add_argument(
+        '--curses',
+        default=False,
+        action='store_true',
+        help='Use curses for rendering. Make sure your terminal '
+        'is at least 200 chars wide.')
 
     args = parser.parse_args()
     # note: this makes sure we have at least one handler

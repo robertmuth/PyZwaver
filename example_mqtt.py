@@ -99,10 +99,12 @@ def main():
 
     parser = argparse.ArgumentParser(description='Process some integers.')
 
-    parser.add_argument('--serial_port', type=str,
-                        default="/dev/ttyUSB0",
-                        help='The USB serial device representing the Z-Wave controller stick. ' +
-                             'Common settings are: dev/ttyUSB0, dev/ttyACM0')
+    parser.add_argument(
+        '--serial_port',
+        type=str,
+        default="/dev/ttyUSB0",
+        help='The USB serial device representing the Z-Wave controller stick. ' +
+        'Common settings are: dev/ttyUSB0, dev/ttyACM0')
     parser.add_argument('--mqtt_broker_host', type=str,
                         default="localhost",
                         help='mqtt broker host')
@@ -153,7 +155,11 @@ def main():
         key = ((key_int >> 8) & 255, key_int & 255)
         n = int(tokens[2])
         values = json.loads(msg.payload)
-        logging.warning("command received: %d [%s] %s", n, tokens[3], msg.payload)
+        logging.warning(
+            "command received: %d [%s] %s",
+            n,
+            tokens[3],
+            msg.payload)
         translator.SendCommand(n, key, values, NodePriorityHi(n), XMIT_OPTIONS)
         # print(n, key, data)
 
@@ -163,7 +169,10 @@ def main():
     client.on_message = on_message
 
     translator.AddListener(EventListener(controller.props.home_id, client))
-    client.connect(args.mqtt_broker_host, port=args.mqtt_broker_port, keepalive=60)
+    client.connect(
+        args.mqtt_broker_host,
+        port=args.mqtt_broker_port,
+        keepalive=60)
     client.loop_forever()
 
     driver.Terminate()

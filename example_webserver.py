@@ -425,7 +425,8 @@ def RenderMiscValues(node: Node):
 
 
 def _ProductLink(_manu_id, prod_type, prod_id):
-    return "http://www.google.com/search?q=site:products.z-wavealliance.org+0x%04x+0x%04x" % (prod_type, prod_id)
+    return "http://www.google.com/search?q=site:products.z-wavealliance.org+0x%04x+0x%04x" % (
+        prod_type, prod_id)
 
 
 def RenderNodeBrief(node: Node, db: Db, _is_failed):
@@ -444,16 +445,27 @@ def RenderNodeBrief(node: Node, db: Db, _is_failed):
     description = NodeDescription(device_type)
     db_name = db.GetNodeName(node.n)
     out = {
-        "name": "Node %s" % node.Name() if db_name is None else "%s (%s)" % (db_name, node.Name()),
-        "link": _ProductLink(*node.values.ProductInfo()),
+        "name": "Node %s" %
+        node.Name() if db_name is None else "%s (%s)" %
+        (db_name,
+         node.Name()),
+        "link": _ProductLink(
+            *
+            node.values.ProductInfo()),
         "switch_level": node.values.GetMultilevelSwitchLevel(),
         "controls": GetControls(node),
-        "basics": "<pre>%s</pre>\n" % node.BasicString(),
+        "basics": "<pre>%s</pre>\n" %
+        node.BasicString(),
         "readings": "\n".join(readings),
         "no": node.n,
         "state": state,
-        "last_contact": "(%s) [%s]" % (TimeFormat(node.last_contact), age),
-        "product": "%s (%s)" % (description, device_type),
+        "last_contact": "(%s) [%s]" %
+        (TimeFormat(
+            node.last_contact),
+            age),
+        "product": "%s (%s)" %
+        (description,
+         device_type),
     }
 
     return out
@@ -641,7 +653,7 @@ class JsonHandler(BaseHandler):
         try:
             out = GetUpdate(token)
             self.write(json.dumps(out, sort_keys=True, indent=4))
-        except:
+        except BaseException:
             logging.error("cannot processed: %s", path[0])
             print("-" * 60)
             traceback.print_exc(file=sys.stdout)
