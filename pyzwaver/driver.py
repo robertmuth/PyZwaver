@@ -191,8 +191,8 @@ class Driver(object):
                                            name="DriverReceive")
         self._rx_thread.start()
 
-        self._forwarding_thread = threading.Thread(target=self._DriverForwardingThread,
-                                                   name="DriverForward")
+        self._forwarding_thread = threading.Thread(
+            target=self._DriverForwardingThread, name="DriverForward")
         self._forwarding_thread.start()
 
         self._last = None
@@ -204,8 +204,8 @@ class Driver(object):
                MessageStatsString(self._history)]
         return "\n".join(out)
 
-    def AddListener(self, l):
-        self._listeners.append(l)
+    def AddListener(self, listener):
+        self._listeners.append(listener)
 
     def HasInflight(self):
         return self._inflight.GetMessage() is not None
@@ -277,7 +277,8 @@ class Driver(object):
         #    self._last = payload[4]
 
         # logging.info("sending: %s", zmessage.PrettifyRawMessage(payload))
-        # TODO: maybe add some delay for non-control payload: len(payload) == 0)
+        # TODO: maybe add some delay for non-control payload: len(payload) ==
+        # 0)
         self._LogSent(time.time(), payload, comment)
         self._device.write(payload)
         self._device.flush()
@@ -321,12 +322,14 @@ class Driver(object):
                     continue
             buf = buf[len(m):]
             ts = time.time()
-            next_action, comment = self._inflight.NextActionForReceivedMessage(ts, m)
+            next_action, comment = self._inflight.NextActionForReceivedMessage(
+                ts, m)
             self._LogReceived(ts, m, comment)
             if next_action == zmessage.DO_ACK:
                 self._SendRaw(zmessage.RAW_MESSAGE_ACK)
             elif next_action == zmessage.DO_RETRY:
-                # small race here (the message may no longer be around) - should be benign
+                # small race here (the message may no longer be around) -
+                # should be benign
                 self._SendRaw(self._inflight.GetMessage().payload, "re-try")
             elif next_action == zmessage.DO_PROPAGATE:
                 self._SendRaw(zmessage.RAW_MESSAGE_ACK)

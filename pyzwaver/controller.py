@@ -158,12 +158,25 @@ class ControllerProperties:
         fid = func - 1
         return self._api_mask[fid // 8] & (1 << (fid % 8))
 
-    def SetSerialCapabilities(self, serial_api_version, manu_id, type_id, prod_id, api_mask):
+    def SetSerialCapabilities(
+            self,
+            serial_api_version,
+            manu_id,
+            type_id,
+            prod_id,
+            api_mask):
         self.serial_api_version = serial_api_version
         self.product = (manu_id, type_id, prod_id)
         self._api_mask = api_mask
 
-    def SetInitAndReturnBits(self, serial_version, caps, num_bytes, bits, chip_type, version):
+    def SetInitAndReturnBits(
+            self,
+            serial_version,
+            caps,
+            num_bytes,
+            bits,
+            chip_type,
+            version):
         assert num_bytes == _NUM_NODE_BITFIELD_BYTES
         self.serial_version = serial_version
         self.chip_type = chip_type
@@ -186,14 +199,25 @@ class ControllerProperties:
 
     def __str__(self):
         out = [
-            "home: %08x  node: %02x" % (self.home_id, self.node_id),
+            "home: %08x  node: %02x" %
+            (self.home_id,
+             self.node_id),
             "versions: %s %x %x (%s)" %
-            (self.version, self.serial_api_version, self.serial_version, self.version_str),
-            "chip: %x.%02x" % (self.chip_type, self.version),
+            (self.version,
+             self.serial_api_version,
+             self.serial_version,
+             self.version_str),
+            "chip: %x.%02x" %
+            (self.chip_type,
+             self.version),
             "product: %04x %04x %04x  %x" %
-            (self.product[0], self.product[1], self.product[2], self.library_type),
-            "attrs: %s" % repr(self.attrs)
-        ]
+            (self.product[0],
+             self.product[1],
+             self.product[2],
+             self.library_type),
+            "attrs: %s" %
+            repr(
+                self.attrs)]
         return "\n".join(out)
 
 
@@ -256,7 +280,8 @@ class Controller:
         def handler(data):
             if not data:
                 # logging.error("Cannot read controller version. Check serial device.")
-                raise ValueError("Cannot read controller version. Check serial device.")
+                raise ValueError(
+                    "Cannot read controller version. Check serial device.")
             else:
                 self.props.SetVersion(*struct.unpack(">12sB", data[4:-1]))
 
@@ -279,7 +304,8 @@ class Controller:
         """
 
         def handler(data):
-            self.props.SetSerialCapabilities(*struct.unpack(">HHHH32s", data[4:-1]))
+            self.props.SetSerialCapabilities(
+                *struct.unpack(">HHHH32s", data[4:-1]))
 
         self.SendCommand(z.API_SERIAL_API_GET_CAPABILITIES, [], handler)
 
@@ -287,14 +313,18 @@ class Controller:
         """This get all the node numbers"""
 
         def handler(data):
-            bits = self.props.SetInitAndReturnBits(*struct.unpack(">BBB29sBB", data[4:-1]))
+            bits = self.props.SetInitAndReturnBits(
+                *struct.unpack(">BBB29sBB", data[4:-1]))
             self.nodes = ExtractNodes(bits)
 
         self.SendCommand(z.API_SERIAL_API_GET_INIT_DATA, [], handler)
 
     def SetTimeouts(self, ack_timeout_msec, byte_timeout_msec):
         def handler(data):
-            logging.info("previous timeouts: %d %d", data[4] * 10, data[5] * 10)
+            logging.info(
+                "previous timeouts: %d %d",
+                data[4] * 10,
+                data[5] * 10)
 
         self.SendCommand(z.API_SERIAL_API_SET_TIMEOUTS,
                          [ack_timeout_msec // 10, byte_timeout_msec // 10],
@@ -404,7 +434,8 @@ class Controller:
             a = actions[status]
             logging.warning("pairing status update: %s", a)
             if a == PAIRING_ACTION_CONTINUE:
-                logging.warning("[%s] Continue - %s [%d]", activity, name, node)
+                logging.warning(
+                    "[%s] Continue - %s [%d]", activity, name, node)
                 event_cb(activity, EVENT_PAIRING_CONTINUE, node)
                 return False
             elif a == PAIRING_ACTION_DONE:
@@ -413,9 +444,14 @@ class Controller:
                 return True
 
             elif a == PAIRING_ACTION_DONE_UPDATE:
-                logging.warning("[%s] Success - updating nodes %s [%d]", activity, name, node)
+                logging.warning(
+                    "[%s] Success - updating nodes %s [%d]",
+                    activity,
+                    name,
+                    node)
                 event_cb(activity, EVENT_PAIRING_SUCCESS, node)
-                # This not make much sense for node removals but does not hurt either
+                # This not make much sense for node removals but does not hurt
+                # either
                 self.RequestNodeInfo(node)
                 self.Update(None)
                 return True
@@ -452,45 +488,69 @@ class Controller:
                 event_cb(activity, EVENT_PAIRING_FAILED, node)
                 return True
             else:
-                logging.error("[%s] unknown status %d %s", activity, status, zmessage.Hexify(m))
+                logging.error(
+                    "[%s] unknown status %d %s",
+                    activity,
+                    status,
+                    zmessage.Hexify(m))
                 return True
 
         logging.warning("NeighborUpdate(%d)", node)
-        return self.SendCommandWithId(z.API_ZW_REQUEST_NODE_NEIGHBOR_UPDATE, [node], Handler,
-                                      timeout=self._pairing_timeout_sec)
+        return self.SendCommandWithId(z.API_ZW_REQUEST_NODE_NEIGHBOR_UPDATE, [
+                                      node], Handler, timeout=self._pairing_timeout_sec)
 
     def AddNodeToNetwork(self, event_cb):
         logging.warning("AddNodeToNetwork")
         mode = [z.ADD_NODE_ANY]
-        cb = self.MakeFancyReceiver(ACTIVITY_ADD_NODE, HANDLER_TYPE_ADD_NODE, event_cb)
+        cb = self.MakeFancyReceiver(
+            ACTIVITY_ADD_NODE,
+            HANDLER_TYPE_ADD_NODE,
+            event_cb)
         return self.SendCommandWithId(z.API_ZW_ADD_NODE_TO_NETWORK, mode, cb,
                                       timeout=self._pairing_timeout_sec)
 
     def StopAddNodeToNetwork(self, event_cb):
         logging.warning("StopAddNodeToNetwork")
         mode = [z.ADD_NODE_STOP]
-        cb = self.MakeFancyReceiver(ACTIVITY_STOP_ADD_NODE, HANDLER_TYPE_STOP, event_cb)
+        cb = self.MakeFancyReceiver(
+            ACTIVITY_STOP_ADD_NODE,
+            HANDLER_TYPE_STOP,
+            event_cb)
         return self.SendCommandWithId(z.API_ZW_ADD_NODE_TO_NETWORK, mode, cb,
                                       timeout=5)
 
     def RemoveNodeFromNetwork(self, event_cb):
         logging.warning("RemoveNodeFromNetwork")
         mode = [z.REMOVE_NODE_ANY]
-        cb = self.MakeFancyReceiver(ACTIVITY_REMOVE_NODE, HANDLER_TYPE_REMOVE_NODE, event_cb)
-        return self.SendCommandWithId(z.API_ZW_REMOVE_NODE_FROM_NETWORK, mode, cb,
-                                      timeout=self._pairing_timeout_sec)
+        cb = self.MakeFancyReceiver(
+            ACTIVITY_REMOVE_NODE,
+            HANDLER_TYPE_REMOVE_NODE,
+            event_cb)
+        return self.SendCommandWithId(
+            z.API_ZW_REMOVE_NODE_FROM_NETWORK,
+            mode,
+            cb,
+            timeout=self._pairing_timeout_sec)
 
     def StopRemoveNodeFromNetwork(self, _):
         mode = [z.REMOVE_NODE_STOP]
         # NOTE: this will sometimes result in a "stray request" being sent back:
         #  SOF len:07 REQU API_ZW_REMOVE_NODE_FROM_NETWORK:4b cb:64 status:06 00 00 chk:d1
         # We just drop this message on the floor
-        return self.SendCommandWithIdNoResponse(z.API_ZW_REMOVE_NODE_FROM_NETWORK, mode)
+        return self.SendCommandWithIdNoResponse(
+            z.API_ZW_REMOVE_NODE_FROM_NETWORK, mode)
 
     def SetLearnMode(self, event_cb):
         mode = [z.LEARN_MODE_NWI]
-        cb = self.MakeFancyReceiver(ACTIVITY_SET_LEARN_MODE, HANDLER_TYPE_SET_LEARN_MODE, event_cb)
-        return self.SendCommandWithId(z.API_ZW_SET_LEARN_MODE, mode, cb, timeout=self._pairing_timeout_sec)
+        cb = self.MakeFancyReceiver(
+            ACTIVITY_SET_LEARN_MODE,
+            HANDLER_TYPE_SET_LEARN_MODE,
+            event_cb)
+        return self.SendCommandWithId(
+            z.API_ZW_SET_LEARN_MODE,
+            mode,
+            cb,
+            timeout=self._pairing_timeout_sec)
 
     def StopSetLearnMode(self, _):
         mode = [z.LEARN_MODE_DISABLE]
@@ -498,12 +558,20 @@ class Controller:
 
     def ChangeController(self, event_cb):
         mode = [z.CONTROLLER_CHANGE_START]
-        cb = self.MakeFancyReceiver(ACTIVITY_CHANGE_CONTROLLER, HANDLER_TYPE_ADD_NODE, event_cb)
-        return self.SendCommandWithId(z.API_ZW_CONTROLLER_CHANGE, mode, cb, timeout=self._pairing_timeout_sec)
+        cb = self.MakeFancyReceiver(
+            ACTIVITY_CHANGE_CONTROLLER,
+            HANDLER_TYPE_ADD_NODE,
+            event_cb)
+        return self.SendCommandWithId(
+            z.API_ZW_CONTROLLER_CHANGE,
+            mode,
+            cb,
+            timeout=self._pairing_timeout_sec)
 
     def StopChangeController(self, _):
         mode = [z.CONTROLLER_CHANGE_STOP]
-        return self.SendCommandWithIdNoResponse(z.API_ZW_CONTROLLER_CHANGE, mode)
+        return self.SendCommandWithIdNoResponse(
+            z.API_ZW_CONTROLLER_CHANGE, mode)
 
     # ============================================================
     # ============================================================
@@ -555,14 +623,16 @@ class Controller:
 
     def SendCommandWithId(self, func, data, handler, timeout=2.0):
         raw = zmessage.MakeRawMessageWithId(func, data)
-        mesg = zmessage.Message(raw, self.Priority(), handler, -1, timeout=timeout)
+        mesg = zmessage.Message(
+            raw, self.Priority(), handler, -1, timeout=timeout)
         self._mq.SendMessage(mesg)
 
     def SendCommandWithIdNoResponse(self, func, data, timeout=2.0):
         raw = zmessage.MakeRawMessageWithId(func, data)
-        mesg = zmessage.Message(raw, self.Priority(), None, -1, timeout=timeout,
-                                action_requ=[zmessage.ACTION_NONE],
-                                action_resp=[zmessage.ACTION_NONE])
+        mesg = zmessage.Message(
+            raw, self.Priority(), None, -1, timeout=timeout, action_requ=[
+                zmessage.ACTION_NONE], action_resp=[
+                zmessage.ACTION_NONE])
         self._mq.SendMessage(mesg)
 
     def SendBarrierCommand(self, handler):
@@ -586,7 +656,9 @@ class Controller:
         logging.info("Controller::WaitUntilInitialized")
         deadline = time.time() + max_wait
         while self._state != CONTROLLER_STATE_INITIALIZED:
-            logging.warning("wait - current Controller state is: %s", self._state)
+            logging.warning(
+                "wait - current Controller state is: %s",
+                self._state)
             time.sleep(0.5)
             if time.time() > deadline:
                 return False

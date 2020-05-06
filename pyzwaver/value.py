@@ -210,7 +210,7 @@ def GetSensorMeta(kind, unit):
     try:
         info = SENSOR_TYPES[kind]
         return info[0], info[1][unit]
-    except:
+    except BaseException:
         logging.error("bad sensorunit/type in: %d %d", kind, unit)
         print("-" * 60)
         traceback.print_exc(file=sys.stdout)
@@ -222,7 +222,7 @@ def GetMeterMeta(kind, unit):
     try:
         info = METER_TYPES[kind]
         return info[0], info[1][unit]
-    except:
+    except BaseException:
         logging.error("bad meterunit/type in: %d %d", kind, unit)
         print("-" * 60)
         traceback.print_exc(file=sys.stdout)

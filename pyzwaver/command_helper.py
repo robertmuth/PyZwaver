@@ -96,6 +96,7 @@ STATIC_PROPERTY_QUERIES_LAST = [
     (z.ZwavePlusInfo_Get, {})
 ]
 
+
 def SensorMultiLevelQueries(sensors):
     # older version
     return ([(z.SensorMultilevel_Get, {})] +
@@ -151,7 +152,7 @@ def BinarySwitchSet(val, request_update=True):
 
 def SceneActuatorConfSet(scene, delay, extra, level, request_update=True):
     c = [(z.SceneActuatorConf_Set,
-         {"scene": scene, "delay": delay, "extra": extra, "level": level})]
+          {"scene": scene, "delay": delay, "extra": extra, "level": level})]
     if request_update:
         c += [(z.SceneActuatorConf_Get, {"scene": scene})]
     return c

@@ -62,7 +62,8 @@ def MakeSplitMultiChannelNode(n, c):
 
 
 def _NodeName(n):
-    return "%d.%d" % SplitMultiChannelNode(n) if IsMultichannelNode(n) else str(n)
+    return "%d.%d" % SplitMultiChannelNode(
+        n) if IsMultichannelNode(n) else str(n)
 
 
 class CommandTranslator(object):
@@ -84,12 +85,12 @@ class CommandTranslator(object):
         self._listeners = []
         driver.AddListener(self)
 
-    def AddListener(self, l):
-        self._listeners.append(l)
+    def AddListener(self, listener):
+        self._listeners.append(listener)
 
     def _PushToListeners(self, n, ts, key, value):
-        for l in self._listeners:
-            l.put(n, ts, key, value)
+        for listener in self._listeners:
+            listener.put(n, ts, key, value)
 
     def _SendMessageMulti(self, nn, m, priority: tuple, handler):
         mesg = zmessage.Message(m, priority, handler, nn[0])
@@ -99,10 +100,10 @@ class CommandTranslator(object):
         try:
             raw_cmd = command.AssembleCommand(key, values)
         except Exception as e:
-            logging.error("cannot assemble command for %s %s %s",
+            logging.error("cannot assemble command for %s %s %s: %e",
                           command.StringifyCommand(key),
                           z.SUBCMD_TO_PARSE_TABLE[key[0] * 256 + key[1]],
-                          values)
+                          values, str(e))
             print("-" * 60)
             traceback.print_exc(file=sys.stdout)
             print("-" * 60)
@@ -155,11 +156,11 @@ class CommandTranslator(object):
     def SendCommand(self, n: int, key: tuple, values: dict, priority: tuple, xmit: int):
         try:
             raw_cmd = command.AssembleCommand(key, values)
-        except Exception as _e:
-            logging.error("cannot assemble command for %s %s %s",
+        except BaseException as e:
+            logging.error("cannot assemble command for %s %s %s: %s",
                           command.StringifyCommand(key),
                           z.SUBCMD_TO_PARSE_TABLE[key[0] * 256 + key[1]],
-                          values)
+                          values, str(e))
             print("-" * 60)
             traceback.print_exc(file=sys.stdout)
             print("-" * 60)
@@ -219,7 +220,8 @@ class CommandTranslator(object):
                          mesg[4], zmessage.PrettifyRawMessage(mesg))
             failed = mesg[4] != 0
             self._PushToListeners(
-                n, time.time(), command.CUSTOM_COMMAND_FAILED_NODE, {"failed": failed})
+                n, time.time(), command.CUSTOM_COMMAND_FAILED_NODE, {
+                    "failed": failed})
             if cb:
                 cb(failed)
 
@@ -233,8 +235,11 @@ class CommandTranslator(object):
                             z.TRANSMIT_OPTION_EXPLORE)
             n, endpoint = SplitMultiChannelNode(n)
             logging.info("ping %d.%d", n, endpoint)
-            self.SendCommand(n, z.MultiChannel_CapabilityGet, {"endpoint": endpoint},
-                             zmessage.ControllerPriority(), XMIT_OPTIONS)
+            self.SendCommand(n,
+                             z.MultiChannel_CapabilityGet,
+                             {"endpoint": endpoint},
+                             zmessage.ControllerPriority(),
+                             XMIT_OPTIONS)
             return
         logging.info("[%s] Ping (%s) retries %d, force: %s",
                      _NodeName(n), reason, retries, force)
@@ -280,9 +285,9 @@ class CommandTranslator(object):
                 n = MakeSplitMultiChannelNode(n, data[2])
                 data = data[4:]
                 value = command.ParseCommand(data)
-        except Exception as e:
-            logging.error("[%d] cannot parse: %s", n,
-                          zmessage.PrettifyRawMessage(m))
+        except BaseException as e:
+            logging.error("[%d] cannot parse: %s: %s", n,
+                          zmessage.PrettifyRawMessage(m), str(e))
             print("-" * 60)
             traceback.print_exc(file=sys.stdout)
             print("-" * 60)
@@ -290,13 +295,14 @@ class CommandTranslator(object):
 
         self._PushToListeners(n, ts, (data[0], data[1]), value)
 
-    def _HandleMessageApplicationUpdate(self, ts, m):
+    def _HandleMessageApplicationUpdate(self, ts, m: bytes):
         kind = m[4]
         if kind == z.UPDATE_STATE_NODE_INFO_REQ_FAILED:
             n = m[5]
             if n != 0:
                 logging.error(
-                    "update request failed: %s", zmessage.PrettifyRawMessage(m))
+                    "update request failed: %s",
+                    zmessage.PrettifyRawMessage(m))
         elif kind == z.UPDATE_STATE_NODE_INFO_RECEIVED:
             # the node is awake now and/or has changed values
             n = m[5]

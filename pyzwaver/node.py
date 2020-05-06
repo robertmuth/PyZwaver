@@ -296,8 +296,11 @@ class NodeValues:
         out = []
         v = self.Get(z.SwitchMultilevel_Report)
         if v is not None:
-            out.append((z.SwitchMultilevel_Report, SENSOR_KIND_SWITCH_MULTILEVEL,
-                        "% (dimmer)", v["level"]))
+            out.append(
+                (z.SwitchMultilevel_Report,
+                 SENSOR_KIND_SWITCH_MULTILEVEL,
+                 "% (dimmer)",
+                 v["level"]))
         v = self.Get(z.SwitchBinary_Report)
         if v is not None:
             out.append((z.SwitchBinary_Report, SENSOR_KIND_SWITCH_BINARY,
@@ -334,7 +337,11 @@ class NodeValues:
         v = self.Get(z.Version_Report)
         if not v:
             return 0, 0, 0, 0
-        return v.get("library", 0), v.get("protocol", 0), v.get("firmware", 0), v.get("hardware", 0)
+        return v.get(
+            "library", 0), v.get(
+            "protocol", 0), v.get(
+            "firmware", 0), v.get(
+                "hardware", 0)
 
     def __str__(self):
         out = ["  values:"]
@@ -384,7 +391,8 @@ class Node:
         self._tmp_personalization_string = None
 
     def Name(self):
-        return str(self.n) if self.n <= 255 else "%d.%d" % (self.n >> 8, self.n & 0xff)
+        return str(self.n) if self.n <= 255 else "%d.%d" % (
+            self.n >> 8, self.n & 0xff)
 
     def IsSelf(self):
         return self.is_controller
@@ -496,8 +504,11 @@ class Node:
 
     def RefreshSemiStaticValues(self):
         logging.warning("[%d] RefreshSemiStatic", self.n)
-        c = (ch.AssociationQueries(self.values.AssociationGroupIds()) +
-             ch.MultiChannelEndpointQueries(self.values.MultiChannelEndPointIds()))
+        c = (
+            ch.AssociationQueries(
+                self.values.AssociationGroupIds()) +
+            ch.MultiChannelEndpointQueries(
+                self.values.MultiChannelEndPointIds()))
         self.BatchCommandSubmitFilteredSlow(c)
 
     def SmartRefresh(self):
@@ -528,8 +539,10 @@ class Node:
             #    self.BatchCommandSubmitFilteredFast(
             #            [(z.MultiChannel_Get, {})])
             if old_state < NODE_STATE_DISCOVERED:
-                if self.secure_pair and (self.values.HasCommandClass(z.Security) or
-                                         self.values.HasCommandClass(z.Security2)):
+                if self.secure_pair and (
+                    self.values.HasCommandClass(
+                        z.Security) or self.values.HasCommandClass(
+                        z.Security2)):
                     self.state = NODE_STATE_KEX_GET
                     logging.error("[%d] Sending KEX_GET", self.n)
                     self.BatchCommandSubmitFilteredFast(
@@ -551,8 +564,8 @@ class Node:
             self._tmp_key_ccm, self._tmp_personalization_string, this_public_key = security.CKFD_SharedKey(
                 other_public_key)
 
-            print("@@@@@@", len(self._tmp_key_ccm), self._tmp_key_ccm,
-                  len(self._tmp_personalization_string), self._tmp_personalization_string)
+            print("@@@@@@", len(self._tmp_key_ccm), self._tmp_key_ccm, len(
+                self._tmp_personalization_string), self._tmp_personalization_string)
             args = {"mode": 1, "key": [int(x) for x in this_public_key]}
             self.BatchCommandSubmitFilteredFast(
                 [(z.Security2_PublicKeyReport, args)])
@@ -569,8 +582,10 @@ class Node:
         if key == command.CUSTOM_COMMAND_APPLICATION_UPDATE:
             # maybe update generic+specific device
             if self.values.Get(command.CUSTOM_COMMAND_PROTOCOL_INFO) is None:
-                self.values.Set(ts, command.CUSTOM_COMMAND_PROTOCOL_INFO,
-                                {"device_type": (0, values["generic"], values["specific"])})
+                self.values.Set(
+                    ts, command.CUSTOM_COMMAND_PROTOCOL_INFO, {
+                        "device_type": (
+                            0, values["generic"], values["specific"])})
             k = values["generic"] * 256 + values["specific"]
             v = z.GENERIC_SPECIFIC_DB.get(k)
             if v is None:

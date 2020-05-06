@@ -33,7 +33,7 @@ pyzwaver/zwave.py: constants_generator.py
 
 
 format:
-	autopep8 -a -a -a -i *.py
+	autopep8 -a -a -a -i *.py pyzwaver/*py
 
 tests:
 	@echo "============================================================"

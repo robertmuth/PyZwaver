@@ -27,6 +27,7 @@ from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESCCM
 
+
 def CKDF_GenerateSharedSecret(other_public_key: bytes):
     """ return shared_secret, this_public_key_bytes"""
     this_private_key_obj = X25519PrivateKey.generate()
@@ -44,7 +45,13 @@ def CMAC(key: bytes, data: bytes):
 def CKDF_TempExtract(shared_secret: bytes,
                      this_public_key: bytes,
                      other_public_key: bytes):
-    return CMAC(bytes([0x33] * 16), shared_secret + this_public_key + other_public_key)
+    return CMAC(
+        bytes(
+            [0x33] *
+            16),
+        shared_secret +
+        this_public_key +
+        other_public_key)
 
 
 def Constant15(a, b):
@@ -59,7 +66,8 @@ def CKDF_TempExpand(prk: bytes):
 
 
 def CKFD_SharedKey(other_public_key: bytes):
-    shared_secret, this_public_key = CKDF_GenerateSharedSecret(other_public_key)
+    shared_secret, this_public_key = CKDF_GenerateSharedSecret(
+        other_public_key)
     prk = CKDF_TempExtract(shared_secret, this_public_key, other_public_key)
     key_ccm, personalization_string = CKDF_TempExpand(prk)
     print("this public", [int(x) for x in this_public_key])

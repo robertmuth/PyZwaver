@@ -87,7 +87,7 @@ def _GetSignedValue(data):
 
 
 def _SetSignedValue(value):
-    mag = value if (value >= 0) else (-value-1)
+    mag = value if (value >= 0) else (-value - 1)
 
     if mag <= 0x7F:
         length = 1
@@ -196,7 +196,8 @@ def _ParseStringWithLength(m, index):
 def _ParseStringWithLengthAndEncoding(m, index):
     encoding = m[index] >> 5
     size = m[index] & 0x1f
-    return 1 + size, {"encoding": encoding, "text": m[index + 1:index + 1 + size]}
+    return 1 + size, {"encoding": encoding,
+                      "text": m[index + 1:index + 1 + size]}
 
 
 def _ParseListRest(m, index):
@@ -243,13 +244,15 @@ def _GetIntBigEndian(m):
 
 def _ParseRestLittleEndianInt(m, index):
     size = len(m) - index
-    return index + size, {"size": size, "value": _GetIntLittleEndian(m[index:index + size])}
+    return index + size, {"size": size,
+                          "value": _GetIntLittleEndian(m[index:index + size])}
 
 
 def _ParseSizedLittleEndianInt(m, index):
     size = m[index]
     index += 1
-    return index + size, {"size": size, "value": _GetIntLittleEndian(m[index:index + size])}
+    return index + size, {"size": size,
+                          "value": _GetIntLittleEndian(m[index:index + size])}
 
 
 def _ParseOptionalTarget(m, index):
@@ -280,18 +283,20 @@ def _ParseSensor(m, index):
         raise ValueError("strange size field: %d" % size)
 
     if len(m) < index + 1 + size:
-        raise ValueError("malformed sensor string precision:%d unit:%d size:%d" %
-                         (precision, unit, size))
+        raise ValueError(
+            "malformed sensor string precision:%d unit:%d size:%d" %
+            (precision, unit, size))
     mantissa = m[index + 1: index + 1 + size]
     value = _GetSignedValue(mantissa) / pow(10, precision)
-    return index + 1 + size, {"exp": precision, "unit": unit, "mantissa": mantissa,
-                              "_value": value}
+    return index + 1 + size, {"exp": precision,
+                              "unit": unit, "mantissa": mantissa, "_value": value}
 
 
 def _ParseValue(m, index):
     size = m[index] & 0x7
     start = index + 1
-    return index + 1 + size, {"size": size, "value": _GetIntBigEndian(m[start:start + size])}
+    return index + 1 + size, {"size": size,
+                              "value": _GetIntBigEndian(m[start:start + size])}
 
 
 def _ParseDate(m, index):
@@ -332,7 +337,16 @@ def _ParseExtensions(m, index):
 def _MakeDate(date):
     if len(date) != 6:
         raise ValueError("bad date parameter of length %d" % len(date))
-    return [date[0] // 256, date[0] % 256, date[1], date[2], date[3], date[4], date[5]]
+    return [
+        date[0] //
+        256,
+        date[0] %
+        256,
+        date[1],
+        date[2],
+        date[3],
+        date[4],
+        date[5]]
 
 
 def _MakeSensor(args):
@@ -544,7 +558,10 @@ def MaybePatchCommand(m):
         x = 1 << 5 | (0 << 3) | 2
         # [49, 5, 1, 127, 1, 10] => [49, 5, 1, X, 1, 10]
         logging.error(
-            "A fixing up SensorMultilevel_Report %s: [3] %02x-> %02x", Hexify(m), m[3], x)
+            "A fixing up SensorMultilevel_Report %s: [3] %02x-> %02x",
+            Hexify(m),
+            m[3],
+            x)
         m[3] = x
 
     if ((m[0], m[1]) == z.SensorMultilevel_Report and
@@ -552,7 +569,10 @@ def MaybePatchCommand(m):
             (m[3] & 0x10) != 0):
         x = m[3] & 0xe7
         logging.error(
-            "B fixing up SensorMultilevel_Report %s: [3] %02x-> %02x", Hexify(m), m[3], x)
+            "B fixing up SensorMultilevel_Report %s: [3] %02x-> %02x",
+            Hexify(m),
+            m[3],
+            x)
         m[3] = x
 
     if (m[0], m[1]) == z.Version_CommandClassReport and len(m) == 3:

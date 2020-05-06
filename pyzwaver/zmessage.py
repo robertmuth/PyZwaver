@@ -261,7 +261,8 @@ ACTION_MATCH_CBID = 8
 ACTION_NO_REPORT = 9
 ACTION_REPORT_EQ = 10
 
-# maps inflight message type to the action taken when a matching response is received
+# maps inflight message type to the action taken when a matching response
+# is received
 _RESPONSE_ACTION = {
     z.API_ZW_REMOVE_FAILED_NODE_ID: [ACTION_REPORT_EQ, 0],  # removal started
     z.API_ZW_SET_DEFAULT: [ACTION_NONE],
@@ -443,8 +444,11 @@ class Message:
             return self.Complete(ts, m, MESSAGE_STATE_COMPLETED)
 
         else:
-            logging.error("unexpected action: %s for %s",
-                          self.action_requ[0], PrettifyRawMessage(self.payload))
+            logging.error(
+                "unexpected action: %s for %s",
+                self.action_requ[0],
+                PrettifyRawMessage(
+                    self.payload))
             assert False
 
     def MaybeCompleteResponse(self, ts, m):
@@ -520,7 +524,10 @@ class InflightMessage:
         with self._lock:
             if self._message is None:
                 return
-            logging.error("message timeout: %s", PrettifyRawMessage(self._message.payload))
+            logging.error(
+                "message timeout: %s",
+                PrettifyRawMessage(
+                    self._message.payload))
             self._message.Complete(time.time(), None, MESSAGE_STATE_TIMEOUT)
             self._message_lock.release()
 
@@ -535,7 +542,8 @@ class InflightMessage:
                 self._message_lock.release()
                 return False
             self._message = message
-            self._timeout_thread = threading.Timer(message.timeout, self._Timeout)
+            self._timeout_thread = threading.Timer(
+                message.timeout, self._Timeout)
             self._timeout_thread.start()
             time.sleep(self._delay[message.node])
             return True
