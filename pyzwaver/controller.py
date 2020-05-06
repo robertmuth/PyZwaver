@@ -22,6 +22,7 @@ controller.py contains code for dealing with the controller node in a zwave netw
 import logging
 import struct
 import time
+from typing import List, Set, Mapping, Optional, Dict, Any, Tuple
 
 from pyzwaver import zmessage
 from pyzwaver import zwave as z
@@ -115,8 +116,8 @@ HANDLER_TYPE_SET_LEARN_MODE = (z.LEARN_MODE_STATUS_TO_STRING, {
 class ControllerProperties:
 
     def __init__(self):
-        self.home_id = None
-        self.node_id = None
+        self.home_id = -1
+        self.node_id = -1
         self.product = [0, 0, 0]
         self.chip_type = None
         self.version = None
@@ -138,7 +139,7 @@ class ControllerProperties:
             self.attrs.add("bridge")
         logging.info("library_type: %s", self.library_type)
 
-    def SetId(self, home_id, node_id):
+    def SetId(self, home_id: int, node_id: int):
         self.home_id = home_id
         self.node_id = node_id
         logging.info("home-id: 0x%x node-id: %d", self.home_id, self.node_id)

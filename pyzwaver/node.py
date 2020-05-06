@@ -19,12 +19,13 @@
 node.py provides the Node and NodeSet abstraction
 """
 
+import collections
 import logging
-from typing import List, Set, Mapping, Optional, Dict, Any, Tuple
+from typing import List, Set, Optional, Dict, Any, Tuple
 
+from pyzwaver import command
 from pyzwaver import command_helper as ch
 from pyzwaver import zwave as z
-from pyzwaver import command
 from pyzwaver.command_translator import CommandTranslator
 from pyzwaver.value import GetSensorMeta, GetMeterMeta, SENSOR_KIND_BATTERY, SENSOR_KIND_SWITCH_MULTILEVEL, \
     SENSOR_KIND_SWITCH_BINARY, TEMPERATURE_MODES
@@ -130,6 +131,12 @@ def BitsToSetWithOffset(x: int, offset: int) -> Set[int]:
     return out
 
 
+# a command
+VAL_KEY = Tuple[int, int]
+# timestamp and dict
+VAL_VAL = Tuple[float, Dict]
+
+
 class NodeValues:
     """
     NodeValues is a cache of all recently received commands sent to a Node.
@@ -144,33 +151,31 @@ class NodeValues:
     """
 
     def __init__(self):
-        self._values: Dict[Any, Tuple[int, Any]] = {}
-        self._maps = {}
+        self._values: Dict[VAL_KEY, VAL_VAL] = {}
+        self._maps: Dict[VAL_KEY, Dict[Any, Any]] = collections.defaultdict(dict)
 
     def HasValue(self, key: tuple):
         return key in self._values
 
-    def Set(self, ts, key: tuple, v: Mapping):
-        if v is None:
+    def Set(self, ts: float, key: VAL_KEY, val: Dict):
+        if val is None:
             return
-        self._values[key] = ts, v
+        self._values[key] = ts, val
 
-    def SetMapEntry(self, ts, key: tuple, subkey, v):
-        if v is None:
+    def SetMapEntry(self, ts: float, key: VAL_KEY, subkey: Any,
+                    val: Any):
+        if val is None:
             return
-        m = self._maps.get(key)
-        if m is None:
-            m = {}
-            self._maps[key] = m
-        m[subkey] = ts, v
+        m = self._maps[key]
+        m[subkey] = ts, val
 
-    def Get(self, key: tuple) -> Optional[Mapping]:
+    def Get(self, key: tuple) -> Optional[Dict]:
         v = self._values.get(key)
         if v is not None:
             return v[1]
         return None
 
-    def GetMap(self, key: tuple) -> map:
+    def GetMap(self, key: VAL_KEY) -> Dict[Any, Any]:
         return self._maps.get(key, {})
 
     def ColorSwitchSupported(self):
@@ -341,7 +346,7 @@ class NodeValues:
             "library", 0), v.get(
             "protocol", 0), v.get(
             "firmware", 0), v.get(
-                "hardware", 0)
+            "hardware", 0)
 
     def __str__(self):
         out = ["  values:"]
@@ -374,18 +379,18 @@ class Node:
     Outgoing commands are send to the CommandTranslator.
     """
 
-    def __init__(self, n, translator: CommandTranslator, is_controller):
+    def __init__(self, n: int, translator: CommandTranslator,
+                 is_controller: bool):
         assert n >= 1
         self.n = n
-        self.is_controller = is_controller
+        self.is_controller: bool = is_controller
         self.name = "Node %d" % n
         self._translator = translator
         self.state = NODE_STATE_NONE
         self._controls = set()
         #
         self.values: NodeValues = NodeValues()
-        self.is_controller = is_controller
-        self.last_contact = 0
+        self.last_contact: float = 0.0
         self.secure_pair = SECURE_MODE
         self._tmp_key_ccm = None
         self._tmp_personalization_string = None
@@ -394,13 +399,13 @@ class Node:
         return str(self.n) if self.n <= 255 else "%d.%d" % (
             self.n >> 8, self.n & 0xff)
 
-    def IsSelf(self):
+    def IsSelf(self) -> bool:
         return self.is_controller
 
-    def IsInterviewed(self):
+    def IsInterviewed(self) -> bool:
         return self.state == NODE_STATE_INTERVIEWED
 
-    def IsFailed(self):
+    def IsFailed(self) -> bool:
         values = self.values.Get(command.CUSTOM_COMMAND_FAILED_NODE)
         return values and values["failed"]
 
@@ -425,7 +430,7 @@ class Node:
                 self.values.SetMapEntry(
                     ts, z.Version_CommandClassReport, k, _NO_VERSION)
 
-    def BasicString(self):
+    def BasicString(self) -> str:
         out = [
             "NODE: %s" % self.Name(),
             "state: %s" % self.state[3:] if not self.IsFailed() else "FAILED",
@@ -505,10 +510,10 @@ class Node:
     def RefreshSemiStaticValues(self):
         logging.warning("[%d] RefreshSemiStatic", self.n)
         c = (
-            ch.AssociationQueries(
-                self.values.AssociationGroupIds()) +
-            ch.MultiChannelEndpointQueries(
-                self.values.MultiChannelEndPointIds()))
+                ch.AssociationQueries(
+                    self.values.AssociationGroupIds()) +
+                ch.MultiChannelEndpointQueries(
+                    self.values.MultiChannelEndPointIds()))
         self.BatchCommandSubmitFilteredSlow(c)
 
     def SmartRefresh(self):
@@ -540,9 +545,9 @@ class Node:
             #            [(z.MultiChannel_Get, {})])
             if old_state < NODE_STATE_DISCOVERED:
                 if self.secure_pair and (
-                    self.values.HasCommandClass(
-                        z.Security) or self.values.HasCommandClass(
-                        z.Security2)):
+                        self.values.HasCommandClass(
+                            z.Security) or self.values.HasCommandClass(
+                    z.Security2)):
                     self.state = NODE_STATE_KEX_GET
                     logging.error("[%d] Sending KEX_GET", self.n)
                     self.BatchCommandSubmitFilteredFast(
@@ -575,7 +580,7 @@ class Node:
             self.RefreshDynamicValues()
             self.RefreshSemiStaticValues()
 
-    def put(self, ts: float, key: tuple, values: Mapping):
+    def put(self, ts: float, key: tuple, values: Dict):
         """A Node receives new commands via this function"""
         self.last_contact = ts
 
@@ -642,7 +647,7 @@ class Nodeset(object):
     """
 
     def __init__(self, translator: CommandTranslator, controller_n):
-        self._controller_n = controller_n
+        self._controller_n: int = controller_n
         self._translator = translator
         self.nodes: Dict[int, Node] = {}
         translator.AddListener(self)
@@ -657,7 +662,7 @@ class Nodeset(object):
             self.nodes[n] = node
         return node
 
-    def put(self, n: int, ts: float, key: tuple, values: Mapping):
+    def put(self, n: int, ts: float, key: tuple, values: Dict):
         """NodeSet receives commands via this function"""
         node = self.GetNode(n)
         node.put(ts, key, values)

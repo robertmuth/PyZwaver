@@ -222,8 +222,9 @@ def GetMeterMeta(kind, unit):
     try:
         info = METER_TYPES[kind]
         return info[0], info[1][unit]
-    except BaseException:
-        logging.error("bad meterunit/type in: %d %d", kind, unit)
+    except BaseException as e:
+        logging.error("bad meterunit/type in: %d %d (%s)",
+                      kind, unit, str(e))
         print("-" * 60)
         traceback.print_exc(file=sys.stdout)
         print("-" * 60)

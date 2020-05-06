@@ -343,6 +343,6 @@ class Driver(object):
             ts, m = self._in_queue.get()
             if m is None:
                 break
-            for l in self._listeners:
-                l.put(ts, m)
+            for listener in self._listeners:
+                listener.put(ts, m)
         logging.warning("_DriverForwardingThread terminated")
