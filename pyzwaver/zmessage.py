@@ -24,6 +24,7 @@ import collections
 import logging
 import threading
 import time
+from typing import Optional
 
 from pyzwaver import zwave as z
 
@@ -508,8 +509,8 @@ class InflightMessage:
     """
 
     def __init__(self):
-        self._message: Message = None
-        self._timeout_thread: threading.Timer = None
+        self._message: Optional[Message] = None
+        self._timeout_thread: Optional[threading.Timer] = None
         self._delay = collections.defaultdict(int)
         # this lock controls all accesses to the instance
         self._lock = threading.Lock()

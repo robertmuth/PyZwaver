@@ -20,7 +20,7 @@ node.py provides the Node and NodeSet abstraction
 """
 
 import logging
-from typing import List, Set, Mapping
+from typing import List, Set, Mapping, Optional, Dict, Any, Tuple
 
 from pyzwaver import command_helper as ch
 from pyzwaver import zwave as z
@@ -144,7 +144,7 @@ class NodeValues:
     """
 
     def __init__(self):
-        self._values = {}
+        self._values: Dict[Any, Tuple[int, Any]] = {}
         self._maps = {}
 
     def HasValue(self, key: tuple):
@@ -164,7 +164,7 @@ class NodeValues:
             self._maps[key] = m
         m[subkey] = ts, v
 
-    def Get(self, key: tuple) -> Mapping:
+    def Get(self, key: tuple) -> Optional[Mapping]:
         v = self._values.get(key)
         if v is not None:
             return v[1]
@@ -644,7 +644,7 @@ class Nodeset(object):
     def __init__(self, translator: CommandTranslator, controller_n):
         self._controller_n = controller_n
         self._translator = translator
-        self.nodes: Mapping[int, Node] = {}
+        self.nodes: Dict[int, Node] = {}
         translator.AddListener(self)
 
     def DropNode(self, n: int):
