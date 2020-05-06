@@ -39,8 +39,8 @@ def MakeSerialDevice(port="/dev/ttyUSB0"):
         parity=serial.PARITY_NONE,
         stopbits=serial.STOPBITS_ONE,
         bytesize=serial.EIGHTBITS,
-        # blocking
-        timeout=5)
+        # blocking but with short timeout
+        timeout=0.2)
     # dev.open()
     return dev
 
@@ -319,6 +319,7 @@ class Driver(object):
     def _DriverReceivingThread(self):
         logging.warning("_DriverReceivingThread started")
         buf = b""
+        last_sof_arrival = None
         while not self._terminate:
             r = self._device.read(1)
             if not r:
@@ -326,13 +327,22 @@ class Driver(object):
                 continue
             buf += r
             m = buf[0:1]
+            ts = time.time()
             if m[0] == z.SOF:
+                if last_sof_arrival is None:
+                    last_sof_arrival = ts
                 # see if we have a complete message by trying to extract it
                 m = zmessage.ExtracRawMessage(buf)
                 if not m:
+                    if ts - last_sof_arrival > 2.0:
+                        # Note, this does not seem to happen in practice
+                        logging.error("incomplete message after 2sec: %s", repr(buf))
+                        # make sure we notice when it does
+                        assert False
+                        last_sof_arrival = None
                     continue
+            last_sof_arrival = None
             buf = buf[len(m):]
-            ts = time.time()
             next_action, comment = self._inflight.NextActionForReceivedMessage(
                 ts, m)
             self._LogReceived(ts, m, comment)
